@@ -6,10 +6,7 @@
     <title>YouTubette - Player</title>
     <link rel="manifest" href="manifest.json">
     
-    <!-- Colore barra delle notifiche per Android, Chrome e Windows -->
     <meta name="theme-color" content="#121212">
-    
-    <!-- Configurazione per iOS / Safari -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="YouTubette">
@@ -27,6 +24,37 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #121212; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* Stili per l'effetto Marquee del testo lungo */
+        .marquee-wrapper {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, #fff 10%, #fff 90%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, #fff 10%, #fff 90%, transparent);
+        }
+        .marquee-content {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 10px;
+            will-change: transform;
+        }
+        .animate-marquee {
+            animation: marqueeLoop 15s linear infinite;
+        }
+        @keyframes marqueeLoop {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+
+        /* Classi di transizione per lo swipe del titolo */
+        #swipeTitleContainer {
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+            will-change: transform, opacity;
+        }
+        #swipeTitleContainer.dragging {
+            transition: none !important;
+        }
     </style>
 </head>
 <body class="text-white font-sans flex flex-col justify-between hidden">
@@ -58,8 +86,8 @@
         </div>
     </header>
 
-    <!-- AGGIORNATO: Modificato il bilanciamento delle altezze. Playlist guadagna spazio, video si riduce del 30% -->
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
+        <!-- Playlist estesa -->
         <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
             <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
             <div id="trackList" class="space-y-1 pb-4">
@@ -67,7 +95,7 @@
             </div>
         </section>
 
-        <!-- Sezione video ridotta a h-44 (circa il 30% in meno rispetto a prima) per lasciare spazio a playlist e pulsanti -->
+        <!-- Video ridotto del 30% -->
         <section class="flex flex-col bg-black md:w-2/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
             <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
                 <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
@@ -76,40 +104,26 @@
                     <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
                 </div>
             </div>
-            <div class="bg-gradient-to-t from-black via-black/80 to-transparent p-2 w-full shrink-0 z-20">
-                <h3 class="text-xs md:text-sm font-bold truncate text-white" id="mainTrackTitle">-</h3>
-                <p class="text-gray-400 text-[11px] mt-0.5" id="mainTrackChannel">-</p>
-            </div>
         </section>
     </main>
 
-    <!-- AGGIORNATO: Footer e pulsanti resi più grandi per un controllo touch migliore, area swipe estesa -->
+    <!-- Footer riprogettato con struttura Verticale e Titolo Swipeable / Marquee -->
     <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 py-4 flex flex-col shrink-0 z-50 select-none touch-none">
-        <div class="flex items-center justify-between w-full">
-            <div class="flex items-center overflow-hidden flex-1 pr-2 pointer-events-none">
-                <div class="w-12 h-12 bg-[#282828] rounded flex-shrink-0 flex items-center justify-center text-gray-400 mr-3 shadow" id="miniCover">
-                    <i class="fa-solid fa-compact-disc text-xl"></i>
+        
+        <!-- BLOCCO TITOLO (Sopra i pulsanti, swipeable e con marquee automatico) -->
+        <div id="swipeTitleContainer" class="w-full text-center mb-3 px-4 cursor-grab active:cursor-grabbing">
+            <div class="marquee-wrapper mx-auto max-w-xl">
+                <div id="marqueeContent" class="marquee-content">
+                    <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">Scegli un beat</span>
+                    <span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal">Nessun canale</span>
                 </div>
-                <div class="overflow-hidden">
-                    <p class="text-sm font-semibold text-white truncate" id="playerTrackTitle">Scegli un beat</p>
-                    <p class="text-xs text-gray-400 truncate mt-0.5" id="playerTrackChannel">Nessun canale</p>
-                </div>
-            </div>
-
-            <!-- Pulsanti Mobile visibilmente più grandi -->
-            <div class="flex items-center space-x-4 md:hidden shrink-0 pl-2">
-                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-sm p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
-                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-lg p-2"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="mobilePlayPauseBtn" class="bg-white text-black w-11 h-11 rounded-full flex items-center justify-center active:scale-95 text-base pl-0.5 shadow-lg">
-                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
-                </button>
-                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-lg p-2"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-sm p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
             </div>
         </div>
 
-        <div class="w-full flex flex-col items-center mt-4">
-            <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-2">
+        <!-- CONTROLLI E PULSANTI (Grandi ed immobili durante lo swipe) -->
+        <div class="w-full flex flex-col items-center">
+            <!-- Barra di progresso -->
+            <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-3 max-w-2xl">
                 <span id="currentTime" class="w-9 text-left select-none">0:00</span>
                 <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
                     <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
@@ -118,21 +132,32 @@
                 <span id="durationTime" class="w-9 text-right select-none">0:00</span>
             </div>
 
-            <!-- Pulsanti Desktop visibilmente più grandi -->
-            <div class="hidden md:flex items-center space-x-6 mt-2">
-                <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-1" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
-                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="playPauseBtn" class="bg-white text-black w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-lg pl-0.5 shadow-md">
+            <!-- Pulsanti Mobile (Ingranditi) -->
+            <div class="flex items-center justify-center space-x-6 md:hidden w-full">
+                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-base p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
+                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="mobilePlayPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center active:scale-95 text-xl pl-0.5 shadow-lg">
+                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+                </button>
+                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-base p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            </div>
+
+            <!-- Pulsanti Desktop (Ingranditi) -->
+            <div class="hidden md:flex items-center justify-center space-x-8 w-full">
+                <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
+                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-xl pl-0.5 shadow-md">
                     <i class="fa-solid fa-play" id="playIcon"></i>
                 </button>
-                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-1" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
                 
                 <div class="w-6"></div>
                 <div class="flex items-center space-x-2 text-gray-400">
-                    <i class="fa-solid fa-volume-high text-sm"></i>
+                    <i class="fa-solid fa-volume-high text-base"></i>
                     <input type="range" id="volumeSlider" min="0" max="100" value="100" 
-                        class="w-24 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
+                        class="w-28 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
                 </div>
             </div>
         </div>
@@ -146,33 +171,27 @@
             isPlaying: false
         };
 
-        let deferredPrompt;
-        let nextSearchPageToken = '';
-        let isFetchingMore = false;
+        let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
-        // Gestione delle variabili per lo Swipe (Slide)
-        let touchStartX = 0;
-        let touchEndX = 0;
+        // Gestione Swipe e Tracciamento Dito
+        let startX = 0, currentX = 0, isDragging = false;
+        const swipeContainer = document.getElementById('swipeTitleContainer');
+        const marqueeContent = document.getElementById('marqueeContent');
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log("Service Worker registrato"))
-                .catch(err => console.log("Errore SW:", err));
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
             });
         }
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const installBtn = document.getElementById('pwaInstallBtn');
-            if (installBtn) installBtn.classList.remove('hidden');
+            e.preventDefault(); deferredPrompt = e;
+            if (document.getElementById('pwaInstallBtn')) document.getElementById('pwaInstallBtn').classList.remove('hidden');
         });
 
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
 
         let player;
         function onYouTubeIframeAPIReady() {
@@ -184,24 +203,19 @@
         }
 
         function onPlayerReady(event) {
-            const vol = document.getElementById('volumeSlider') ? document.getElementById('volumeSlider').value : 100;
-            player.setVolume(vol);
+            player.setVolume(document.getElementById('volumeSlider')?.value || 100);
             startProgressLoop();
-            setupMediaSessionHandlers(); // Inizializza i controlli di background del telefono
+            setupMediaSessionHandlers();
         }
 
         function onPlayerStateChange(event) {
-            const playIcon = document.getElementById('playIcon');
-            const mobilePlayIcon = document.getElementById('mobilePlayIcon');
-            const fallback = document.getElementById('coverFallback');
-
+            const playIcon = document.getElementById('playIcon'), mobilePlayIcon = document.getElementById('mobilePlayIcon');
             if (event.data == YT.PlayerState.PLAYING) {
                 appState.isPlaying = true;
                 if(playIcon) playIcon.className = "fa-solid fa-pause";
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
-                if(fallback) fallback.style.display = "none";
-                updateDuration();
-                updateMediaSessionState(true);
+                document.getElementById('coverFallback').style.display = "none";
+                updateDuration(); updateMediaSessionState(true);
             } else {
                 appState.isPlaying = false;
                 if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
@@ -213,19 +227,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
-
-            const installBtn = document.getElementById('pwaInstallBtn');
-            if (installBtn) {
-                installBtn.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        if (outcome === 'accepted') installBtn.classList.add('hidden');
-                        deferredPrompt = null;
-                    }
-                });
-            }
-
+            
             document.getElementById('searchBtn').addEventListener('click', () => performSearch(false));
             document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(false); });
             
@@ -241,62 +243,115 @@
             document.getElementById('mobileBack10Btn').addEventListener('click', () => jumpSeconds(-10));
             document.getElementById('mobileForward10Btn').addEventListener('click', () => jumpSeconds(10));
             
-            const volumeSlider = document.getElementById('volumeSlider');
-            if(volumeSlider) {
-                volumeSlider.addEventListener('input', (e) => {
-                    if (player && player.setVolume) player.setVolume(e.target.value);
-                });
-            }
-
+            document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
             document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
             document.getElementById('apiConfigBtn').addEventListener('click', configureApiKey);
 
-            // AGGIORNATO: Listener per intercettare lo Slide (Swipe) destra/sinistra su tutta la barra dei comandi
-            const footerControls = document.getElementById('footerControls');
-            footerControls.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-            }, { passive: true });
+            // AGGIORNATO: Logica di Drag & Swipe integrata su tutto il Footer
+            const footer = document.getElementById('footerControls');
+            
+            footer.addEventListener('touchstart', dragStart, { passive: true });
+            footer.addEventListener('touchmove', dragMove, { passive: false });
+            footer.addEventListener('touchend', dragEnd, { passive: true });
 
-            footerControls.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipeGesture();
-            }, { passive: true });
-
-            if (!appState.apiKey) {
-                setTimeout(() => { 
-                    alert("Benvenuto! Clicca sulla rotellina in alto per inserire la tua YouTube API Key."); 
-                }, 800);
-            }
+            footer.addEventListener('mousedown', dragStart);
+            window.addEventListener('mousemove', dragMove);
+            window.addEventListener('mouseup', dragEnd);
         });
 
-        // Funzione logica per interpretare lo swipe
-        function handleSwipeGesture() {
-            const threshold = 60; // Distanza minima in pixel per calcolare lo slide
-            if (touchStartX - touchEndX > threshold) {
-                // Swipe a sinistra -> Brano Successivo
-                nextTrack();
-            } else if (touchEndX - touchStartX > threshold) {
-                // Swipe a destra -> Brano Precedente
-                prevTrack();
+        // INIZIO TRASCINAMENTO
+        function dragStart(e) {
+            isDragging = true;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            swipeContainer.classList.add('dragging');
+            marqueeContent.classList.remove('animate-marquee'); // Ferma il marquee mentre muovi il dito
+        }
+
+        // MOVIMENTO DEL DITO
+        function dragMove(e) {
+            if (!isDragging) return;
+            currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
+            
+            // Applica resistenza e inclinazione dinamica al testo
+            const rotation = currentX * 0.05; 
+            const opacity = Math.max(0.3, 1 - Math.abs(currentX) / 400);
+            
+            swipeContainer.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+            swipeContainer.style.opacity = opacity;
+        }
+
+        // RILASCIO DEL DITO (SGANCIO O RIMBALZO)
+        function dragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            swipeContainer.classList.remove('dragging');
+
+            const threshold = window.innerWidth * 0.25; // Richiesto il 25% dello schermo per cambiare traccia
+
+            if (currentX > threshold) {
+                // Sgancio verso destra -> Traccia Precedente
+                animateOutAndChange('right');
+            } else if (currentX < -threshold) {
+                // Sgancio verso sinistra -> Traccia Successiva
+                animateOutAndChange('left');
+            } else {
+                // Annullato -> Rimbalzo al centro
+                swipeContainer.style.transform = 'translateX(0px) rotate(0deg)';
+                swipeContainer.style.opacity = '1';
+                checkAndApplyMarquee();
+            }
+            currentX = 0;
+        }
+
+        // Animazione di uscita del vecchio titolo e ingresso del nuovo (Spring Effect)
+        function animateOutAndChange(direction) {
+            swipeContainer.style.transition = 'transform 0.2s ease-in, opacity 0.2s ease-in';
+            swipeContainer.style.transform = `translateX(${direction === 'right' ? '100%' : '-100%'}px)`;
+            swipeContainer.style.opacity = '0';
+
+            setTimeout(() => {
+                if (direction === 'right') prevTrack(); else nextTrack();
+
+                // Prepariamo l'ingresso dal lato opposto
+                swipeContainer.style.transition = 'none';
+                swipeContainer.style.transform = `translateX(${direction === 'right' ? '-100%' : '100%'}px)`;
+                
+                // Forza il reflow per applicare lo spostamento istantaneo
+                swipeContainer.offsetHeight;
+
+                // Effetto Molla di Ingresso
+                swipeContainer.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
+                swipeContainer.style.transform = 'translateX(0px) rotate(0deg)';
+                swipeContainer.style.opacity = '1';
+            }, 200);
+        }
+
+        // Controlla se il testo è lungo e applica il marquee duplicando il testo per fluidità
+        function checkAndApplyMarquee() {
+            marqueeContent.classList.remove('animate-marquee');
+            const wrapper = swipeContainer.querySelector('.marquee-wrapper');
+            
+            // Pulizia di eventuali duplicazioni precedenti
+            const cleanText = document.getElementById('playerTrackTitle').outerHTML + document.getElementById('playerTrackChannel').outerHTML;
+            marqueeContent.innerHTML = cleanText;
+
+            if (marqueeContent.scrollWidth > wrapper.clientWidth) {
+                // Duplica il contenuto per creare l'effetto infinito continuo senza interruzioni
+                marqueeContent.innerHTML += "<span class='inline-block w-20'></span>" + cleanText;
+                marqueeContent.classList.add('animate-marquee');
             }
         }
 
         async function performSearch(isLoadMore = false) {
             const query = document.getElementById('searchInput').value.trim();
-            if (!query) return;
+            if (!query || (isLoadMore && isFetchingMore)) return;
             if (!appState.apiKey) { configureApiKey(); return; }
-            if (isLoadMore && isFetchingMore) return;
 
             const placeholderText = document.getElementById('placeholderText');
-            
             if (!isLoadMore) {
                 if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
-                appState.tracks = [];
-                appState.currentIndex = -1;
-                nextSearchPageToken = '';
-            } else {
-                isFetchingMore = true;
-            }
+                appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
+            } else isFetchingMore = true;
 
             try {
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=date&key=${appState.apiKey}`;
@@ -307,12 +362,8 @@
                 if (data.error) throw new Error(data.error.message);
 
                 nextSearchPageToken = data.nextPageToken || '';
-
                 let newTracks = data.items.map(item => ({
-                    id: item.id.videoId,
-                    title: item.snippet.title,
-                    channel: item.snippet.channelTitle,
-                    thumbnail: item.snippet.thumbnails.default.url
+                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.default.url
                 }));
 
                 for (let i = newTracks.length - 1; i > 0; i--) {
@@ -322,25 +373,17 @@
 
                 appState.tracks = appState.tracks.concat(newTracks);
                 renderTracklist();
-
             } catch (error) {
-                alert("Errore: " + error.message);
-                if (placeholderText && appState.tracks.length === 0) {
-                    placeholderText.innerText = "Errore. Controlla la chiave API.";
-                }
-            } finally {
-                if (isLoadMore) isFetchingMore = false;
-            }
+                alert(error.message);
+            } finally { if (isLoadMore) isFetchingMore = false; }
         }
 
         function renderTracklist() {
             const trackListDiv = document.getElementById('trackList');
-            if (!trackListDiv) return;
-            trackListDiv.innerHTML = '';
+            if (!trackListDiv) return; trackListDiv.innerHTML = '';
             
             if (appState.tracks.length === 0) {
-                trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
-                return;
+                trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>'; return;
             }
 
             appState.tracks.forEach((track, index) => {
@@ -355,14 +398,10 @@
                         <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.channel}</p>
                     </div>
                 `;
-                
                 trackRow.addEventListener('click', () => {
                     loadTrack(index);
-                    if (index === appState.tracks.length - 1 && nextSearchPageToken) {
-                        performSearch(true);
-                    }
+                    if (index === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
                 });
-                
                 trackListDiv.appendChild(trackRow);
             });
         }
@@ -384,10 +423,7 @@
 
             document.getElementById('playerTrackTitle').innerText = track.title;
             document.getElementById('playerTrackChannel').innerText = track.channel;
-            if(document.getElementById('mainTrackTitle')) document.getElementById('mainTrackTitle').innerText = track.title;
-            if(document.getElementById('mainTrackChannel')) document.getElementById('mainTrackChannel').innerText = track.channel;
-            document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
-            
+
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
                 newRow.classList.add('bg-[#1a1a1a]');
@@ -395,30 +431,23 @@
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
             }
 
-            if (player && player.loadVideoById) player.loadVideoById(track.id);
+            if (player?.loadVideoById) player.loadVideoById(track.id);
             
-            // AGGIORNATO: Aggiorna i metadati di sistema (Notifiche / Schermata di blocco)
+            checkAndApplyMarquee();
             updateMediaSessionMetadata(track);
         }
 
-        // AGGIORNATO: Funzioni per interfacciarsi con il background del sistema operativo (Media Session API)
         function updateMediaSessionMetadata(track) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title,
-                    artist: track.channel,
-                    album: 'YouTubette Beats',
-                    artwork: [
-                        { src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }
-                    ]
+                    title: track.title, artist: track.channel, album: 'YouTubette Beats',
+                    artwork: [{ src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }]
                 });
             }
         }
 
         function updateMediaSessionState(isPlaying) {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-            }
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
         }
 
         function setupMediaSessionHandlers() {
@@ -427,33 +456,24 @@
                 navigator.mediaSession.setActionHandler('pause', togglePlay);
                 navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
                 navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
-                navigator.mediaSession.setActionHandler('seekseekbackward', () => jumpSeconds(-10));
-                navigator.mediaSession.setActionHandler('seekforward', () => jumpSeconds(10));
             }
         }
 
         function togglePlay() {
             if (!player || appState.currentIndex === -1) return;
-            if (appState.isPlaying) { player.pauseVideo(); } else { player.playVideo(); }
+            if (appState.isPlaying) player.pauseVideo(); else player.playVideo();
         }
 
         function nextTrack() {
             if (appState.tracks.length === 0) return;
             let nextIdx = appState.currentIndex + 1;
-            
             if (nextIdx >= appState.tracks.length) {
                 if (nextSearchPageToken) {
-                    performSearch(true).then(() => {
-                        if (appState.tracks[nextIdx]) loadTrack(nextIdx);
-                    });
-                } else {
-                    loadTrack(0);
-                }
+                    performSearch(true).then(() => { if (appState.tracks[nextIdx]) loadTrack(nextIdx); });
+                } else loadTrack(0);
             } else {
                 loadTrack(nextIdx);
-                if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) {
-                    performSearch(true);
-                }
+                if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
             }
         }
 
@@ -465,23 +485,17 @@
         }
 
         function jumpSeconds(seconds) {
-            if (!player || appState.currentIndex === -1 || !player.getCurrentTime) return;
-            const currentTime = player.getCurrentTime();
-            const duration = player.getDuration();
-            let targetTime = currentTime + seconds;
-            if (targetTime < 0) targetTime = 0;
-            if (targetTime > duration) targetTime = duration;
-            player.seekTo(targetTime, true);
+            if (!player?.getCurrentTime || appState.currentIndex === -1) return;
+            let targetTime = player.getCurrentTime() + seconds;
+            player.seekTo(Math.max(0, Math.min(targetTime, player.getDuration())), true);
         }
 
         function startProgressLoop() {
             setInterval(() => {
-                if (player && player.getCurrentTime && appState.isPlaying) {
-                    const currentTime = player.getCurrentTime();
-                    const duration = player.getDuration();
+                if (player?.getCurrentTime && appState.isPlaying) {
+                    const currentTime = player.getCurrentTime(), duration = player.getDuration();
                     if (duration > 0) {
-                        const pct = (currentTime / duration) * 100;
-                        document.getElementById('progressBar').style.width = `${pct}%`;
+                        document.getElementById('progressBar').style.width = `${(currentTime / duration) * 100}%`;
                         document.getElementById('currentTime').innerText = formatTime(currentTime);
                     }
                 }
@@ -489,38 +503,25 @@
         }
 
         function updateDuration() {
-            if (player && player.getDuration) {
-                const duration = player.getDuration();
-                document.getElementById('durationTime').innerText = formatTime(duration);
-            }
+            if (player?.getDuration) document.getElementById('durationTime').innerText = formatTime(player.getDuration());
         }
 
         function seekVideo(e) {
-            if (!player || appState.currentIndex === -1 || !player.getDuration) return;
+            if (!player?.getDuration || appState.currentIndex === -1) return;
             const rect = e.currentTarget.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const width = rect.width;
-            const pct = clickX / width;
-            const duration = player.getDuration();
-            if (duration > 0) player.seekTo(duration * pct, true);
+            player.seekTo(player.getDuration() * ((e.clientX - rect.left) / rect.width), true);
         }
 
         function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
+            const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60);
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
         function configureApiKey() {
             const key = prompt("Inserisci la tua YouTube Data API v3 Key:", appState.apiKey);
             if (key !== null) {
-                appState.apiKey = key.trim();
-                localStorage.setItem('youtubette_api_key', appState.apiKey);
-                if (appState.apiKey) {
-                    alert("API Key salvata nei settaggi!");
-                } else {
-                    alert("API Key rimossa.");
-                }
+                appState.apiKey = key.trim(); localStorage.setItem('youtubette_api_key', appState.apiKey);
+                alert(appState.apiKey ? "API Key salvata!" : "API Key rimossa.");
             }
         }
     </script>
