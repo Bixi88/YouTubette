@@ -143,6 +143,7 @@
 
         let deferredPrompt;
         let nextSearchPageToken = '';
+        let isFetchingMore = false; // Evita chiamate duplicate simultanee
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -217,8 +218,8 @@
                 });
             }
 
-            document.getElementById('searchBtn').addEventListener('click', performSearch);
-            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+            document.getElementById('searchBtn').addEventListener('click', () => performSearch(false));
+            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(false); });
             
             document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
             document.getElementById('prevBtn').addEventListener('click', prevTrack);
@@ -249,13 +250,13 @@
             }
         });
 
-        async function performSearch() {
+        async function performSearch(isLoadMore = false) {
             const query = document.getElementById('searchInput').value.trim();
             if (!query) return;
             if (!appState.apiKey) { configureApiKey(); return; }
+            if (isLoadMore && isFetchingMore) return;
 
             const placeholderText = document.getElementById('placeholderText');
-            const isLoadMore = (this === 'load_more');
             
             if (!isLoadMore) {
                 if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
@@ -264,6 +265,8 @@
                 nextSearchPageToken = '';
                 const trackListDiv = document.getElementById('trackList');
                 if (trackListDiv) trackListDiv.innerHTML = '';
+            } else {
+                isFetchingMore = true;
             }
 
             try {
@@ -294,21 +297,19 @@
                 const previousLength = appState.tracks.length;
                 appState.tracks = [...appState.tracks, ...newTracks];
                 
-                // CORRETTO: Passiamo true se stiamo solo iniettando tracce extra in coda
+                // Genera l'HTML appendendo sotto i nuovi elementi
                 renderTracklist(isLoadMore, newTracks, previousLength);
 
-                if (isLoadMore && previousLength > 0) {
-                    loadTrack(previousLength);
-                }
             } catch (error) {
                 alert("Errore: " + error.message);
                 if (placeholderText && appState.tracks.length === 0) {
                     placeholderText.innerText = "Errore. Controlla la chiave API.";
                 }
+            } finally {
+                if (isLoadMore) isFetchingMore = false;
             }
         }
 
-        // CORRETTO: Adesso accetta i parametri per fare l'append selettivo dei nuovi nodi DOM
         function renderTracklist(appendMode = false, segmentTracks = [], startIndex = 0) {
             const trackListDiv = document.getElementById('trackList');
             if (!trackListDiv) return;
@@ -336,7 +337,17 @@
                         <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.channel}</p>
                     </div>
                 `;
-                trackRow.addEventListener('click', () => loadTrack(index));
+                
+                // Quando l'utente preme sulla traccia
+                trackRow.addEventListener('click', () => {
+                    loadTrack(index);
+                    
+                    // MODIFICA CRUCIALE: Se l'utente clicca l'ultimo brano della lista corrente, scarica subito i prossimi 25 sotto!
+                    if (index === appState.tracks.length - 1 && nextSearchPageToken) {
+                        performSearch(true);
+                    }
+                });
+                
                 trackListDiv.appendChild(trackRow);
             });
         }
@@ -384,14 +395,21 @@
             let nextIdx = appState.currentIndex + 1;
             
             if (nextIdx >= appState.tracks.length) {
+                // Se finisce l'ultima in assoluto scarica ed esegue, altrimenti va alla 0
                 if (nextSearchPageToken) {
-                    document.getElementById('playerTrackTitle').innerText = "Caricamento altri beat...";
-                    performSearch.call('load_more');
+                    performSearch(true).then(() => {
+                        if (appState.tracks[nextIdx]) loadTrack(nextIdx);
+                    });
                 } else {
                     loadTrack(0);
                 }
             } else {
                 loadTrack(nextIdx);
+                
+                // Se il player automatico atterra sull'ultimo brano della lista attuale, pre-carica i successivi
+                if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) {
+                    performSearch(true);
+                }
             }
         }
 
@@ -433,7 +451,6 @@
             }
         }
 
-        // Gestione click barra avanzamento
         document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
         function seekVideo(e) {
             if (!player || appState.currentIndex === -1 || !player.getDuration) return;
