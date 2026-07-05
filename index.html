@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -14,4 +16,381 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    ...
+    <style>
+        html, body {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: #121212;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    </style>
+</head>
+<body class="text-white font-sans flex flex-col justify-between hidden">
+
+    <header class="h-16 bg-black px-3 flex items-center justify-between border-b border-[#282828] shrink-0 z-50">
+        <div class="flex items-center space-x-1.5 text-[#1DB954] text-xl font-bold tracking-tight shrink-0">
+            <i class="fa-solid fa-radio"></i>
+            <span class="hidden sm:inline">YouTubette</span>
+        </div>
+        
+        <div class="flex-1 max-w-md mx-2">
+            <div class="relative flex items-center w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" id="searchInput" placeholder="Cerca beat... (es. free rnb)" 
+                    class="w-full bg-[#242424] text-sm text-white pl-10 pr-16 py-2 rounded-full border border-transparent focus:outline-none focus:border-white focus:bg-[#2a2a2a] transition-all">
+                <button id="searchBtn" class="absolute right-1.5 bg-[#1DB954] text-black font-semibold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
+                    Cerca
+                </button>
+            </div>
+        </div>
+
+        <div class="shrink-0 flex items-center space-x-1">
+            <button id="pwaInstallBtn" class="hidden bg-[#1DB954] text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
+                <i class="fa-solid fa-download mr-1"></i> Installa
+            </button>
+            <button id="apiConfigBtn" class="text-gray-400 hover:text-white p-2" title="Configura API Key">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
+        <section class="flex-1 md:w-2/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
+            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
+            <div id="trackList" class="space-y-1 pb-4">
+                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Inserisci una chiave di ricerca in alto.</p>
+            </div>
+        </section>
+
+        <section class="flex flex-col items-center justify-center bg-[#181818] p-4 md:p-6 md:w-3/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
+            <div class="w-28 h-28 md:w-64 md:h-64 bg-[#282828] rounded-lg shadow-2xl flex items-center justify-center overflow-hidden relative">
+                <div id="ytPlayerContainer" class="w-full h-full opacity-60"></div>
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#282828] text-gray-500 pointer-events-none">
+                    <i class="fa-solid fa-music text-2xl md:text-5xl mb-1 md:mb-3"></i>
+                    <p class="text-[9px] md:text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
+                </div>
+            </div>
+            <div class="mt-2 md:mt-4 text-center max-w-sm w-full px-4">
+                <h3 class="text-xs md:text-lg font-bold truncate" id="mainTrackTitle">-</h3>
+                <p class="text-gray-400 text-[9px] md:text-xs mt-0.5" id="mainTrackChannel">-</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-[#181818] border-t border-[#282828] px-3 py-3 flex flex-col shrink-0 z-50">
+        <div class="flex items-center justify-between w-full">
+            <div class="flex items-center overflow-hidden flex-1 pr-2">
+                <div class="w-10 h-10 bg-[#282828] rounded flex-shrink-0 flex items-center justify-center text-gray-400 mr-2.5 shadow" id="miniCover">
+                    <i class="fa-solid fa-compact-disc text-base"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-medium text-white truncate" id="playerTrackTitle">Scegli un beat</p>
+                    <p class="text-[11px] text-gray-400 truncate mt-0.5" id="playerTrackChannel">Nessun canale</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 md:hidden shrink-0 pl-2">
+                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
+                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-sm py-2"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="mobilePlayPauseBtn" class="bg-white text-black w-8 h-8 rounded-full flex items-center justify-center active:scale-95 text-sm pl-0.5">
+                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+                </button>
+                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-sm py-2"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            </div>
+        </div>
+
+        <div class="w-full flex flex-col items-center mt-3">
+            <div class="w-full flex items-center space-x-2 text-[10px] text-gray-400 mb-1.5">
+                <span id="currentTime" class="w-8 text-left select-none">0:00</span>
+                <div class="flex-1 bg-[#4d4d4d] h-3.5 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
+                    <div class="bg-[#333] w-full h-1.5 rounded-full absolute top-1 left-0"></div>
+                    <div class="bg-[#1DB954] h-1.5 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
+                </div>
+                <span id="durationTime" class="w-8 text-right select-none">0:00</span>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-5 mt-1">
+                <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
+                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="bg-white text-black w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-base pl-0.5">
+                    <i class="fa-solid fa-play" id="playIcon"></i>
+                </button>
+                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                
+                <div class="w-4"></div>
+                <div class="flex items-center space-x-2 text-gray-400">
+                    <i class="fa-solid fa-volume-high text-xs"></i>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100" 
+                        class="w-20 h-1 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let appState = {
+            apiKey: localStorage.getItem('youtubette_api_key') || '',
+            tracks: [],
+            currentIndex: -1,
+            isPlaying: false
+        };
+
+        let deferredPrompt;
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log("Service Worker registrato con successo"))
+                .catch(err => console.log("Errore registrazione SW:", err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('pwaInstallBtn');
+            if (installBtn) installBtn.classList.remove('hidden');
+        });
+
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        let player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('ytPlayerContainer', {
+                height: '100%', width: '100%', videoId: '',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function onPlayerReady(event) {
+            const vol = document.getElementById('volumeSlider') ? document.getElementById('volumeSlider').value : 100;
+            player.setVolume(vol);
+            startProgressLoop();
+        }
+
+        function onPlayerStateChange(event) {
+            const playIcon = document.getElementById('playIcon');
+            const mobilePlayIcon = document.getElementById('mobilePlayIcon');
+            const fallback = document.getElementById('coverFallback');
+
+            if (event.data == YT.PlayerState.PLAYING) {
+                appState.isPlaying = true;
+                if(playIcon) playIcon.className = "fa-solid fa-pause";
+                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
+                if(fallback) fallback.style.display = "none";
+                updateDuration();
+            } else {
+                appState.isPlaying = false;
+                if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
+                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
+                if (event.data == YT.PlayerState.ENDED) nextTrack();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.classList.remove('hidden');
+
+            const installBtn = document.getElementById('pwaInstallBtn');
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            installBtn.classList.add('hidden');
+                        }
+                        deferredPrompt = null;
+                    } else {
+                        alert("Usa i 3 puntini del browser -> App -> Installa YouTubette.");
+                    }
+                });
+            }
+
+            document.getElementById('searchBtn').addEventListener('click', performSearch);
+            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+            
+            document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('prevBtn').addEventListener('click', prevTrack);
+            document.getElementById('nextBtn').addEventListener('click', nextTrack);
+            document.getElementById('back10Btn').addEventListener('click', () => jumpSeconds(-10));
+            document.getElementById('forward10Btn').addEventListener('click', () => jumpSeconds(10));
+
+            document.getElementById('mobilePlayPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('mobilePrevBtn').addEventListener('click', prevTrack);
+            document.getElementById('mobileNextBtn').addEventListener('click', nextTrack);
+            document.getElementById('mobileBack10Btn').addEventListener('click', () => jumpSeconds(-10));
+            document.getElementById('mobileForward10Btn').addEventListener('click', () => jumpSeconds(10));
+            
+            const volumeSlider = document.getElementById('volumeSlider');
+            if(volumeSlider) {
+                volumeSlider.addEventListener('input', (e) => {
+                    if (player && player.setVolume) player.setVolume(e.target.value);
+                });
+            }
+
+            document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
+            document.getElementById('apiConfigBtn').addEventListener('click', configureApiKey);
+
+            if (!appState.apiKey) {
+                setTimeout(() => { 
+                    alert("Benvenuto! Clicca sulla rotellina in alto per inserire la tua YouTube API Key."); 
+                }, 800);
+            }
+        });
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+            if (!appState.apiKey) { configureApiKey(); return; }
+
+            const placeholderText = document.getElementById('placeholderText');
+            if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
+
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                appState.tracks = data.items.map(item => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title,
+                    channel: item.snippet.channelTitle,
+                    thumbnail: item.snippet.thumbnails.default.url
+                }));
+                renderTracklist();
+            } catch (error) {
+                alert("Errore: " + error.message);
+                if (placeholderText) placeholderText.innerText = "Errore. Controlla la chiave API.";
+            }
+        }
+
+        function renderTracklist() {
+            const trackListDiv = document.getElementById('trackList');
+            trackListDiv.innerHTML = '';
+            if (appState.tracks.length === 0) {
+                trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
+                return;
+            }
+            appState.tracks.forEach((track, index) => {
+                const trackRow = document.createElement('div');
+                trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
+                trackRow.innerHTML = `
+                    <div class="w-6 text-gray-400 text-xs text-center">${index + 1}</div>
+                    <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded mx-2.5">
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs font-medium truncate ${appState.currentIndex === index ? 'text-[#1DB954]' : 'text-white'}">${track.title}</p>
+                        <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.channel}</p>
+                    </div>
+                `;
+                trackRow.addEventListener('click', () => loadTrack(index));
+                trackListDiv.appendChild(trackRow);
+            });
+        }
+
+        function loadTrack(index) {
+            if (index < 0 || index >= appState.tracks.length) return;
+            appState.currentIndex = index;
+            const track = appState.tracks[index];
+
+            document.getElementById('playerTrackTitle').innerText = track.title;
+            document.getElementById('playerTrackChannel').innerText = track.channel;
+            if(document.getElementById('mainTrackTitle')) document.getElementById('mainTrackTitle').innerText = track.title;
+            if(document.getElementById('mainTrackChannel')) document.getElementById('mainTrackChannel').innerText = track.channel;
+            document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
+            
+            renderTracklist();
+            if (player && player.loadVideoById) player.loadVideoById(track.id);
+        }
+
+        function togglePlay() {
+            if (!player || appState.currentIndex === -1) return;
+            if (appState.isPlaying) { player.pauseVideo(); } else { player.playVideo(); }
+        }
+
+        function nextTrack() {
+            if (appState.tracks.length === 0) return;
+            let nextIdx = appState.currentIndex + 1;
+            if (nextIdx >= appState.tracks.length) nextIdx = 0;
+            loadTrack(nextIdx);
+        }
+
+        function prevTrack() {
+            if (appState.tracks.length === 0) return;
+            let prevIdx = appState.currentIndex - 1;
+            if (prevIdx < 0) prevIdx = appState.tracks.length - 1;
+            loadTrack(prevIdx);
+        }
+
+        function jumpSeconds(seconds) {
+            if (!player || appState.currentIndex === -1 || !player.getCurrentTime) return;
+            const currentTime = player.getCurrentTime();
+            const duration = player.getDuration();
+            let targetTime = currentTime + seconds;
+            if (targetTime < 0) targetTime = 0;
+            if (targetTime > duration) targetTime = duration;
+            player.seekTo(targetTime, true);
+        }
+
+        function startProgressLoop() {
+            setInterval(() => {
+                if (player && player.getCurrentTime && appState.isPlaying) {
+                    const currentTime = player.getCurrentTime();
+                    const duration = player.getDuration();
+                    if (duration > 0) {
+                        const pct = (currentTime / duration) * 100;
+                        document.getElementById('progressBar').style.width = `${pct}%`;
+                        document.getElementById('currentTime').innerText = formatTime(currentTime);
+                    }
+                }
+            }, 500);
+        }
+
+        function updateDuration() {
+            if (player && player.getDuration) {
+                const duration = player.getDuration();
+                document.getElementById('durationTime').innerText = formatTime(duration);
+            }
+        }
+
+        function seekVideo(e) {
+            if (!player || appState.currentIndex === -1 || !player.getDuration) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const width = rect.width;
+            const pct = clickX / width;
+            const duration = player.getDuration();
+            if (duration > 0) player.seekTo(duration * pct, true);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function configureApiKey() {
+            const key = prompt("Inserisci la tua YouTube Data API v3 Key:", appState.apiKey);
+            if (key !== null) {
+                appState.apiKey = key.trim();
+                localStorage.setItem('youtubette_api_key', appState.apiKey);
+                if (appState.apiKey) {
+                    alert("API Key salvata nei settaggi!");
+                } else {
+                    alert("API Key rimossa.");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
