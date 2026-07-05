@@ -13,7 +13,15 @@ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
 let player;
 function onYouTubeIframeAPIReady() {
-    player = new YT.Player('ytPlayerContainer', {
+    // Determina il contenitore corretto in base alla visibilità dello schermo (Android vs Desktop)
+    const containerId = window.innerWidth < 768 ? 'mobilePlayerWrapper' : 'ytPlayerContainer';
+    
+    // Sposta il div se siamo su mobile per evitare bug di rendering dell'iframe nascosto
+    if(window.innerWidth < 768) {
+        document.getElementById('mobilePlayerWrapper').innerHTML = '<div id="ytPlayerMobile"></div>';
+    }
+
+    player = new YT.Player(window.innerWidth < 768 ? 'ytPlayerMobile' : 'ytPlayerContainer', {
         height: '100%',
         width: '100%',
         videoId: '',
@@ -33,19 +41,28 @@ function onYouTubeIframeAPIReady() {
 }
 
 function onPlayerReady(event) {
-    player.setVolume(document.getElementById('volumeSlider').value);
+    const vol = document.getElementById('volumeSlider') ? document.getElementById('volumeSlider').value : 100;
+    player.setVolume(vol);
     startProgressLoop();
 }
 
 function onPlayerStateChange(event) {
+    const playIcon = document.getElementById('playIcon');
+    const mobilePlayIcon = document.getElementById('mobilePlayIcon');
+
     if (event.data == YT.PlayerState.PLAYING) {
         appState.isPlaying = true;
-        document.getElementById('playIcon').className = "fa-solid fa-pause";
-        document.getElementById('coverFallback').style.display = "none";
+        if(playIcon) playIcon.className = "fa-solid fa-pause";
+        if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
+        
+        const fallback = document.getElementById('coverFallback');
+        if(fallback) fallback.style.display = "none";
         updateDuration();
     } else {
         appState.isPlaying = false;
-        document.getElementById('playIcon').className = "fa-solid fa-play pl-0.5";
+        if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
+        if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
+        
         if (event.data == YT.PlayerState.ENDED) {
             nextTrack();
         }
@@ -53,31 +70,40 @@ function onPlayerStateChange(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Rendi visibile il body solo a DOM carico per evitare sfarfallii su Android
+    document.body.classList.remove('hidden');
+
     const searchBtn = document.getElementById('searchBtn');
     const searchInput = document.getElementById('searchInput');
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
     const volumeSlider = document.getElementById('volumeSlider');
     const progressBarContainer = document.getElementById('progressBarContainer');
     const apiConfigBtn = document.getElementById('apiConfigBtn');
 
+    // Listener Ricerca
     searchBtn.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
     
-    playPauseBtn.addEventListener('click', togglePlay);
-    prevBtn.addEventListener('click', prevTrack);
-    nextBtn.addEventListener('click', nextTrack);
+    // Listener Controlli Desktop
+    document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+    document.getElementById('prevBtn').addEventListener('click', prevTrack);
+    document.getElementById('nextBtn').addEventListener('click', nextTrack);
+
+    // Listener Controlli Mobile (Touch)
+    document.getElementById('mobilePlayPauseBtn').addEventListener('click', togglePlay);
+    document.getElementById('mobilePrevBtn').addEventListener('click', prevTrack);
+    document.getElementById('mobileNextBtn').addEventListener('click', nextTrack);
     
-    volumeSlider.addEventListener('input', (e) => {
-        if (player && player.setVolume) player.setVolume(e.target.value);
-    });
+    if(volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            if (player && player.setVolume) player.setVolume(e.target.value);
+        });
+    }
 
     progressBarContainer.addEventListener('click', seekVideo);
     apiConfigBtn.addEventListener('click', configureApiKey);
 
     if (!appState.apiKey) {
-        setTimeout(() => { alert("Benvenuto su YouTubette! Per iniziare a cercare, configura la tua YouTube API Key cliccando sull'icona dell'ingranaggio in alto a destra."); }, 1000);
+        setTimeout(() => { alert("Benvenuto su YouTubette! Tocca l'ingranaggio in alto a destra per salvare la tua YouTube API Key."); }, 800);
     }
 });
 
@@ -98,9 +124,7 @@ async function performSearch() {
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.error) {
-            throw new Error(data.error.message);
-        }
+        if (data.error) throw new Error(data.error.message);
 
         appState.tracks = data.items.map(item => ({
             id: item.id.videoId,
@@ -111,8 +135,8 @@ async function performSearch() {
 
         renderTracklist();
     } catch (error) {
-        alert("Errore durante la ricerca: " + error.message);
-        placeholderText.innerText = "Si è verificato un errore. Verifica la tua API Key.";
+        alert("Errore: " + error.message);
+        placeholderText.innerText = "Errore. Controlla la tua API Key.";
     }
 }
 
@@ -121,20 +145,19 @@ function renderTracklist() {
     trackListDiv.innerHTML = '';
 
     if (appState.tracks.length === 0) {
-        trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato trovato.</p>';
+        trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
         return;
     }
 
     appState.tracks.forEach((track, index) => {
         const trackRow = document.createElement('div');
-        trackRow.className = `flex items-center p-2 rounded hover:bg-[#282828] cursor-pointer transition-colors group ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
+        trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
         trackRow.innerHTML = `
-            <div class="w-8 text-gray-400 text-sm text-center group-hover:hidden">${index + 1}</div>
-            <div class="w-8 text-[#1DB954] text-sm text-center hidden group-hover:block"><i class="fa-solid fa-play"></i></div>
-            <img src="${track.thumbnail}" class="w-10 h-10 object-cover rounded mx-3">
+            <div class="w-6 text-gray-400 text-xs text-center">${index + 1}</div>
+            <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded mx-2.5">
             <div class="flex-1 overflow-hidden">
-                <p class="text-sm font-medium truncate ${appState.currentIndex === index ? 'text-[#1DB954]' : 'text-white'}">${track.title}</p>
-                <p class="text-xs text-gray-400 truncate mt-0.5">${track.channel}</p>
+                <p class="text-xs font-medium truncate ${appState.currentIndex === index ? 'text-[#1DB954]' : 'text-white'}">${track.title}</p>
+                <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.channel}</p>
             </div>
         `;
         trackRow.addEventListener('click', () => loadTrack(index));
@@ -149,8 +172,12 @@ function loadTrack(index) {
 
     document.getElementById('playerTrackTitle').innerText = track.title;
     document.getElementById('playerTrackChannel').innerText = track.channel;
-    document.getElementById('mainTrackTitle').innerText = track.title;
-    document.getElementById('mainTrackChannel').innerText = track.channel;
+    
+    const mainTitle = document.getElementById('mainTrackTitle');
+    if(mainTitle) mainTitle.innerText = track.title;
+    const mainChannel = document.getElementById('mainTrackChannel');
+    if(mainChannel) mainChannel.innerText = track.channel;
+
     document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
     
     renderTracklist();
@@ -227,14 +254,6 @@ function configureApiKey() {
     if (key !== null) {
         appState.apiKey = key.trim();
         localStorage.setItem('youtubette_api_key', appState.apiKey);
-        if (appState.apiKey) alert("API Key salvata con successo!");
+        if (appState.apiKey) alert("API Key salvata!");
     }
-}
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('Service Worker Registrato', reg))
-            .catch(err => console.log('Errore Service Worker', err));
-    });
 }
