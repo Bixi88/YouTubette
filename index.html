@@ -143,7 +143,7 @@
 
         let deferredPrompt;
         let nextSearchPageToken = '';
-        let isFetchingMore = false; // Evita chiamate duplicate simultanee
+        let isFetchingMore = false;
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -263,8 +263,6 @@
                 appState.tracks = [];
                 appState.currentIndex = -1;
                 nextSearchPageToken = '';
-                const trackListDiv = document.getElementById('trackList');
-                if (trackListDiv) trackListDiv.innerHTML = '';
             } else {
                 isFetchingMore = true;
             }
@@ -294,11 +292,11 @@
                     [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
                 }
 
-                const previousLength = appState.tracks.length;
-                appState.tracks = [...appState.tracks, ...newTracks];
+                // UNIONE SICURA: Aggiungiamo i nuovi 25 beat in coda all'array esistente
+                appState.tracks = appState.tracks.concat(newTracks);
                 
-                // Genera l'HTML appendendo sotto i nuovi elementi
-                renderTracklist(isLoadMore, newTracks, previousLength);
+                // RIGENERAZIONE PROTETTA: Ridisegna la lista senza perdere l'ordine cronologico globale
+                renderTracklist();
 
             } catch (error) {
                 alert("Errore: " + error.message);
@@ -310,22 +308,18 @@
             }
         }
 
-        function renderTracklist(appendMode = false, segmentTracks = [], startIndex = 0) {
+        function renderTracklist() {
             const trackListDiv = document.getElementById('trackList');
             if (!trackListDiv) return;
 
-            if (!appendMode) {
-                trackListDiv.innerHTML = '';
-                if (appState.tracks.length === 0) {
-                    trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
-                    return;
-                }
+            trackListDiv.innerHTML = '';
+            
+            if (appState.tracks.length === 0) {
+                trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
+                return;
             }
 
-            const tracksToRender = appendMode ? segmentTracks : appState.tracks;
-
-            tracksToRender.forEach((track, initialIndex) => {
-                const index = appendMode ? (startIndex + initialIndex) : initialIndex;
+            appState.tracks.forEach((track, index) => {
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
                 trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
@@ -338,11 +332,11 @@
                     </div>
                 `;
                 
-                // Quando l'utente preme sulla traccia
+                // Riprogettato l'evento del click per bloccare i reset
                 trackRow.addEventListener('click', () => {
                     loadTrack(index);
                     
-                    // MODIFICA CRUCIALE: Se l'utente clicca l'ultimo brano della lista corrente, scarica subito i prossimi 25 sotto!
+                    // SE FAI CLICK SULL'ULTIMO ELEMENTO CORRENTE (es. 25, 50, 75...): carica altri 25 sotto senza toccare i primi!
                     if (index === appState.tracks.length - 1 && nextSearchPageToken) {
                         performSearch(true);
                     }
@@ -355,12 +349,12 @@
         function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
             
-            // Rimuove la vecchia evidenza visiva
+            // Ripristina lo stile grafico della traccia precedente
             if (appState.currentIndex !== -1) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
                     oldRow.classList.remove('bg-[#1a1a1a]');
-                    const oldText = oldRow.querySelector('.text-\\[#1DB954\\]');
+                    const oldText = oldRow.querySelector('p.text-xs');
                     if (oldText) { oldText.classList.remove('text-[#1DB954]'); oldText.classList.add('text-white'); }
                 }
             }
@@ -374,7 +368,7 @@
             if(document.getElementById('mainTrackChannel')) document.getElementById('mainTrackChannel').innerText = track.channel;
             document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
             
-            // Applica la nuova evidenza visiva alla riga attiva
+            // Applica lo stile grafico alla traccia selezionata/corrente
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
                 newRow.classList.add('bg-[#1a1a1a]');
@@ -395,8 +389,8 @@
             let nextIdx = appState.currentIndex + 1;
             
             if (nextIdx >= appState.tracks.length) {
-                // Se finisce l'ultima in assoluto scarica ed esegue, altrimenti va alla 0
                 if (nextSearchPageToken) {
+                    // Quando finisce l'ultimo brano, scarica i successivi ed esegue automaticamente la traccia 26
                     performSearch(true).then(() => {
                         if (appState.tracks[nextIdx]) loadTrack(nextIdx);
                     });
@@ -406,7 +400,7 @@
             } else {
                 loadTrack(nextIdx);
                 
-                // Se il player automatico atterra sull'ultimo brano della lista attuale, pre-carica i successivi
+                // Pre-caricamento intelligente se il player automatico tocca l'ultimo brano
                 if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) {
                     performSearch(true);
                 }
