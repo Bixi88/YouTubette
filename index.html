@@ -12,19 +12,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Reset per prevenire scroll elastici fastidiosi su mobile */
         html, body {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
             overflow: hidden;
             background-color: #121212;
         }
-        /* Scrollbar interna fluida */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #121212; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
@@ -49,17 +43,20 @@
             </div>
         </div>
 
-        <div class="shrink-0 pl-1">
+        <div class="shrink-0 flex items-center space-x-1">
+            <!-- Pulsante di Installazione Dinamico (appare solo se Chrome lo permette) -->
+            <button id="pwaInstallBtn" class="hidden bg-[#1DB954] text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
+                <i class="fa-solid fa-download mr-1"></i> Installa
+            </button>
             <button id="apiConfigBtn" class="text-gray-400 hover:text-white p-2" title="Configura API Key">
                 <i class="fa-solid fa-gear text-lg"></i>
             </button>
         </div>
     </header>
 
-    <!-- Cambiata la direzione del flex su mobile (da flex-col a flex-col-reverse) per mettere il player sopra -->
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
         
-        <!-- Sezione Tracce (Sotto su mobile, a sinistra su desktop) -->
+        <!-- Sezione Tracce -->
         <section class="flex-1 md:w-2/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
             <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
             <div id="trackList" class="space-y-1 pb-4">
@@ -67,10 +64,9 @@
             </div>
         </section>
 
-        <!-- Sezione Player Unificata (Sopra su mobile, a destra su desktop) -->
+        <!-- Sezione Player Unificata -->
         <section class="flex flex-col items-center justify-center bg-[#181818] p-4 md:p-6 md:w-3/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
             <div class="w-28 h-28 md:w-64 md:h-64 bg-[#282828] rounded-lg shadow-2xl flex items-center justify-center overflow-hidden relative">
-                <!-- Il player video reale di YouTube caricato dall'API -->
                 <div id="ytPlayerContainer" class="w-full h-full opacity-60"></div>
                 
                 <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#282828] text-gray-500 pointer-events-none">
@@ -98,15 +94,15 @@
                 </div>
             </div>
 
-            <!-- Controlli Rapidi Mobile (Inclusi pulsanti di salto +10 e -10) -->
+            <!-- Controlli Rapidi Mobile -->
             <div class="flex items-center space-x-3 md:hidden shrink-0 pl-2">
-                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
+                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
                 <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-sm py-2"><i class="fa-solid fa-backward-step"></i></button>
                 <button id="mobilePlayPauseBtn" class="bg-white text-black w-8 h-8 rounded-full flex items-center justify-center active:scale-95 text-sm pl-0.5">
                     <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
                 </button>
                 <button id="mobileNextBtn" class="text-gray-400 active:text-white text-sm py-2"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1" title="+10 Secondi">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
             </div>
         </div>
 
@@ -114,7 +110,6 @@
         <div class="w-full flex flex-col items-center mt-3">
             <div class="w-full flex items-center space-x-2 text-[10px] text-gray-400 mb-1.5">
                 <span id="currentTime" class="w-8 text-left select-none">0:00</span>
-                <!-- Aumentata l'altezza (da h-1.5 a h-3.5) e il padding per un'area touch ideale -->
                 <div class="flex-1 bg-[#4d4d4d] h-3.5 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
                     <div class="bg-[#333] w-full h-1.5 rounded-full absolute top-1 left-0"></div>
                     <div class="bg-[#1DB954] h-1.5 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
@@ -122,7 +117,7 @@
                 <span id="durationTime" class="w-8 text-right select-none">0:00</span>
             </div>
 
-            <!-- Controlli Desktop (Inclusi pulsanti di salto +10 e -10) -->
+            <!-- Controlli Desktop -->
             <div class="hidden md:flex items-center space-x-5 mt-1">
                 <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
                 <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-backward-step"></i></button>
@@ -142,16 +137,40 @@
         </div>
     </footer>
 
-    <!-- Logica di esecuzione dell'applicazione -->
     <script>
         let appState = {
+            // Legge immediatamente la chiave salvata in precedenza, se esiste
             apiKey: localStorage.getItem('youtubette_api_key') || '',
             tracks: [],
             currentIndex: -1,
             isPlaying: false
         };
 
-        // Iniezione asincrona dello script IFrame di YouTube
+        let deferredPrompt; // Gestore installazione PWA
+
+        // Registrazione del Service Worker (Fondamentale per far comparire il tasto Installa su Chrome)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Crea al volo un service worker minimale se non hai un file sw.js dedicato, 
+                // indispensabile per soddisfare i requisiti d'installazione di Chrome.
+                const swBlob = new Blob([`
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request).catch(() => new Response("Offline"))));
+                `], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(swBlob);
+                navigator.serviceWorker.register(swUrl).catch(err => console.log("SW Error:", err));
+            });
+        }
+
+        // Intercettiamo l'evento di installazione di Chrome
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('pwaInstallBtn');
+            if (installBtn) installBtn.classList.remove('hidden'); // Mostra il tasto nell'header
+        });
+
+        // Caricamento Player YouTube
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         var firstScriptTag = document.getElementsByTagName('script')[0];
@@ -160,21 +179,9 @@
         let player;
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('ytPlayerContainer', {
-                height: '100%',
-                width: '100%',
-                videoId: '',
-                playerVars: {
-                    'playsinline': 1,
-                    'controls': 0,
-                    'disablekb': 1,
-                    'fs': 0,
-                    'modestbranding': 1,
-                    'rel': 0
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
-                }
+                height: '100%', width: '100%', videoId: '',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
 
@@ -199,49 +206,57 @@
                 appState.isPlaying = false;
                 if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
-                
-                if (event.data == YT.PlayerState.ENDED) {
-                    nextTrack();
-                }
+                if (event.data == YT.PlayerState.ENDED) nextTrack();
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
 
-            const searchBtn = document.getElementById('searchBtn');
-            const searchInput = document.getElementById('searchInput');
-            const volumeSlider = document.getElementById('volumeSlider');
-            const progressBarContainer = document.getElementById('progressBarContainer');
-            const apiConfigBtn = document.getElementById('apiConfigBtn');
+            // Gestione del click sul pulsante Installa inserito nell'header
+            const installBtn = document.getElementById('pwaInstallBtn');
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            installBtn.classList.add('hidden');
+                        }
+                        deferredPrompt = null;
+                    } else {
+                        alert("Per installare l'app su Chrome: clicca sui 3 puntini in alto a destra nel browser e seleziona 'Salva e condividi' -> 'Installa pagina come app' (o 'Aggiungi a schermata Home' su smartphone).");
+                    }
+                });
+            }
 
-            // Listeners per la ricerca
-            searchBtn.addEventListener('click', performSearch);
-            searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+            // Bind dei controlli e ricerca
+            document.getElementById('searchBtn').addEventListener('click', performSearch);
+            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
             
-            // Listeners Controlli Desktop
             document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
             document.getElementById('prevBtn').addEventListener('click', prevTrack);
             document.getElementById('nextBtn').addEventListener('click', nextTrack);
             document.getElementById('back10Btn').addEventListener('click', () => jumpSeconds(-10));
             document.getElementById('forward10Btn').addEventListener('click', () => jumpSeconds(10));
 
-            // Listeners Controlli Mobile
             document.getElementById('mobilePlayPauseBtn').addEventListener('click', togglePlay);
             document.getElementById('mobilePrevBtn').addEventListener('click', prevTrack);
             document.getElementById('mobileNextBtn').addEventListener('click', nextTrack);
             document.getElementById('mobileBack10Btn').addEventListener('click', () => jumpSeconds(-10));
             document.getElementById('mobileForward10Btn').addEventListener('click', () => jumpSeconds(10));
             
+            const volumeSlider = document.getElementById('volumeSlider');
             if(volumeSlider) {
                 volumeSlider.addEventListener('input', (e) => {
                     if (player && player.setVolume) player.setVolume(e.target.value);
                 });
             }
 
-            progressBarContainer.addEventListener('click', seekVideo);
-            apiConfigBtn.addEventListener('click', configureApiKey);
+            document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
+            document.getElementById('apiConfigBtn').addEventListener('click', configureApiKey);
 
+            // Avviso iniziale solo se la chiave è totalmente assente
             if (!appState.apiKey) {
                 setTimeout(() => { 
                     alert("Benvenuto su YouTubette! Clicca sull'ingranaggio in alto a destra per impostare la tua YouTube API Key."); 
@@ -252,11 +267,7 @@
         async function performSearch() {
             const query = document.getElementById('searchInput').value.trim();
             if (!query) return;
-
-            if (!appState.apiKey) {
-                configureApiKey();
-                return;
-            }
+            if (!appState.apiKey) { configureApiKey(); return; }
 
             const placeholderText = document.getElementById('placeholderText');
             if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
@@ -265,7 +276,6 @@
                 const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
                 const response = await fetch(url);
                 const data = await response.json();
-
                 if (data.error) throw new Error(data.error.message);
 
                 appState.tracks = data.items.map(item => ({
@@ -274,7 +284,6 @@
                     channel: item.snippet.channelTitle,
                     thumbnail: item.snippet.thumbnails.default.url
                 }));
-
                 renderTracklist();
             } catch (error) {
                 alert("Errore durante la ricerca: " + error.message);
@@ -285,12 +294,10 @@
         function renderTracklist() {
             const trackListDiv = document.getElementById('trackList');
             trackListDiv.innerHTML = '';
-
             if (appState.tracks.length === 0) {
                 trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato trovato.</p>';
                 return;
             }
-
             appState.tracks.forEach((track, index) => {
                 const trackRow = document.createElement('div');
                 trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
@@ -314,28 +321,17 @@
 
             document.getElementById('playerTrackTitle').innerText = track.title;
             document.getElementById('playerTrackChannel').innerText = track.channel;
-            
-            const mainTitle = document.getElementById('mainTrackTitle');
-            if(mainTitle) mainTitle.innerText = track.title;
-            const mainChannel = document.getElementById('mainTrackChannel');
-            if(mainChannel) mainChannel.innerText = track.channel;
-
+            if(document.getElementById('mainTrackTitle')) document.getElementById('mainTrackTitle').innerText = track.title;
+            if(document.getElementById('mainTrackChannel')) document.getElementById('mainTrackChannel').innerText = track.channel;
             document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
             
             renderTracklist();
-
-            if (player && player.loadVideoById) {
-                player.loadVideoById(track.id);
-            }
+            if (player && player.loadVideoById) player.loadVideoById(track.id);
         }
 
         function togglePlay() {
             if (!player || appState.currentIndex === -1) return;
-            if (appState.isPlaying) {
-                player.pauseVideo();
-            } else {
-                player.playVideo();
-            }
+            if (appState.isPlaying) { player.pauseVideo(); } else { player.playVideo(); }
         }
 
         function nextTrack() {
@@ -352,16 +348,13 @@
             loadTrack(prevIdx);
         }
 
-        // Funzione per saltare avanti e indietro di X secondi
         function jumpSeconds(seconds) {
             if (!player || appState.currentIndex === -1 || !player.getCurrentTime) return;
             const currentTime = player.getCurrentTime();
             const duration = player.getDuration();
             let targetTime = currentTime + seconds;
-            
             if (targetTime < 0) targetTime = 0;
             if (targetTime > duration) targetTime = duration;
-            
             player.seekTo(targetTime, true);
         }
 
@@ -393,9 +386,7 @@
             const width = rect.width;
             const pct = clickX / width;
             const duration = player.getDuration();
-            if (duration > 0) {
-                player.seekTo(duration * pct, true);
-            }
+            if (duration > 0) player.seekTo(duration * pct, true);
         }
 
         function formatTime(seconds) {
@@ -404,12 +395,18 @@
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
+        // Gestione avanzata del salvataggio API Key nei settings
         function configureApiKey() {
-            const key = prompt("Inserisci la tua YouTube Data API v3 Key:", appState.apiKey);
+            // Mostra a schermo la vecchia chiave salvata recuperandola dallo stato corrente
+            const key = prompt("Inserisci o modifica la tua YouTube Data API v3 Key:", appState.apiKey);
             if (key !== null) {
                 appState.apiKey = key.trim();
-                localStorage.setItem('youtubette_api_key', appState.apiKey);
-                if (appState.apiKey) alert("API Key salvata correttamente!");
+                localStorage.setItem('youtubette_api_key', appState.apiKey); // Viene memorizzata in modo permanente nel browser
+                if (appState.apiKey) {
+                    alert("API Key aggiornata e salvata nei settaggi!");
+                } else {
+                    alert("API Key rimossa.");
+                }
             }
         }
     </script>
