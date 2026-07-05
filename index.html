@@ -25,18 +25,17 @@
         ::-webkit-scrollbar-track { background: #121212; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        /* Stili per l'effetto Marquee del testo lungo */
+        /* Contenitore del Marquee */
         .marquee-wrapper {
             position: relative;
             width: 100%;
             overflow: hidden;
-            mask-image: linear-gradient(to right, transparent, #fff 10%, #fff 90%, transparent);
-            -webkit-mask-image: linear-gradient(to right, transparent, #fff 10%, #fff 90%, transparent);
+            mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
         }
         .marquee-content {
             display: inline-block;
             white-space: nowrap;
-            padding-left: 10px;
             will-change: transform;
         }
         .animate-marquee {
@@ -47,10 +46,11 @@
             100% { transform: translate3d(-50%, 0, 0); }
         }
 
-        /* Classi di transizione per lo swipe del titolo */
+        /* Gestione Transizioni Hardware Accelerated per lo Swipe */
         #swipeTitleContainer {
             transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
             will-change: transform, opacity;
+            touch-action: pan-y; /* Permette lo scroll verticale ma blocca quello orizzontale nativo */
         }
         #swipeTitleContainer.dragging {
             transition: none !important;
@@ -87,7 +87,7 @@
     </header>
 
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
-        <!-- Playlist estesa -->
+        <!-- Playlist spaziosa -->
         <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
             <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
             <div id="trackList" class="space-y-1 pb-4">
@@ -95,7 +95,7 @@
             </div>
         </section>
 
-        <!-- Video ridotto del 30% -->
+        <!-- Video ridotto -->
         <section class="flex flex-col bg-black md:w-2/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
             <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
                 <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
@@ -107,12 +107,12 @@
         </section>
     </main>
 
-    <!-- Footer riprogettato con struttura Verticale e Titolo Swipeable / Marquee -->
-    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 py-4 flex flex-col shrink-0 z-50 select-none touch-none">
+    <!-- Footer riprogettato stabilmente -->
+    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 pt-3 pb-5 flex flex-col shrink-0 z-50 select-none">
         
-        <!-- BLOCCO TITOLO (Sopra i pulsanti, swipeable e con marquee automatico) -->
-        <div id="swipeTitleContainer" class="w-full text-center mb-3 px-4 cursor-grab active:cursor-grabbing">
-            <div class="marquee-wrapper mx-auto max-w-xl">
+        <!-- ZONA DEL TITOLO: Ancorata perfettamente sopra i pulsanti e isolata per lo swipe -->
+        <div id="swipeTitleContainer" class="w-full text-center py-2 px-2 cursor-grab active:cursor-grabbing bg-transparent select-none">
+            <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
                 <div id="marqueeContent" class="marquee-content">
                     <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">Scegli un beat</span>
                     <span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal">Nessun canale</span>
@@ -120,8 +120,8 @@
             </div>
         </div>
 
-        <!-- CONTROLLI E PULSANTI (Grandi ed immobili durante lo swipe) -->
-        <div class="w-full flex flex-col items-center">
+        <!-- CONTROLLI E PULSANTI -->
+        <div class="w-full flex flex-col items-center mt-1">
             <!-- Barra di progresso -->
             <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-3 max-w-2xl">
                 <span id="currentTime" class="w-9 text-left select-none">0:00</span>
@@ -132,7 +132,7 @@
                 <span id="durationTime" class="w-9 text-right select-none">0:00</span>
             </div>
 
-            <!-- Pulsanti Mobile (Ingranditi) -->
+            <!-- Pulsanti Mobile Grandi -->
             <div class="flex items-center justify-center space-x-6 md:hidden w-full">
                 <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-base p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
                 <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-backward-step"></i></button>
@@ -143,7 +143,7 @@
                 <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-base p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
             </div>
 
-            <!-- Pulsanti Desktop (Ingranditi) -->
+            <!-- Pulsanti Desktop Grandi -->
             <div class="hidden md:flex items-center justify-center space-x-8 w-full">
                 <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
                 <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-backward-step"></i></button>
@@ -173,9 +173,9 @@
 
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
-        // Gestione Swipe e Tracciamento Dito
+        // Tracciamento specifico dello swipe solo sul contenitore del titolo
         let startX = 0, currentX = 0, isDragging = false;
-        const swipeContainer = document.getElementById('swipeTitleContainer');
+        const swipeTitle = document.getElementById('swipeTitleContainer');
         const marqueeContent = document.getElementById('marqueeContent');
 
         if ('serviceWorker' in navigator) {
@@ -247,97 +247,84 @@
             document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
             document.getElementById('apiConfigBtn').addEventListener('click', configureApiKey);
 
-            // AGGIORNATO: Logica di Drag & Swipe integrata su tutto il Footer
-            const footer = document.getElementById('footerControls');
-            
-            footer.addEventListener('touchstart', dragStart, { passive: true });
-            footer.addEventListener('touchmove', dragMove, { passive: false });
-            footer.addEventListener('touchend', dragEnd, { passive: true });
+            // AGGIORNATO: Gli eventi ora ascoltano SOLO la zona del titolo per evitare blocchi o bug
+            swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
+            swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
+            swipeTitle.addEventListener('touchend', dragEnd, { passive: true });
 
-            footer.addEventListener('mousedown', dragStart);
+            swipeTitle.addEventListener('mousedown', dragStart);
             window.addEventListener('mousemove', dragMove);
             window.addEventListener('mouseup', dragEnd);
         });
 
-        // INIZIO TRASCINAMENTO
         function dragStart(e) {
             isDragging = true;
             startX = e.touches ? e.touches[0].clientX : e.clientX;
-            swipeContainer.classList.add('dragging');
-            marqueeContent.classList.remove('animate-marquee'); // Ferma il marquee mentre muovi il dito
+            swipeTitle.classList.add('dragging');
+            marqueeContent.classList.remove('animate-marquee');
         }
 
-        // MOVIMENTO DEL DITO
         function dragMove(e) {
             if (!isDragging) return;
             currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
             
-            // Applica resistenza e inclinazione dinamica al testo
-            const rotation = currentX * 0.05; 
-            const opacity = Math.max(0.3, 1 - Math.abs(currentX) / 400);
+            // Limitiamo lo spostamento visivo per un feedback più solido
+            const rotation = currentX * 0.04; 
+            const opacity = Math.max(0.2, 1 - Math.abs(currentX) / 350);
             
-            swipeContainer.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
-            swipeContainer.style.opacity = opacity;
+            swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0) rotate(${rotation}deg)`;
+            swipeTitle.style.opacity = opacity;
         }
 
-        // RILASCIO DEL DITO (SGANCIO O RIMBALZO)
         function dragEnd() {
             if (!isDragging) return;
             isDragging = false;
-            swipeContainer.classList.remove('dragging');
+            swipeTitle.classList.remove('dragging');
 
-            const threshold = window.innerWidth * 0.25; // Richiesto il 25% dello schermo per cambiare traccia
+            const threshold = 75; // Distanza in pixel superata la quale scatta il cambio traccia
 
             if (currentX > threshold) {
-                // Sgancio verso destra -> Traccia Precedente
-                animateOutAndChange('right');
+                animateOutAndChange('right'); // Swipe a destra -> Traccia precedente
             } else if (currentX < -threshold) {
-                // Sgancio verso sinistra -> Traccia Successiva
-                animateOutAndChange('left');
+                animateOutAndChange('left');  // Swipe a sinistra -> Traccia successiva
             } else {
-                // Annullato -> Rimbalzo al centro
-                swipeContainer.style.transform = 'translateX(0px) rotate(0deg)';
-                swipeContainer.style.opacity = '1';
+                // Ritorno elastico al centro
+                swipeTitle.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
+                swipeTitle.style.opacity = '1';
                 checkAndApplyMarquee();
             }
             currentX = 0;
         }
 
-        // Animazione di uscita del vecchio titolo e ingresso del nuovo (Spring Effect)
         function animateOutAndChange(direction) {
-            swipeContainer.style.transition = 'transform 0.2s ease-in, opacity 0.2s ease-in';
-            swipeContainer.style.transform = `translateX(${direction === 'right' ? '100%' : '-100%'}px)`;
-            swipeContainer.style.opacity = '0';
+            swipeTitle.style.transition = 'transform 0.2s ease-in, opacity 0.2s ease-in';
+            swipeTitle.style.transform = `translate3d(${direction === 'right' ? '100%' : '-100%'}, 0, 0)`;
+            swipeTitle.style.opacity = '0';
 
             setTimeout(() => {
                 if (direction === 'right') prevTrack(); else nextTrack();
 
-                // Prepariamo l'ingresso dal lato opposto
-                swipeContainer.style.transition = 'none';
-                swipeContainer.style.transform = `translateX(${direction === 'right' ? '-100%' : '100%'}px)`;
+                // Prepariamo l'effetto molla in entrata dal lato opposto
+                swipeTitle.style.transition = 'none';
+                swipeTitle.style.transform = `translate3d(${direction === 'right' ? '-100%' : '100%'}, 0, 0)`;
                 
-                // Forza il reflow per applicare lo spostamento istantaneo
-                swipeContainer.offsetHeight;
+                swipeTitle.offsetHeight; // Trigger del reflow hardware
 
-                // Effetto Molla di Ingresso
-                swipeContainer.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
-                swipeContainer.style.transform = 'translateX(0px) rotate(0deg)';
-                swipeContainer.style.opacity = '1';
+                swipeTitle.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
+                swipeTitle.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
+                swipeTitle.style.opacity = '1';
             }, 200);
         }
 
-        // Controlla se il testo è lungo e applica il marquee duplicando il testo per fluidità
         function checkAndApplyMarquee() {
             marqueeContent.classList.remove('animate-marquee');
-            const wrapper = swipeContainer.querySelector('.marquee-wrapper');
+            const wrapper = swipeTitle.querySelector('.marquee-wrapper');
             
-            // Pulizia di eventuali duplicazioni precedenti
             const cleanText = document.getElementById('playerTrackTitle').outerHTML + document.getElementById('playerTrackChannel').outerHTML;
             marqueeContent.innerHTML = cleanText;
 
             if (marqueeContent.scrollWidth > wrapper.clientWidth) {
-                // Duplica il contenuto per creare l'effetto infinito continuo senza interruzioni
-                marqueeContent.innerHTML += "<span class='inline-block w-20'></span>" + cleanText;
+                marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
                 marqueeContent.classList.add('animate-marquee');
             }
         }
@@ -375,7 +362,7 @@
                 renderTracklist();
             } catch (error) {
                 alert(error.message);
-            } finally { if (isLoadMore) isFetchingMore = false; }
+            } declare { if (isLoadMore) isFetchingMore = false; }
         }
 
         function renderTracklist() {
