@@ -50,7 +50,7 @@
         #swipeTitleContainer {
             transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
             will-change: transform, opacity;
-            touch-action: pan-y; /* Permette lo scroll verticale ma blocca quello orizzontale nativo */
+            touch-action: pan-y;
         }
         #swipeTitleContainer.dragging {
             transition: none !important;
@@ -87,7 +87,7 @@
     </header>
 
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
-        <!-- Playlist spaziosa -->
+        <!-- Playlist -->
         <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
             <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
             <div id="trackList" class="space-y-1 pb-4">
@@ -107,11 +107,11 @@
         </section>
     </main>
 
-    <!-- Footer riprogettato stabilmente -->
-    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 pt-3 pb-5 flex flex-col shrink-0 z-50 select-none">
+    <!-- FOOTER: Titolo sempre sopra i controlli -->
+    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 pt-4 pb-6 flex flex-col items-center shrink-0 z-50 select-none">
         
-        <!-- ZONA DEL TITOLO: Ancorata perfettamente sopra i pulsanti e isolata per lo swipe -->
-        <div id="swipeTitleContainer" class="w-full text-center py-2 px-2 cursor-grab active:cursor-grabbing bg-transparent select-none">
+        <!-- Il Titolo è qui, fisicamente in cima al footer -->
+        <div id="swipeTitleContainer" class="w-full text-center py-2 mb-2 cursor-grab active:cursor-grabbing bg-transparent select-none">
             <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
                 <div id="marqueeContent" class="marquee-content">
                     <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">Scegli un beat</span>
@@ -120,45 +120,42 @@
             </div>
         </div>
 
-        <!-- CONTROLLI E PULSANTI -->
-        <div class="w-full flex flex-col items-center mt-1">
-            <!-- Barra di progresso -->
-            <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-3 max-w-2xl">
-                <span id="currentTime" class="w-9 text-left select-none">0:00</span>
-                <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
-                    <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
-                    <div class="bg-[#1DB954] h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
-                </div>
-                <span id="durationTime" class="w-9 text-right select-none">0:00</span>
+        <!-- Barra di progresso -->
+        <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-4 max-w-2xl">
+            <span id="currentTime" class="w-9 text-left select-none">0:00</span>
+            <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
+                <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
+                <div class="bg-[#1DB954] h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
             </div>
+            <span id="durationTime" class="w-9 text-right select-none">0:00</span>
+        </div>
 
-            <!-- Pulsanti Mobile Grandi -->
-            <div class="flex items-center justify-center space-x-6 md:hidden w-full">
-                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-base p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
-                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="mobilePlayPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center active:scale-95 text-xl pl-0.5 shadow-lg">
-                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
-                </button>
-                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-base p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
-            </div>
+        <!-- Pulsanti Mobile Grandi -->
+        <div class="flex items-center justify-center space-x-6 md:hidden w-full">
+            <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-base p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
+            <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="mobilePlayPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center active:scale-95 text-xl pl-0.5 shadow-lg">
+                <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+            </button>
+            <button id="mobileNextBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-forward-step"></i></button>
+            <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-base p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+        </div>
 
-            <!-- Pulsanti Desktop Grandi -->
-            <div class="hidden md:flex items-center justify-center space-x-8 w-full">
-                <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
-                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="playPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-xl pl-0.5 shadow-md">
-                    <i class="fa-solid fa-play" id="playIcon"></i>
-                </button>
-                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
-                
-                <div class="w-6"></div>
-                <div class="flex items-center space-x-2 text-gray-400">
-                    <i class="fa-solid fa-volume-high text-base"></i>
-                    <input type="range" id="volumeSlider" min="0" max="100" value="100" 
-                        class="w-28 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
-                </div>
+        <!-- Pulsanti Desktop Grandi -->
+        <div class="hidden md:flex items-center justify-center space-x-8 w-full">
+            <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
+            <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="playPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-xl pl-0.5 shadow-md">
+                <i class="fa-solid fa-play" id="playIcon"></i>
+            </button>
+            <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-forward-step"></i></button>
+            <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            
+            <div class="w-6"></div>
+            <div class="flex items-center space-x-2 text-gray-400">
+                <i class="fa-solid fa-volume-high text-base"></i>
+                <input type="range" id="volumeSlider" min="0" max="100" value="100" 
+                    class="w-28 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
             </div>
         </div>
     </footer>
@@ -173,7 +170,6 @@
 
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
-        // Tracciamento specifico dello swipe solo sul contenitore del titolo
         let startX = 0, currentX = 0, isDragging = false;
         const swipeTitle = document.getElementById('swipeTitleContainer');
         const marqueeContent = document.getElementById('marqueeContent');
@@ -247,7 +243,6 @@
             document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
             document.getElementById('apiConfigBtn').addEventListener('click', configureApiKey);
 
-            // AGGIORNATO: Gli eventi ora ascoltano SOLO la zona del titolo per evitare blocchi o bug
             swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
             swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
             swipeTitle.addEventListener('touchend', dragEnd, { passive: true });
@@ -268,7 +263,6 @@
             if (!isDragging) return;
             currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
             
-            // Limitiamo lo spostamento visivo per un feedback più solido
             const rotation = currentX * 0.04; 
             const opacity = Math.max(0.2, 1 - Math.abs(currentX) / 350);
             
@@ -281,14 +275,13 @@
             isDragging = false;
             swipeTitle.classList.remove('dragging');
 
-            const threshold = 75; // Distanza in pixel superata la quale scatta il cambio traccia
+            const threshold = 75;
 
             if (currentX > threshold) {
-                animateOutAndChange('right'); // Swipe a destra -> Traccia precedente
+                animateOutAndChange('right');
             } else if (currentX < -threshold) {
-                animateOutAndChange('left');  // Swipe a sinistra -> Traccia successiva
+                animateOutAndChange('left');
             } else {
-                // Ritorno elastico al centro
                 swipeTitle.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
                 swipeTitle.style.opacity = '1';
                 checkAndApplyMarquee();
@@ -304,11 +297,10 @@
             setTimeout(() => {
                 if (direction === 'right') prevTrack(); else nextTrack();
 
-                // Prepariamo l'effetto molla in entrata dal lato opposto
                 swipeTitle.style.transition = 'none';
                 swipeTitle.style.transform = `translate3d(${direction === 'right' ? '-100%' : '100%'}, 0, 0)`;
                 
-                swipeTitle.offsetHeight; // Trigger del reflow hardware
+                swipeTitle.offsetHeight;
 
                 swipeTitle.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
                 swipeTitle.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
@@ -320,7 +312,7 @@
             marqueeContent.classList.remove('animate-marquee');
             const wrapper = swipeTitle.querySelector('.marquee-wrapper');
             
-            const cleanText = document.getElementById('playerTrackTitle').outerHTML + document.getElementById('playerTrackChannel').outerHTML;
+            const cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">${document.getElementById('playerTrackTitle').innerText}</span><span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal">${document.getElementById('playerTrackChannel').innerText}</span>`;
             marqueeContent.innerHTML = cleanText;
 
             if (marqueeContent.scrollWidth > wrapper.clientWidth) {
@@ -362,7 +354,7 @@
                 renderTracklist();
             } catch (error) {
                 alert(error.message);
-            } declare { if (isLoadMore) isFetchingMore = false; }
+            } finally { if (isLoadMore) isFetchingMore = false; }
         }
 
         function renderTracklist() {
