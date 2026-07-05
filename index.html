@@ -66,7 +66,6 @@
             </div>
         </section>
 
-        <!-- Sezione Video ingrandita per occupare l'intero spazio disponibile -->
         <section class="flex flex-col bg-black md:w-3/5 h-64 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
             <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
                 <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
@@ -75,7 +74,6 @@
                     <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
                 </div>
             </div>
-            <!-- Overlay minimale in basso sul video per mostrare titolo e canale -->
             <div class="bg-gradient-to-t from-black via-black/80 to-transparent p-3 w-full shrink-0 z-20">
                 <h3 class="text-sm md:text-base font-bold truncate text-white" id="mainTrackTitle">-</h3>
                 <p class="text-gray-400 text-xs mt-0.5" id="mainTrackChannel">-</p>
@@ -264,6 +262,8 @@
                 appState.tracks = [];
                 appState.currentIndex = -1;
                 nextSearchPageToken = '';
+                const trackListDiv = document.getElementById('trackList');
+                if (trackListDiv) trackListDiv.innerHTML = '';
             }
 
             try {
@@ -291,15 +291,12 @@
                     [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
                 }
 
-                // Indice di partenza prima dell'aggiunta dei nuovi brani
                 const previousLength = appState.tracks.length;
-
-                // FIX: Appendiamo i nuovi risultati mantenendo intatti quelli precedenti
                 appState.tracks = [...appState.tracks, ...newTracks];
                 
-                renderTracklist();
+                // CORRETTO: Passiamo true se stiamo solo iniettando tracce extra in coda
+                renderTracklist(isLoadMore, newTracks, previousLength);
 
-                // FIX: Se eravamo arrivati alla fine e si è attivato lo scorrimento infinito, riproduci subito la traccia 26
                 if (isLoadMore && previousLength > 0) {
                     loadTrack(previousLength);
                 }
@@ -311,15 +308,25 @@
             }
         }
 
-        function renderTracklist() {
+        // CORRETTO: Adesso accetta i parametri per fare l'append selettivo dei nuovi nodi DOM
+        function renderTracklist(appendMode = false, segmentTracks = [], startIndex = 0) {
             const trackListDiv = document.getElementById('trackList');
-            trackListDiv.innerHTML = '';
-            if (appState.tracks.length === 0) {
-                trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
-                return;
+            if (!trackListDiv) return;
+
+            if (!appendMode) {
+                trackListDiv.innerHTML = '';
+                if (appState.tracks.length === 0) {
+                    trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
+                    return;
+                }
             }
-            appState.tracks.forEach((track, index) => {
+
+            const tracksToRender = appendMode ? segmentTracks : appState.tracks;
+
+            tracksToRender.forEach((track, initialIndex) => {
+                const index = appendMode ? (startIndex + initialIndex) : initialIndex;
                 const trackRow = document.createElement('div');
+                trackRow.id = `track-row-${index}`;
                 trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
                 trackRow.innerHTML = `
                     <div class="w-6 text-gray-400 text-xs text-center">${index + 1}</div>
@@ -336,6 +343,17 @@
 
         function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
+            
+            // Rimuove la vecchia evidenza visiva
+            if (appState.currentIndex !== -1) {
+                const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
+                if (oldRow) {
+                    oldRow.classList.remove('bg-[#1a1a1a]');
+                    const oldText = oldRow.querySelector('.text-\\[#1DB954\\]');
+                    if (oldText) { oldText.classList.remove('text-[#1DB954]'); oldText.classList.add('text-white'); }
+                }
+            }
+
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
@@ -345,7 +363,14 @@
             if(document.getElementById('mainTrackChannel')) document.getElementById('mainTrackChannel').innerText = track.channel;
             document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
             
-            renderTracklist();
+            // Applica la nuova evidenza visiva alla riga attiva
+            const newRow = document.getElementById(`track-row-${index}`);
+            if (newRow) {
+                newRow.classList.add('bg-[#1a1a1a]');
+                const newText = newRow.querySelector('p.text-xs');
+                if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
+            }
+
             if (player && player.loadVideoById) player.loadVideoById(track.id);
         }
 
@@ -356,7 +381,6 @@
 
         function nextTrack() {
             if (appState.tracks.length === 0) return;
-            
             let nextIdx = appState.currentIndex + 1;
             
             if (nextIdx >= appState.tracks.length) {
@@ -409,6 +433,8 @@
             }
         }
 
+        // Gestione click barra avanzamento
+        document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
         function seekVideo(e) {
             if (!player || appState.currentIndex === -1 || !player.getDuration) return;
             const rect = e.currentTarget.getBoundingClientRect();
