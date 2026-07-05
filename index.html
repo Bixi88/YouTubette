@@ -142,6 +142,7 @@
         };
 
         let deferredPrompt;
+        let nextSearchPageToken = ''; // Token per tracciare le pagine successive
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -254,24 +255,56 @@
             if (!appState.apiKey) { configureApiKey(); return; }
 
             const placeholderText = document.getElementById('placeholderText');
-            if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
+            
+            // Gestione nuova ricerca vs caricamento continuo
+            if (this !== 'load_more') {
+                if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
+                appState.tracks = [];
+                appState.currentIndex = -1;
+                nextSearchPageToken = '';
+            }
 
             try {
-                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
+                // Metodo 1: ordinamento nativo per data di caricamento recente
+                let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=date&key=${appState.apiKey}`;
+                
+                if (nextSearchPageToken) {
+                    url += `&pageToken=${nextSearchPageToken}`;
+                }
+
                 const response = await fetch(url);
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
 
-                appState.tracks = data.items.map(item => ({
+                nextSearchPageToken = data.nextPageToken || '';
+
+                let newTracks = data.items.map(item => ({
                     id: item.id.videoId,
                     title: item.snippet.title,
                     channel: item.snippet.channelTitle,
                     thumbnail: item.snippet.thumbnails.default.url
                 }));
+
+                // Algoritmo di ordinamento casuale (Fisher-Yates) applicato solo alla nuova mandata
+                for (let i = newTracks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
+                }
+
+                // Appendiamo i nuovi risultati a quelli vecchi
+                appState.tracks = [...appState.tracks, ...newTracks];
+                
                 renderTracklist();
+
+                // Se in modalità caricamento continuo automatico, riproduci la traccia successiva appena caricata
+                if (this === 'load_more' && appState.currentIndex === appState.tracks.length - newTracks.length - 1) {
+                    loadTrack(appState.currentIndex + 1);
+                }
             } catch (error) {
                 alert("Errore: " + error.message);
-                if (placeholderText) placeholderText.innerText = "Errore. Controlla la chiave API.";
+                if (placeholderText && appState.tracks.length === 0) {
+                    placeholderText.innerText = "Errore. Controlla la chiave API.";
+                }
             }
         }
 
@@ -320,9 +353,20 @@
 
         function nextTrack() {
             if (appState.tracks.length === 0) return;
+            
             let nextIdx = appState.currentIndex + 1;
-            if (nextIdx >= appState.tracks.length) nextIdx = 0;
-            loadTrack(nextIdx);
+            
+            // Logica scorrimento infinito
+            if (nextIdx >= appState.tracks.length) {
+                if (nextSearchPageToken) {
+                    document.getElementById('playerTrackTitle').innerText = "Caricamento altri beat...";
+                    performSearch.call('load_more');
+                } else {
+                    loadTrack(0);
+                }
+            } else {
+                loadTrack(nextIdx);
+            }
         }
 
         function prevTrack() {
@@ -379,6 +423,7 @@
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
+        // Configurazione manuale dell'API Key memorizzata in locale
         function configureApiKey() {
             const key = prompt("Inserisci la tua YouTube Data API v3 Key:", appState.apiKey);
             if (key !== null) {
