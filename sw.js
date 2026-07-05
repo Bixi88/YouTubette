@@ -1,7 +1,6 @@
 const CACHE_NAME = 'youtubette-cache-v1';
 const ASSETS = [
   'index.html',
-  'app.js',
   'manifest.json'
 ];
 
