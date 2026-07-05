@@ -1,15 +1,17 @@
 {
   "name": "YouTubette Player",
   "short_name": "YouTubette",
-  "start_url": ".",
+  "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#121212",
-  "theme-color": "#121212",
+  "theme_color": "#121212",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
