@@ -146,7 +146,8 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
+                // CORRETTO: Aggiunto percorso relativo esplicito con ./
+                navigator.serviceWorker.register('./sw.js')
                 .then(reg => console.log("Service Worker registrato con successo"))
                 .catch(err => console.log("Errore registrazione SW:", err));
             });
