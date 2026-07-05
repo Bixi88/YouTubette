@@ -59,4 +59,78 @@
     <main class="flex-1 flex flex-col md:flex-row overflow-hidden bg-[#121212]">
         
         <section class="flex-1 md:w-2/5 bg-black p-3 flex flex-col border-b md:border-b-0 md:border-r border-[#282828] overflow-y-auto h-full">
-            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2 >
+            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
+            <div id="trackList" class="space-y-1 pb-4">
+                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Inserisci una chiave di ricerca in alto.</p>
+            </div>
+        </section>
+
+        <section class="hidden md:flex md:w-3/5 bg-[#181818] p-6 flex-col items-center justify-center relative h-full">
+            <div class="w-64 h-64 bg-[#282828] rounded-lg shadow-2xl flex items-center justify-center overflow-hidden relative">
+                <div id="ytPlayerContainer" class="w-full h-full opacity-40"></div>
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#282828] text-gray-500 pointer-events-none">
+                    <i class="fa-solid fa-music text-5xl mb-3"></i>
+                    <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
+                </div>
+            </div>
+            <div class="mt-4 text-center max-w-sm">
+                <h3 class="text-lg font-bold truncate" id="mainTrackTitle">-</h3>
+                <p class="text-gray-400 text-xs mt-0.5" id="mainTrackChannel">-</p>
+            </div>
+        </section>
+    </main>
+
+    <div id="mobilePlayerWrapper" style="position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: -999px;"></div>
+
+    <footer class="bg-[#181818] border-t border-[#282828] px-3 py-3 flex flex-col shrink-0 z-50">
+        
+        <div class="flex items-center justify-between w-full">
+            <div class="flex items-center overflow-hidden flex-1 pr-2">
+                <div class="w-10 h-10 bg-[#282828] rounded flex-shrink-0 flex items-center justify-center text-gray-400 mr-2.5 shadow" id="miniCover">
+                    <i class="fa-solid fa-compact-disc text-base"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-medium text-white truncate" id="playerTrackTitle">Scegli un beat</p>
+                    <p class="text-[11px] text-gray-400 truncate mt-0.5" id="playerTrackChannel">Nessun canale</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4 md:hidden shrink-0 pl-2">
+                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-base py-2"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="mobilePlayPauseBtn" class="bg-white text-black w-8 h-8 rounded-full flex items-center justify-center active:scale-95 text-sm pl-0.5">
+                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+                </button>
+                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-base py-2"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+        </div>
+
+        <div class="w-full flex flex-col items-center mt-2.5">
+            <div class="w-full flex items-center space-x-2 text-[10px] text-gray-400">
+                <span id="currentTime">0:00</span>
+                <div class="flex-1 bg-[#4d4d4d] h-1.5 rounded-full relative cursor-pointer py-1.5" id="progressBarContainer">
+                    <div class="bg-[#4d4d4d] w-full h-1 rounded-full absolute top-1.5 left-0"></div>
+                    <div class="bg-white h-1 rounded-full w-0 absolute top-1.5 left-0" id="progressBar"></div>
+                </div>
+                <span id="durationTime">0:00</span>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-6 mt-1.5">
+                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="bg-white text-black w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-base pl-0.5">
+                    <i class="fa-solid fa-play" id="playIcon"></i>
+                </button>
+                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-forward-step"></i></button>
+                <div class="w-4"></div>
+                <div class="flex items-center space-x-2 text-gray-400">
+                    <i class="fa-solid fa-volume-high text-xs"></i>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100" 
+                        class="w-20 h-1 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
+ 
