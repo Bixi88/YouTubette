@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeatSeeker - Player</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <!-- Tailwind CSS per il design in stile Spotify -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome per le icone del player -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Personalizzazione scrollbar stile Spotify */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #282828; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3e3e3e; }
+    </style>
+</head>
+<body class="bg-[#121212] text-white font-sans h-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- HEADER / SEARCH BAR -->
+    <header class="bg-black p-4 flex items-center justify-between border-b border-[#282828]">
+        <div class="flex items-center space-x-2 text-[#1DB954] text-2xl font-bold tracking-tight">
+            <i class="fa-solid fa-compact-disc animate-spin-slow"></i>
+            <span>BeatSeeker</span>
+        </div>
+        <div class="flex-1 max-w-xl mx-4">
+            <div class="relative flex items-center">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Cosa vuoi cercare? (es. free rnb beat)" 
+                    class="w-full bg-[#242424] text-sm text-white pl-12 pr-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-white focus:bg-[#2a2a2a] transition-all">
+                <button id="searchBtn" class="absolute right-2 bg-[#1DB954] text-black font-semibold text-xs px-4 py-2 rounded-full hover:scale-105 transition-transform">
+                    Cerca
+                </button>
+            </div>
+        </div>
+        <div class="w-24 text-right">
+            <!-- Spazio per allineamento o impostazioni future -->
+            <button id="apiConfigBtn" class="text-gray-400 hover:text-white text-sm" title="Configura API Key">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Sidebar / Tracklist -->
+        <section class="w-full md:w-2/5 bg-black p-4 flex flex-col border-r border-[#282828] h-full overflow-y-auto">
+            <h2 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-4 px-2">Risultati Ricerca</h2>
+            <div id="trackList" class="space-y-1">
+                <!-- I risultati della ricerca compariranno qui sotto forma di tracklist -->
+                <p id="placeholderText" class="text-gray-500 text-sm p-2 italic text-center mt-10">Inserisci una chiave di ricerca in alto per caricare i beat.</p>
+            </div>
+        </section>
+
+        <!-- Main Display / YouTube Embed (Nascosto o ridotto per focus audio) -->
+        <section class="hidden md:flex md:w-3/5 bg-[#181818] p-8 flex-col items-center justify-center relative">
+            <div class="w-80 h-80 bg-[#282828] rounded-lg shadow-2xl flex items-center justify-center overflow-hidden relative group">
+                <!-- Il player reale di YouTube viene renderizzato qui dentro -->
+                <div id="ytPlayerContainer" class="w-full h-full opacity-40 group-hover:opacity-100 transition-opacity"></div>
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#282828] text-gray-500 pointer-events-none">
+                    <i class="fa-solid fa-music text-6xl mb-4"></i>
+                    <p class="text-sm font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
+                </div>
+            </div>
+            <div class="mt-6 text-center max-w-md">
+                <h3 class="text-xl font-bold truncate" id="mainTrackTitle">-</h3>
+                <p class="text-gray-400 text-sm mt-1" id="mainTrackChannel">-</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER / PLAYER CONTROLS (STILE SPOTIFY) -->
+    <footer class="bg-[#181818] border-t border-[#282828] px-4 py-4 flex flex-col md:flex-row items-center justify-between z-10">
+        <!-- Info Traccia Corrente (In basso a sinistra) -->
+        <div class="flex items-center w-full md:w-1/4 mb-3 md:mb-0">
+            <div class="w-14 h-14 bg-[#282828] rounded flex-shrink-0 flex items-center justify-center text-gray-400 mr-3 shadow" id="miniCover">
+                <i class="fa-solid fa-compact-disc text-xl"></i>
+            </div>
+            <div class="overflow-hidden pr-4">
+                <p class="text-sm font-medium text-white truncate" id="playerTrackTitle">Titolo Traccia</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5" id="playerTrackChannel">Canale</p>
+            </div>
+        </div>
+
+        <!-- Controlli Riproduzione (Centro) -->
+        <div class="flex flex-col items-center w-full md:w-2/4 max-w-xl">
+            <div class="flex items-center space-x-6">
+                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-lg"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="bg-white text-black w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-lg pl-0.5">
+                    <i class="fa-solid fa-play" id="playIcon"></i>
+                </button>
+                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-lg"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+            <!-- Barra di Avanzamento -->
+            <div class="w-full flex items-center space-x-2 mt-2 text-xs text-gray-400">
+                <span id="currentTime">0:00</span>
+                <div class="flex-1 bg-[#4d4d4d] h-1 rounded-full relative cursor-pointer group" id="progressBarContainer">
+                    <div class="bg-white group-hover:bg-[#1DB954] h-full rounded-full w-0" id="progressBar"></div>
+                </div>
+                <span id="durationTime">0:00</span>
+            </div>
+        </div>
+
+        <!-- Volume (In basso a destra) -->
+        <div class="hidden md:flex items-center justify-end w-full md:w-1/4 space-x-2 text-gray-400">
+            <i class="fa-solid fa-volume-high text-sm"></i>
+            <input type="range" id="volumeSlider" min="0" max="100" value="100" 
+                class="w-24 h-1 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white hover:accent-[#1DB954]">
+        </div>
+    </footer>
+
+    <!-- Caricamento degli script logici -->
+    <script src="app.js"></script>
+</body>
+</html>
