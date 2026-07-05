@@ -1,8 +1,17 @@
-"icons": [
-  {
-    "src": "https://img.icons8.com/flat-round/256/music.png",
-    "sizes": "256x256",
-    "type": "image/png",
-    "purpose": "any"
-  }
-]
+{
+  "name": "YouTubette Player",
+  "short_name": "YouTubette",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='192' height='192'><rect width='100' height='100' rx='20' fill='%231DB954'/><text y='65' x='22' font-family='sans-serif' font-size='50' fill='black' font-weight='bold'>Y</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
