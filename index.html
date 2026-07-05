@@ -58,76 +58,81 @@
         </div>
     </header>
 
+    <!-- AGGIORNATO: Modificato il bilanciamento delle altezze. Playlist guadagna spazio, video si riduce del 30% -->
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
-        <section class="flex-1 md:w-2/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
+        <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
             <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
             <div id="trackList" class="space-y-1 pb-4">
                 <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Inserisci una chiave di ricerca in alto.</p>
             </div>
         </section>
 
-        <section class="flex flex-col bg-black md:w-3/5 h-64 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
+        <!-- Sezione video ridotta a h-44 (circa il 30% in meno rispetto a prima) per lasciare spazio a playlist e pulsanti -->
+        <section class="flex flex-col bg-black md:w-2/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
             <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
                 <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
                 <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#181818] text-gray-500 pointer-events-none z-10">
-                    <i class="fa-solid fa-music text-3xl md:text-5xl mb-2"></i>
+                    <i class="fa-solid fa-music text-2xl md:text-4xl mb-1"></i>
                     <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
                 </div>
             </div>
-            <div class="bg-gradient-to-t from-black via-black/80 to-transparent p-3 w-full shrink-0 z-20">
-                <h3 class="text-sm md:text-base font-bold truncate text-white" id="mainTrackTitle">-</h3>
-                <p class="text-gray-400 text-xs mt-0.5" id="mainTrackChannel">-</p>
+            <div class="bg-gradient-to-t from-black via-black/80 to-transparent p-2 w-full shrink-0 z-20">
+                <h3 class="text-xs md:text-sm font-bold truncate text-white" id="mainTrackTitle">-</h3>
+                <p class="text-gray-400 text-[11px] mt-0.5" id="mainTrackChannel">-</p>
             </div>
         </section>
     </main>
 
-    <footer class="bg-[#181818] border-t border-[#282828] px-3 py-3 flex flex-col shrink-0 z-50">
+    <!-- AGGIORNATO: Footer e pulsanti resi più grandi per un controllo touch migliore, area swipe estesa -->
+    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 py-4 flex flex-col shrink-0 z-50 select-none touch-none">
         <div class="flex items-center justify-between w-full">
-            <div class="flex items-center overflow-hidden flex-1 pr-2">
-                <div class="w-10 h-10 bg-[#282828] rounded flex-shrink-0 flex items-center justify-center text-gray-400 mr-2.5 shadow" id="miniCover">
-                    <i class="fa-solid fa-compact-disc text-base"></i>
+            <div class="flex items-center overflow-hidden flex-1 pr-2 pointer-events-none">
+                <div class="w-12 h-12 bg-[#282828] rounded flex-shrink-0 flex items-center justify-center text-gray-400 mr-3 shadow" id="miniCover">
+                    <i class="fa-solid fa-compact-disc text-xl"></i>
                 </div>
                 <div class="overflow-hidden">
-                    <p class="text-xs font-medium text-white truncate" id="playerTrackTitle">Scegli un beat</p>
-                    <p class="text-[11px] text-gray-400 truncate mt-0.5" id="playerTrackChannel">Nessun canale</p>
+                    <p class="text-sm font-semibold text-white truncate" id="playerTrackTitle">Scegli un beat</p>
+                    <p class="text-xs text-gray-400 truncate mt-0.5" id="playerTrackChannel">Nessun canale</p>
                 </div>
             </div>
 
-            <div class="flex items-center space-x-3 md:hidden shrink-0 pl-2">
-                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
-                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-sm py-2"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="mobilePlayPauseBtn" class="bg-white text-black w-8 h-8 rounded-full flex items-center justify-center active:scale-95 text-sm pl-0.5">
+            <!-- Pulsanti Mobile visibilmente più grandi -->
+            <div class="flex items-center space-x-4 md:hidden shrink-0 pl-2">
+                <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-sm p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
+                <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-lg p-2"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="mobilePlayPauseBtn" class="bg-white text-black w-11 h-11 rounded-full flex items-center justify-center active:scale-95 text-base pl-0.5 shadow-lg">
                     <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
                 </button>
-                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-sm py-2"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-xs py-2 px-1">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                <button id="mobileNextBtn" class="text-gray-400 active:text-white text-lg p-2"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-sm p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
             </div>
         </div>
 
-        <div class="w-full flex flex-col items-center mt-3">
-            <div class="w-full flex items-center space-x-2 text-[10px] text-gray-400 mb-1.5">
-                <span id="currentTime" class="w-8 text-left select-none">0:00</span>
-                <div class="flex-1 bg-[#4d4d4d] h-3.5 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
-                    <div class="bg-[#333] w-full h-1.5 rounded-full absolute top-1 left-0"></div>
-                    <div class="bg-[#1DB954] h-1.5 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
+        <div class="w-full flex flex-col items-center mt-4">
+            <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-2">
+                <span id="currentTime" class="w-9 text-left select-none">0:00</span>
+                <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
+                    <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
+                    <div class="bg-[#1DB954] h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
                 </div>
-                <span id="durationTime" class="w-8 text-right select-none">0:00</span>
+                <span id="durationTime" class="w-9 text-right select-none">0:00</span>
             </div>
 
-            <div class="hidden md:flex items-center space-x-5 mt-1">
-                <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
-                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="playPauseBtn" class="bg-white text-black w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-base pl-0.5">
+            <!-- Pulsanti Desktop visibilmente più grandi -->
+            <div class="hidden md:flex items-center space-x-6 mt-2">
+                <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-1" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
+                <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="bg-white text-black w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-lg pl-0.5 shadow-md">
                     <i class="fa-solid fa-play" id="playIcon"></i>
                 </button>
-                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-base"><i class="fa-solid fa-forward-step"></i></button>
-                <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
+                <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-1" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
                 
-                <div class="w-4"></div>
+                <div class="w-6"></div>
                 <div class="flex items-center space-x-2 text-gray-400">
-                    <i class="fa-solid fa-volume-high text-xs"></i>
+                    <i class="fa-solid fa-volume-high text-sm"></i>
                     <input type="range" id="volumeSlider" min="0" max="100" value="100" 
-                        class="w-20 h-1 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
+                        class="w-24 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
                 </div>
             </div>
         </div>
@@ -145,11 +150,15 @@
         let nextSearchPageToken = '';
         let isFetchingMore = false;
 
+        // Gestione delle variabili per lo Swipe (Slide)
+        let touchStartX = 0;
+        let touchEndX = 0;
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log("Service Worker registrato con successo"))
-                .catch(err => console.log("Errore registrazione SW:", err));
+                .then(reg => console.log("Service Worker registrato"))
+                .catch(err => console.log("Errore SW:", err));
             });
         }
 
@@ -178,6 +187,7 @@
             const vol = document.getElementById('volumeSlider') ? document.getElementById('volumeSlider').value : 100;
             player.setVolume(vol);
             startProgressLoop();
+            setupMediaSessionHandlers(); // Inizializza i controlli di background del telefono
         }
 
         function onPlayerStateChange(event) {
@@ -191,10 +201,12 @@
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
                 if(fallback) fallback.style.display = "none";
                 updateDuration();
+                updateMediaSessionState(true);
             } else {
                 appState.isPlaying = false;
                 if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
+                updateMediaSessionState(false);
                 if (event.data == YT.PlayerState.ENDED) nextTrack();
             }
         }
@@ -208,12 +220,8 @@
                     if (deferredPrompt) {
                         deferredPrompt.prompt();
                         const { outcome } = await deferredPrompt.userChoice;
-                        if (outcome === 'accepted') {
-                            installBtn.classList.add('hidden');
-                        }
+                        if (outcome === 'accepted') installBtn.classList.add('hidden');
                         deferredPrompt = null;
-                    } else {
-                        alert("Usa i 3 puntini del browser -> App -> Installa YouTubette.");
                     }
                 });
             }
@@ -243,12 +251,35 @@
             document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
             document.getElementById('apiConfigBtn').addEventListener('click', configureApiKey);
 
+            // AGGIORNATO: Listener per intercettare lo Slide (Swipe) destra/sinistra su tutta la barra dei comandi
+            const footerControls = document.getElementById('footerControls');
+            footerControls.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            footerControls.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipeGesture();
+            }, { passive: true });
+
             if (!appState.apiKey) {
                 setTimeout(() => { 
                     alert("Benvenuto! Clicca sulla rotellina in alto per inserire la tua YouTube API Key."); 
                 }, 800);
             }
         });
+
+        // Funzione logica per interpretare lo swipe
+        function handleSwipeGesture() {
+            const threshold = 60; // Distanza minima in pixel per calcolare lo slide
+            if (touchStartX - touchEndX > threshold) {
+                // Swipe a sinistra -> Brano Successivo
+                nextTrack();
+            } else if (touchEndX - touchStartX > threshold) {
+                // Swipe a destra -> Brano Precedente
+                prevTrack();
+            }
+        }
 
         async function performSearch(isLoadMore = false) {
             const query = document.getElementById('searchInput').value.trim();
@@ -269,10 +300,7 @@
 
             try {
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=date&key=${appState.apiKey}`;
-                
-                if (nextSearchPageToken) {
-                    url += `&pageToken=${nextSearchPageToken}`;
-                }
+                if (nextSearchPageToken) url += `&pageToken=${nextSearchPageToken}`;
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -292,10 +320,7 @@
                     [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
                 }
 
-                // UNIONE SICURA: Aggiungiamo i nuovi 25 beat in coda all'array esistente
                 appState.tracks = appState.tracks.concat(newTracks);
-                
-                // RIGENERAZIONE PROTETTA: Ridisegna la lista senza perdere l'ordine cronologico globale
                 renderTracklist();
 
             } catch (error) {
@@ -311,7 +336,6 @@
         function renderTracklist() {
             const trackListDiv = document.getElementById('trackList');
             if (!trackListDiv) return;
-
             trackListDiv.innerHTML = '';
             
             if (appState.tracks.length === 0) {
@@ -332,11 +356,8 @@
                     </div>
                 `;
                 
-                // Riprogettato l'evento del click per bloccare i reset
                 trackRow.addEventListener('click', () => {
                     loadTrack(index);
-                    
-                    // SE FAI CLICK SULL'ULTIMO ELEMENTO CORRENTE (es. 25, 50, 75...): carica altri 25 sotto senza toccare i primi!
                     if (index === appState.tracks.length - 1 && nextSearchPageToken) {
                         performSearch(true);
                     }
@@ -349,7 +370,6 @@
         function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
             
-            // Ripristina lo stile grafico della traccia precedente
             if (appState.currentIndex !== -1) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
@@ -368,7 +388,6 @@
             if(document.getElementById('mainTrackChannel')) document.getElementById('mainTrackChannel').innerText = track.channel;
             document.getElementById('miniCover').innerHTML = `<img src="${track.thumbnail}" class="w-full h-full object-cover rounded">`;
             
-            // Applica lo stile grafico alla traccia selezionata/corrente
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
                 newRow.classList.add('bg-[#1a1a1a]');
@@ -377,6 +396,40 @@
             }
 
             if (player && player.loadVideoById) player.loadVideoById(track.id);
+            
+            // AGGIORNATO: Aggiorna i metadati di sistema (Notifiche / Schermata di blocco)
+            updateMediaSessionMetadata(track);
+        }
+
+        // AGGIORNATO: Funzioni per interfacciarsi con il background del sistema operativo (Media Session API)
+        function updateMediaSessionMetadata(track) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title,
+                    artist: track.channel,
+                    album: 'YouTubette Beats',
+                    artwork: [
+                        { src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }
+                    ]
+                });
+            }
+        }
+
+        function updateMediaSessionState(isPlaying) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+            }
+        }
+
+        function setupMediaSessionHandlers() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', togglePlay);
+                navigator.mediaSession.setActionHandler('pause', togglePlay);
+                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+                navigator.mediaSession.setActionHandler('seekseekbackward', () => jumpSeconds(-10));
+                navigator.mediaSession.setActionHandler('seekforward', () => jumpSeconds(10));
+            }
         }
 
         function togglePlay() {
@@ -390,7 +443,6 @@
             
             if (nextIdx >= appState.tracks.length) {
                 if (nextSearchPageToken) {
-                    // Quando finisce l'ultimo brano, scarica i successivi ed esegue automaticamente la traccia 26
                     performSearch(true).then(() => {
                         if (appState.tracks[nextIdx]) loadTrack(nextIdx);
                     });
@@ -399,8 +451,6 @@
                 }
             } else {
                 loadTrack(nextIdx);
-                
-                // Pre-caricamento intelligente se il player automatico tocca l'ultimo brano
                 if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) {
                     performSearch(true);
                 }
@@ -445,7 +495,6 @@
             }
         }
 
-        document.getElementById('progressBarContainer').addEventListener('click', seekVideo);
         function seekVideo(e) {
             if (!player || appState.currentIndex === -1 || !player.getDuration) return;
             const rect = e.currentTarget.getBoundingClientRect();
