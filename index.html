@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>YouTubette - Player</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel=\"manifest\" href=\"manifest.json\">
     
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,629 +20,276 @@
             width: 100%; height: 100%;
             overflow: hidden;
             background-color: #121212;
+            font-family: system-ui, -apple-system, sans-serif;
         }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #121212; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
-        .marquee-wrapper {
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-            mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
-            -webkit-mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
-        }
-        .marquee-content {
-            display: inline-block;
-            white-space: nowrap;
-            will-change: transform;
-        }
-        .animate-marquee {
-            animation: marqueeLoop 15s linear infinite;
-        }
-        @keyframes marqueeLoop {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-50%, 0, 0); }
-        }
-
-        #swipeTitleContainer {
-            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
-            will-change: transform, opacity;
-            touch-action: pan-y;
-        }
-        #swipeTitleContainer.dragging {
-            transition: none !important;
-        }
-        
-        /* Disabilita le transizioni CSS quando l'utente trascina manualmente con il dito */
-        #progressBar.scrubbing {
-            transition: none !important;
-        }
     </style>
 </head>
-<body class="text-white font-sans flex flex-col justify-between hidden bg-[#121212]">
+<body class="text-gray-200 flex flex-col justify-between h-full p-4 selection:bg-purple-500/30">
 
-    <header class="h-16 bg-black px-3 flex items-center justify-between border-b border-[#282828] shrink-0 z-50">
-        <div class="flex items-center space-x-1.5 text-[#1DB954] text-xl font-bold tracking-tight shrink-0">
-            <i class="fa-solid fa-radio"></i>
-            <span class="hidden sm:inline text-white font-bold ml-1">YouTubette</span>
+    <audio id="audioPlayer" preload="auto"></audio>
+
+    <div class="w-full max-w-md mx-auto pt-2">
+        <div class="relative flex items-center bg-zinc-900 rounded-full border border-zinc-800 focus-within:border-purple-500 transition-all px-4 py-2.5 shadow-xl">
+            <i class="fa-solid fa-magnifying-glass text-zinc-500 mr-3"></i>
+            <input type="text" id="searchInput" placeholder="Cerca beat... (es. free rnb)" 
+                   class="w-full bg-transparent outline-none text-sm placeholder-zinc-500 text-white pr-2">
+            <button id="searchBtn" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors shrink-0">
+                Cerca
+            </button>
         </div>
+    </div>
+
+    <div class="flex-1 w-full max-w-md mx-auto my-4 overflow-hidden flex flex-col justify-center items-center relative">
         
-        <div class="flex-1 max-w-md mx-2 relative">
-            <div class="relative flex items-center w-full">
-                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
-                <input type="text" id="searchInput" placeholder="Cerca beat... (es. free rnb)" 
-                    class="w-full bg-[#242424] text-sm text-white pl-10 pr-24 py-2 rounded-full border border-transparent focus:outline-none focus:border-white focus:bg-[#2a2a2a] transition-all">
-                
-                <div class="absolute right-1.5 flex items-center space-x-1">
-                    <button id="filterToggleBtn" class="text-gray-400 hover:text-white p-1.5 text-sm" title="Filtri avanzati">
-                        <i class="fa-solid fa-sliders"></i>
-                    </button>
-                    <button id="searchBtn" class="bg-[#1DB954] text-black font-semibold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
-                        Cerca
-                    </button>
+        <div id="resultsContainer" class="w-full h-full overflow-y-auto space-y-2 hidden pr-1"></div>
+
+        <div id="playerView" class="flex flex-col items-center text-center animate-fade-in w-full px-4">
+            <div class="w-60 h-60 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/20 border border-zinc-800 bg-zinc-900 flex items-center justify-center mb-6 relative group">
+                <img id="trackArt" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400" alt="Cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                    <p class="text-xs text-zinc-400" id="channelName">Seleziona un brano</p>
                 </div>
             </div>
+            <h2 id="trackTitle" class="text-lg font-bold text-white truncate w-full max-w-xs mb-1">Nessuna traccia</h2>
+            <p id="trackArtist" class="text-sm text-zinc-400 truncate w-full max-w-xs">Cerca un brano per iniziare</p>
+        </div>
+    </div>
 
-            <div id="filterMenu" class="hidden absolute top-full left-0 right-0 mt-2 bg-[#181818] border border-[#282828] rounded-2xl p-4 shadow-2xl z-50 space-y-3">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Filtri di Ricerca</p>
-                <div class="grid grid-cols-3 gap-2">
-                    <div>
-                        <label class="block text-[10px] text-gray-400 mb-1">Ordina per</label>
-                        <select id="filterOrder" class="w-full bg-[#242424] text-xs text-white p-2 rounded-xl border border-transparent focus:outline-none focus:border-white">
-                            <option value="relevance">Rilevanza</option>
-                            <option value="date" selected>Data</option>
-                            <option value="viewCount">Visualizzazioni</option>
-                            <option value="rating">Valutazione</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-gray-400 mb-1">Durata</label>
-                        <select id="filterDuration" class="w-full bg-[#242424] text-xs text-white p-2 rounded-xl border border-transparent focus:outline-none focus:border-white">
-                            <option value="any" selected>Qualsiasi</option>
-                            <option value="short">Breve (&lt; 4 min)</option>
-                            <option value="medium">Media (4-20 min)</option>
-                            <option value="long">Lunga (&gt; 20 min)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-gray-400 mb-1">Caricato in</label>
-                        <select id="filterPublishedAfter" class="w-full bg-[#242424] text-xs text-white p-2 rounded-xl border border-transparent focus:outline-none focus:border-white">
-                            <option value="any" selected>Sempre</option>
-                            <option value="hour">Ultima ora</option>
-                            <option value="day">Oggi</option>
-                            <option value="week">Questa settimana</option>
-                            <option value="month">Questo mese</option>
-                            <option value="year">Quest'anno</option>
-                        </select>
-                    </div>
-                </div>
+    <div class="w-full max-w-md mx-auto pb-4 bg-zinc-950/40 backdrop-blur-md rounded-3xl p-4 border border-zinc-900/80 shadow-2xl">
+        <div class="w-full flex items-center justify-between text-[10px] text-zinc-500 mb-2 px-1 font-mono">
+            <span id="currentTime">0:00</span>
+            <span id="durationTime">0:00</span>
+        </div>
+        <div id="progressContainer" class="w-full h-1.5 bg-zinc-800 rounded-full mb-5 cursor-pointer relative group">
+            <div id="progressBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-500 rounded-full w-0 transition-all duration-100 relative">
+                <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md scale-0 group-hover:scale-100 transition-transform"></div>
             </div>
         </div>
 
-        <div class="shrink-0 flex items-center space-x-1">
-            <button id="pwaInstallBtn" class="hidden bg-[#1DB954] text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
-                <i class="fa-solid fa-download mr-1"></i> Installa
-            </button>
-            <button id="apiConfigBtn" class="text-gray-400 hover:text-white p-2" title="Configura API Key">
-                <i class="fa-solid fa-gear text-lg"></i>
-            </button>
-        </div>
-    </header>
-
-    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
-        <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
-            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
-            <div id="trackList" class="space-y-1 pb-4">
-                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Inserisci una chiave di ricerca in alto.</p>
-            </div>
-        </section>
-
-        <section class="flex flex-col bg-black md:w-2/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
-            <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
-                <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
-                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#181818] text-gray-500 pointer-events-none z-10">
-                    <i class="fa-solid fa-music text-2xl md:text-4xl mb-1"></i>
-                    <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 pt-4 pb-6 flex flex-col items-center shrink-0 z-50 select-none relative">
-        
-        <div id="swipeTitleContainer" class="w-full text-center py-2 mb-2 cursor-grab active:cursor-grabbing bg-transparent select-none">
-            <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
-                <div id="marqueeContent" class="marquee-content">
-                    <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">Scegli un beat</span>
-                    <span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal">Nessun canale</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-4 max-w-2xl relative">
-            <span id="currentTime" class="w-9 text-left select-none">0:00</span>
+        <div class="flex items-center justify-center gap-6">
+            <button id="prevBtn" class="text-zinc-400 hover:text-white transition-colors text-lg p-2"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="backwardBtn" class="text-zinc-500 hover:text-white transition-colors text-sm p-2"><i class="fa-solid fa-backward text-xs mr-0.5"></i>10s</button>
             
-            <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
-                <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
-                <div class="bg-[#1DB954] h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
-                
-                <div id="progressTooltip" class="hidden absolute bottom-full mb-2 bg-[#1DB954] text-black font-bold text-[11px] px-2 py-0.5 rounded shadow-md pointer-events-none transform -translate-x-1/2 z-50">
-                    0:00
-                </div>
-            </div>
-            
-            <span id="durationTime" class="w-9 text-right select-none">0:00</span>
-        </div>
-
-        <div class="flex items-center justify-center space-x-6 md:hidden w-full">
-            <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-base p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
-            <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="mobilePlayPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center active:scale-95 text-xl pl-0.5 shadow-lg">
-                <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+            <button id="playBtn" class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center text-xl shadow-xl hover:scale-105 active:scale-95 transition-all">
+                <i id="playIcon" class="fa-solid fa-play ml-0.5"></i>
             </button>
-            <button id="mobileNextBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-forward-step"></i></button>
-            <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-base p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
-        </div>
-
-        <div class="hidden md:flex items-center justify-center space-x-8 w-full">
-            <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
-            <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="playPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-xl pl-0.5 shadow-md">
-                <i class="fa-solid fa-play" id="playIcon"></i>
-            </button>
-            <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-forward-step"></i></button>
-            <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
             
-            <div class="w-6"></div>
-            <div class="flex items-center space-x-2 text-gray-400">
-                <i class="fa-solid fa-volume-high text-base"></i>
-                <input type="range" id="volumeSlider" min="0" max="100" value="100" 
-                    class="w-28 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
-            </div>
-        </div>
-    </footer>
-
-    <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-[#181818] border border-[#282828] w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
-            <h3 class="text-lg font-bold text-white mb-2 flex items-center"><i class="fa-solid fa-key text-[#1DB954] mr-2"></i> Configura API Key</h3>
-            <p class="text-xs text-gray-400 mb-4">Inserisci la tua YouTube Data API v3 Key per attivare le funzionalità dell'app.</p>
-            <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la chiave API..." 
-                class="w-full bg-[#242424] text-sm text-white px-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-white mb-5">
-            <div class="flex items-center justify-end space-x-3">
-                <button id="modalCancelBtn" class="text-gray-400 hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors">Annulla</button>
-                <button id="modalSaveBtn" class="bg-[#1DB954] text-black font-bold text-xs px-5 py-2 rounded-full active:scale-95 transition-all">Salva</button>
-            </div>
+            <button id="forwardBtn" class="text-zinc-500 hover:text-white transition-colors text-sm p-2">10s<i class="fa-solid fa-forward text-xs ml-0.5"></i></button>
+            <button id="nextBtn" class="text-zinc-400 hover:text-white transition-colors text-lg p-2"><i class="fa-solid fa-forward-step"></i></button>
         </div>
     </div>
 
     <script>
+        // Configurazione Istanza API Pubblica (Piped)
+        const PIPED_API = "https://pipedapi.kavin.rocks"; 
+
+        const audio = document.getElementById('audioPlayer');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const playerView = document.getElementById('playerView');
+        
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        
         let appState = {
-            apiKey: localStorage.getItem('youtubette_api_key') || '',
             tracks: [],
             currentIndex: -1,
             isPlaying: false
         };
-        let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
-        let startX = 0, currentX = 0, isDragging = false;
-        
-        let isScrubbing = false; 
-        let scrubPercentage = 0;
-        
-        const swipeTitle = document.getElementById('swipeTitleContainer');
-        const marqueeContent = document.getElementById('marqueeContent');
-        const progressBarContainer = document.getElementById('progressBarContainer');
-        const progressBar = document.getElementById('progressBar');
-        const progressTooltip = document.getElementById('progressTooltip');
+        // Gestione Ricerca Brani
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
-            });
-        }
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); deferredPrompt = e;
-            if (document.getElementById('pwaInstallBtn')) document.getElementById('pwaInstallBtn').classList.remove('hidden');
-        });
-
-        var tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
-
-        let player;
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('ytPlayerContainer', {
-                height: '100%', width: '100%', videoId: '',
-                playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'modestbranding': 1, 'rel': 0 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
-            });
-        }
-
-        function onPlayerReady(event) {
-            player.setVolume(document.getElementById('volumeSlider')?.value || 100);
-            startProgressLoop();
-            setupMediaSessionHandlers();
-        }
-
-        function onPlayerStateChange(event) {
-            const playIcon = document.getElementById('playIcon'), mobilePlayIcon = document.getElementById('mobilePlayIcon');
-            if (event.data == YT.PlayerState.PLAYING) {
-                appState.isPlaying = true;
-                if(playIcon) playIcon.className = "fa-solid fa-pause";
-                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
-                document.getElementById('coverFallback').style.display = "none";
-                updateDuration(); updateMediaSessionState(true);
-            } else {
-                appState.isPlaying = false;
-                if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
-                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
-                updateMediaSessionState(false);
-                if (event.data == YT.PlayerState.ENDED) nextTrack();
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.body.classList.remove('hidden');
-            
-            document.getElementById('searchBtn').addEventListener('click', () => performSearch(false));
-            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(false); });
-            
-            document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.getElementById('filterMenu').classList.toggle('hidden');
-            });
-            document.addEventListener('click', () => document.getElementById('filterMenu').classList.add('hidden'));
-            document.getElementById('filterMenu').addEventListener('click', (e) => e.stopPropagation());
-
-            document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
-            document.getElementById('prevBtn').addEventListener('click', prevTrack);
-            document.getElementById('nextBtn').addEventListener('click', nextTrack);
-            document.getElementById('back10Btn').addEventListener('click', () => jumpSeconds(-10));
-            document.getElementById('forward10Btn').addEventListener('click', () => jumpSeconds(10));
-
-            document.getElementById('mobilePlayPauseBtn').addEventListener('click', togglePlay);
-            document.getElementById('mobilePrevBtn').addEventListener('click', prevTrack);
-            document.getElementById('mobileNextBtn').addEventListener('click', nextTrack);
-            document.getElementById('mobileBack10Btn').addEventListener('click', () => jumpSeconds(-10));
-            document.getElementById('mobileForward10Btn').addEventListener('click', () => jumpSeconds(10));
-            
-            document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
-            
-            progressBarContainer.addEventListener('mousedown', startScrub);
-            progressBarContainer.addEventListener('touchstart', startScrub, { passive: false });
-
-            window.addEventListener('mousemove', moveScrub);
-            window.addEventListener('touchmove', moveScrub, { passive: false });
-
-            window.addEventListener('mouseup', endScrub);
-            window.addEventListener('touchend', endScrub);
-
-            document.getElementById('apiConfigBtn').addEventListener('click', openApiModal);
-            document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
-            document.getElementById('modalSaveBtn').addEventListener('click', saveApiKeyFromModal);
-
-            swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
-            swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
-            swipeTitle.addEventListener('touchend', dragEnd, { passive: true });
-
-            swipeTitle.addEventListener('mousedown', dragStart);
-            window.addEventListener('mousemove', dragMove);
-            window.addEventListener('mouseup', dragEnd);
-        });
-
-        function getClientX(e) {
-            if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
-            if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
-            return e.clientX;
-        }
-
-        function updateScrubPosition(e) {
-            const rect = progressBarContainer.getBoundingClientRect();
-            const clientX = getClientX(e);
-            let offsetX = clientX - rect.left;
-            offsetX = Math.max(0, Math.min(offsetX, rect.width));
-            scrubPercentage = offsetX / rect.width;
-
-            const duration = player.getDuration() || 0;
-            const targetTime = duration * scrubPercentage;
-
-            progressBar.style.width = `${scrubPercentage * 100}%`;
-            document.getElementById('currentTime').innerText = formatTime(targetTime);
-
-            let relativeLeft = clientX - rect.left;
-            relativeLeft = Math.max(0, Math.min(relativeLeft, rect.width));
-            progressTooltip.innerText = formatTime(targetTime);
-            progressTooltip.style.left = `${relativeLeft}px`;
-            progressTooltip.classList.remove('hidden');
-        }
-
-        function startScrub(e) {
-            if (!player?.getDuration || appState.currentIndex === -1) return;
-            isScrubbing = true;
-            progressBar.classList.add('scrubbing');
-            updateScrubPosition(e);
-        }
-
-        function moveScrub(e) {
-            if (!isScrubbing) return;
-            if (e.cancelable) e.preventDefault();
-            updateScrubPosition(e);
-        }
-
-        function endScrub(e) {
-            if (!isScrubbing) return;
-            isScrubbing = false;
-            progressBar.classList.remove('scrubbing');
-            progressTooltip.classList.add('hidden');
-
-            const duration = player.getDuration() || 0;
-            player.seekTo(duration * scrubPercentage, true);
-        }
-
-        function dragStart(e) {
-            isDragging = true;
-            startX = e.touches ? e.touches[0].clientX : e.clientX;
-            swipeTitle.classList.add('dragging');
-            marqueeContent.classList.remove('animate-marquee');
-        }
-
-        function dragMove(e) {
-            if (!isDragging) return;
-            currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
-            const opacity = Math.max(0.2, 1 - Math.abs(currentX) / 350);
-            swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
-            swipeTitle.style.opacity = opacity;
-        }
-
-        function dragEnd() {
-            if (!isDragging) return;
-            isDragging = false;
-            swipeTitle.classList.remove('dragging');
-
-            const threshold = 75;
-            if (currentX > threshold) {
-                animateOutAndChange('right');
-            } else if (currentX < -threshold) {
-                animateOutAndChange('left');
-            } else {
-                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
-                swipeTitle.style.opacity = '1';
-                checkAndApplyMarquee();
-            }
-            currentX = 0;
-        }
-
-        function animateOutAndChange(direction) {
-            swipeTitle.style.transition = 'transform 0.2s ease-in, opacity 0.2s ease-in';
-            swipeTitle.style.transform = `translate3d(${direction === 'right' ? '100%' : '-100%'}, 0, 0)`;
-            swipeTitle.style.opacity = '0';
-            setTimeout(() => {
-                if (direction === 'right') prevTrack(); else nextTrack();
-                swipeTitle.style.transition = 'none';
-                swipeTitle.style.transform = `translate3d(${direction === 'right' ? '-100%' : '100%'}, 0, 0)`;
-                swipeTitle.offsetHeight;
-                swipeTitle.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
-                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
-                swipeTitle.style.opacity = '1';
-            }, 200);
-        }
-
-        function checkAndApplyMarquee() {
-            marqueeContent.classList.remove('animate-marquee');
-            const wrapper = swipeTitle.querySelector('.marquee-wrapper');
-            const cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">${document.getElementById('playerTrackTitle').innerText}</span><span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal">${document.getElementById('playerTrackChannel').innerText}</span>`;
-            marqueeContent.innerHTML = cleanText;
-
-            if (marqueeContent.scrollWidth > wrapper.clientWidth) {
-                marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
-                marqueeContent.classList.add('animate-marquee');
-            }
-        }
-
-        function openApiModal() {
-            document.getElementById('modalApiKeyInput').value = appState.apiKey;
-            document.getElementById('apiModal').classList.remove('hidden');
-        }
-
-        function closeApiModal() {
-            document.getElementById('apiModal').classList.add('hidden');
-        }
-
-        function saveApiKeyFromModal() {
-            const key = document.getElementById('modalApiKeyInput').value.trim();
-            appState.apiKey = key;
-            localStorage.setItem('youtubette_api_key', key);
-            closeApiModal();
-            alert(key ? "API Key salvata!" : "API Key rimossa.");
-        }
-
-        async function performSearch(isLoadMore = false) {
-            const query = document.getElementById('searchInput').value.trim();
-            if (!query || (isLoadMore && isFetchingMore)) return;
-            if (!appState.apiKey) { openApiModal(); return; }
-
-            const placeholderText = document.getElementById('placeholderText');
-            if (!isLoadMore) {
-                if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
-                appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
-            } else isFetchingMore = true;
-
-            const order = document.getElementById('filterOrder').value;
-            const duration = document.getElementById('filterDuration').value;
-            const publishedAfterSelect = document.getElementById('filterPublishedAfter').value;
+            searchBtn.disabled = true;
+            searchBtn.innerText = "...";
+            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Ricerca in corso...</div>`;
+            resultsContainer.classList.remove('hidden');
+            playerView.classList.add('hidden');
 
             try {
-                let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=${order}&key=${appState.apiKey}`;
-                if (duration !== 'any') url += `&videoDuration=${duration}`;
-                if (publishedAfterSelect !== 'any') {
-                    const now = new Date();
-                    if (publishedAfterSelect === 'hour') now.setHours(now.getHours() - 1);
-                    else if (publishedAfterSelect === 'day') now.setDate(now.getDate() - 1);
-                    else if (publishedAfterSelect === 'week') now.setDate(now.getDate() - 7);
-                    else if (publishedAfterSelect === 'month') now.setMonth(now.getMonth() - 1);
-                    else if (publishedAfterSelect === 'year') now.setFullYear(now.getFullYear() - 1);
-                    url += `&publishedAfter=${now.toISOString()}`;
+                // Interroga l'API pubblica di Piped filtrando solo per video/musica
+                const res = await fetch(`${PIPED_API}/search?q=${encodeURIComponent(query)}&filter=videos`);
+                const data = await res.json();
+
+                if (!data.items || data.items.length === 0) {
+                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun risultato trovato.</div>`;
+                    return;
                 }
 
-                if (nextSearchPageToken) url += `&pageToken=${nextSearchPageToken}`;
-
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-
-                nextSearchPageToken = data.nextPageToken || '';
-                let newTracks = data.items.map(item => ({
-                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.default.url
+                // Mappa i risultati salvando le info essenziali
+                appState.tracks = data.items.map(item => ({
+                    id: item.url.split('v=')[1] || item.url.split('/').pop(),
+                    title: item.title,
+                    artist: item.uploaderName,
+                    thumbnail: item.thumbnail
                 }));
 
-                if (order !== 'date') {
-                    for (let i = newTracks.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
-                    }
-                }
-
-                appState.tracks = appState.tracks.concat(newTracks);
-                renderTracklist();
-            } catch (error) {
-                alert(error.message);
-            } finally { if (isLoadMore) isFetchingMore = false; }
+                renderResults();
+            } catch (err) {
+                console.error(err);
+                resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Errore di connessione alla rete di streaming. Riprova.</div>`;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerText = "Cerca";
+            }
         }
 
-        function renderTracklist() {
-            const trackListDiv = document.getElementById('trackList');
-            if (!trackListDiv) return; trackListDiv.innerHTML = '';
-            
-            if (appState.tracks.length === 0) {
-                trackListDiv.innerHTML = '<p class="text-gray-500 text-sm p-2 italic text-center">Nessun risultato.</p>';
-                return;
-            }
-
-            appState.tracks.forEach((track, index) => {
-                const trackRow = document.createElement('div');
-                trackRow.id = `track-row-${index}`;
-                trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
-               
-                trackRow.innerHTML = `
-                    <div class="w-6 text-gray-400 text-xs text-center">${index + 1}</div>
-                    <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded mx-2.5">
-                    <div class="flex-1 overflow-hidden">
-                        <p class="text-xs font-medium truncate ${appState.currentIndex === index ? 'text-[#1DB954]' : 'text-white'}">${track.title}</p>
-                        <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.channel}</p>
+        function renderResults() {
+            resultsContainer.innerHTML = "";
+            appState.tracks.forEach((track, idx) => {
+                const row = document.createElement('div');
+                row.className = "flex items-center gap-3 bg-zinc-900/60 hover:bg-zinc-800/80 p-2.5 rounded-xl cursor-pointer border border-zinc-900 transition-all group";
+                row.innerHTML = `
+                    <img src="${track.thumbnail}" class="w-12 h-12 object-cover rounded-lg shrink-0 bg-zinc-800">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate group-hover:text-purple-400 transition-colors">${track.title}</p>
+                        <p class="text-xs text-zinc-400 truncate">${track.artist}</p>
                     </div>
+                    <div class="text-zinc-500 group-hover:text-white px-2"><i class="fa-solid fa-play text-xs"></i></div>
                 `;
-                trackRow.addEventListener('click', () => {
-                    loadTrack(index);
-                    if (index === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
-                });
-                trackListDiv.appendChild(trackRow);
+                row.onclick = () => selectTrack(idx);
+                resultsContainer.appendChild(row);
             });
         }
 
-        function loadTrack(index) {
-            if (index < 0 || index >= appState.tracks.length) return;
-            if (appState.currentIndex !== -1) {
-                const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
-                if (oldRow) {
-                    oldRow.classList.remove('bg-[#1a1a1a]');
-                    const oldText = oldRow.querySelector('p.text-xs');
-                    if (oldText) { oldText.classList.remove('text-[#1DB954]'); oldText.classList.add('text-white'); }
-                }
-            }
-
+        // Estrazione flusso Audio Puro e Riproduzione
+        async function selectTrack(index) {
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
-            document.getElementById('playerTrackTitle').innerText = track.title;
-            document.getElementById('playerTrackChannel').innerText = track.channel;
+            // Aggiorna l'interfaccia grafica immediata
+            document.getElementById('trackTitle').innerText = track.title;
+            document.getElementById('trackArtist').innerText = track.artist;
+            document.getElementById('trackArt').src = track.thumbnail;
+            
+            resultsContainer.classList.add('hidden');
+            playerView.classList.remove('hidden');
 
-            const newRow = document.getElementById(`track-row-${index}`);
-            if (newRow) {
-                newRow.classList.add('bg-[#1a1a1a]');
-                const newText = newRow.querySelector('p.text-xs');
-                if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
-            }
+            try {
+                playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
+                
+                // Chiamata all'endpoint degli stream per ottenere i link diretti ai file audio
+                const res = await fetch(`${PIPED_API}/streams/${track.id}`);
+                const data = await res.json();
 
-            if (player?.loadVideoById) player.loadVideoById(track.id);
-            checkAndApplyMarquee();
-            updateMediaSessionMetadata(track);
-        }
+                // Trova il miglior flusso solo audio (solitamente formato m4a o webm)
+                const audioStreams = data.audioStreams || [];
+                if (audioStreams.length === 0) throw new Error("Nessun flusso audio disponibile");
+                
+                // Ordina per qualità o prendi il primo disponibile stabile
+                const streamUrl = audioStreams[0].url;
 
-        function updateMediaSessionMetadata(track) {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title, artist: track.channel, album: 'YouTubette Beats',
-                    artwork: [{ src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }]
-                });
-            }
-        }
-
-        function updateMediaSessionState(isPlaying) {
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-        }
-
-        function setupMediaSessionHandlers() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('play', togglePlay);
-                navigator.mediaSession.setActionHandler('pause', togglePlay);
-                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
-                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+                // Carica la sorgente audio nel tag HTML5 nativo
+                audio.src = streamUrl;
+                audio.play();
+                appState.isPlaying = true;
+                updatePlayButton();
+                setupMediaSession(track);
+            } catch (err) {
+                console.error(err);
+                alert("Impossibile riprodurre questo brano. Scegli un'altra traccia.");
+                playIcon.className = "fa-solid fa-play ml-0.5";
             }
         }
 
+        // Controlli Player Audio Nativi
         function togglePlay() {
-            if (!player || appState.currentIndex === -1) return;
-            if (appState.isPlaying) player.pauseVideo(); else player.playVideo();
+            if (appState.currentIndex === -1) return;
+            if (appState.isPlaying) {
+                audio.pause();
+                appState.isPlaying = false;
+            } else {
+                audio.play();
+                appState.isPlaying = true;
+            }
+            updatePlayButton();
         }
+
+        function updatePlayButton() {
+            if (appState.isPlaying) {
+                playIcon.className = "fa-solid fa-pause";
+            } else {
+                playIcon.className = "fa-solid fa-play ml-0.5";
+            }
+        }
+
+        // Avanzamento e Timeline
+        audio.addEventListener('timeupdate', () => {
+            if (audio.duration) {
+                const pct = (audio.currentTime / audio.duration) * 100;
+                progressBar.style.width = `${pct}%`;
+                document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
+            }
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            document.getElementById('durationTime').innerText = formatTime(audio.duration);
+        });
+
+        audio.addEventListener('ended', () => {
+            nextTrack();
+        });
+
+        progressContainer.addEventListener('click', (e) => {
+            if (!audio.duration) return;
+            const rect = progressContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const pct = clickX / rect.width;
+            audio.currentTime = pct * audio.duration;
+        });
 
         function nextTrack() {
             if (appState.tracks.length === 0) return;
             let nextIdx = appState.currentIndex + 1;
-            if (nextIdx >= appState.tracks.length) {
-                if (nextSearchPageToken) {
-                    performSearch(true).then(() => { if (appState.tracks[nextIdx]) loadTrack(nextIdx); });
-                } else loadTrack(0);
-            } else {
-                loadTrack(nextIdx);
-                if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
-            }
+            if (nextIdx >= appState.tracks.length) nextIdx = 0;
+            selectTrack(nextIdx);
         }
 
         function prevTrack() {
             if (appState.tracks.length === 0) return;
             let prevIdx = appState.currentIndex - 1;
             if (prevIdx < 0) prevIdx = appState.tracks.length - 1;
-            loadTrack(prevIdx);
-        }
-
-        function jumpSeconds(seconds) {
-            if (!player?.getCurrentTime || appState.currentIndex === -1) return;
-            let targetTime = player.getCurrentTime() + seconds;
-            player.seekTo(Math.max(0, Math.min(targetTime, player.getDuration())), true);
-        }
-
-        function startProgressLoop() {
-            setInterval(() => {
-                if (player?.getCurrentTime && appState.isPlaying && !isScrubbing) {
-                    const currentTime = player.getCurrentTime(), duration = player.getDuration();
-                    if (duration > 0) {
-                        progressBar.style.width = `${(currentTime / duration) * 100}%`;
-                        document.getElementById('currentTime').innerText = formatTime(currentTime);
-                    }
-                }
-            }, 500);
-        }
-
-        function updateDuration() {
-            if (player?.getDuration) document.getElementById('durationTime').innerText = formatTime(player.getDuration());
+            selectTrack(prevIdx);
         }
 
         function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60);
+            if (isNaN(seconds)) return "0:00";
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
+
+        // Integrazione Controlli di Sistema/Background (MediaSession API)
+        function setupMediaSession(track) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title,
+                    artist: track.artist,
+                    artwork: [{ src: track.thumbnail, sizes: '512x512', type: 'image/png' }]
+                });
+                navigator.mediaSession.setActionHandler('play', () => { audio.play(); appState.isPlaying = true; updatePlayButton(); });
+                navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); appState.isPlaying = false; updatePlayButton(); });
+                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+            }
+        }
+
+        // Event Listeners di base
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') performSearch(); });
+        playBtn.addEventListener('click', togglePlay);
+        nextBtn.addEventListener('click', nextTrack);
+        prevBtn.addEventListener('click', prevTrack);
+        document.getElementById('forwardBtn').addEventListener('click', () => { audio.currentTime += 10; });
+        document.getElementById('backwardBtn').addEventListener('click', () => { audio.currentTime -= 10; });
     </script>
 </body>
 </html>
