@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YouTubette - Player</title>
+    <link rel="manifest" href="manifest.json">
+    
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YouTubette">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html, body {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%; overflow: hidden; background-color: #121212;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        .marquee-wrapper { position: relative; width: 100%; overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent); }
+        .marquee-content { display: inline-block; white-space: nowrap; will-change: transform; }
+        .animate-marquee { animation: marqueeLoop 15s linear infinite; }
+        @keyframes marqueeLoop { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(-50%,0,0); } }
+    </style>
+</head>
+<body class="text-white font-sans flex flex-col justify-between hidden bg-[#121212]">
+
+    <header class="h-16 bg-black px-3 flex items-center justify-between border-b border-[#282828] shrink-0 z-50">
+        <div class="flex items-center space-x-1.5 text-[#1DB954] text-xl font-bold tracking-tight shrink-0">
+            <i class="fa-solid fa-radio"></i>
+            <span class="hidden sm:inline text-white font-bold ml-1">YouTubette</span>
+        </div>
+        
+        <div class="flex-1 max-w-md mx-2 relative">
+            <div class="relative flex items-center w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" id="searchInput" placeholder="Cerca beat... (es. free rnb)" 
+                    class="w-full bg-[#242424] text-sm text-white pl-10 pr-24 py-2 rounded-full border border-transparent focus:outline-none focus:border-white focus:bg-[#2a2a2a]">
+                
+                <div class="absolute right-1.5 flex items-center space-x-1">
+                    <select id="instanceSelect" class="bg-[#242424] text-xs text-white px-2 py-1.5 rounded-xl border border-transparent">
+                        <option value="https://invidious.io">invidious.io</option>
+                        <option value="https://yewtu.be">yewtu.be</option>
+                        <option value="https://invidious.privacyredirect.com">privacyredirect</option>
+                    </select>
+                    <button id="searchBtn" class="bg-[#1DB954] text-black font-semibold text-xs px-4 py-1.5 rounded-full active:scale-95">Cerca</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
+        <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto">
+            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
+            <div id="trackList" class="space-y-1 pb-4">
+                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Cerca dei beat per iniziare</p>
+            </div>
+        </section>
+
+        <section class="flex flex-col bg-black md:w-2/5 h-44 md:h-full relative shrink-0 border-b md:border-b-0 border-[#282828]">
+            <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
+                <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#181818] text-gray-500 pointer-events-none z-10">
+                    <i class="fa-solid fa-music text-4xl mb-2"></i>
+                    <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 pt-4 pb-6 flex flex-col items-center shrink-0 z-50">
+        <!-- Footer controls (stessi di prima) -->
+        <div id="swipeTitleContainer" class="w-full text-center py-2 mb-2 cursor-grab active:cursor-grabbing">
+            <div class="marquee-wrapper mx-auto max-w-xl">
+                <div id="marqueeContent" class="marquee-content">
+                    <span id="playerTrackTitle" class="text-sm md:text-base font-bold">Scegli un beat</span>
+                    <span id="playerTrackChannel" class="text-xs text-gray-400 ml-3">Nessun canale</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress bar, pulsanti play, volume... (ho tenuto la tua logica originale) -->
+        <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-4 max-w-2xl">
+            <span id="currentTime" class="w-9 text-left">0:00</span>
+            <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer" id="progressBarContainer">
+                <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
+                <div class="bg-[#1DB954] h-2 rounded-full w-0 absolute top-1 left-0 transition-all" id="progressBar"></div>
+            </div>
+            <span id="durationTime" class="w-9 text-right">0:00</span>
+        </div>
+
+        <div class="flex items-center justify-center space-x-8 w-full">
+            <button id="prevBtn" class="text-gray-400 hover:text-white text-2xl"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="playPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-play" id="playIcon"></i></button>
+            <button id="nextBtn" class="text-gray-400 hover:text-white text-2xl"><i class="fa-solid fa-forward-step"></i></button>
+        </div>
+    </footer>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let appState = { tracks: [], currentIndex: -1, isPlaying: false };
+        let player;
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('ytPlayerContainer', {
+                height: '100%', width: '100%',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function onPlayerReady() { startProgressLoop(); }
+        function onPlayerStateChange(e) {
+            if (e.data === YT.PlayerState.ENDED) nextTrack();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.classList.remove('hidden');
+            
+            document.getElementById('searchBtn').addEventListener('click', () => performSearch());
+            document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(); });
+
+            document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('prevBtn').addEventListener('click', prevTrack);
+            document.getElementById('nextBtn').addEventListener('click', nextTrack);
+        });
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            const placeholder = document.getElementById('placeholderText');
+            placeholder.innerText = "Ricerca in corso...";
+
+            const instance = document.getElementById('instanceSelect').value;
+
+            try {
+                const url = `\( {instance}/api/v1/search?q= \){encodeURIComponent(query)}&type=video`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                appState.tracks = data.map(item => ({
+                    id: item.videoId,
+                    title: item.title,
+                    channel: item.author,
+                    thumbnail: item.videoThumbnails?.[0]?.url || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`
+                }));
+
+                renderTracklist();
+                if (appState.tracks.length > 0) loadTrack(0);
+            } catch (err) {
+                console.error(err);
+                alert("Errore di connessione. Prova a cambiare istanza Invidious.");
+            }
+        }
+
+        function renderTracklist() {
+            const container = document.getElementById('trackList');
+            container.innerHTML = '';
+            appState.tracks.forEach((track, i) => {
+                const div = document.createElement('div');
+                div.className = `flex items-center p-3 rounded hover:bg-[#282828] cursor-pointer ${appState.currentIndex === i ? 'bg-[#1a1a1a]' : ''}`;
+                div.innerHTML = `
+                    <img src="${track.thumbnail}" class="w-10 h-10 object-cover rounded mr-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">${track.title}</p>
+                        <p class="text-xs text-gray-400 truncate">${track.channel}</p>
+                    </div>
+                `;
+                div.onclick = () => loadTrack(i);
+                container.appendChild(div);
+            });
+        }
+
+        function loadTrack(index) {
+            if (index < 0 || index >= appState.tracks.length) return;
+            appState.currentIndex = index;
+            const track = appState.tracks[index];
+
+            document.getElementById('playerTrackTitle').textContent = track.title;
+            document.getElementById('playerTrackChannel').textContent = track.channel;
+            document.getElementById('coverFallback').style.display = 'none';
+
+            if (player) player.loadVideoById(track.id);
+            renderTracklist();
+        }
+
+        function togglePlay() {
+            if (!player) return;
+            player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo();
+        }
+
+        function nextTrack() {
+            if (appState.currentIndex < appState.tracks.length - 1) loadTrack(appState.currentIndex + 1);
+        }
+
+        function prevTrack() {
+            if (appState.currentIndex > 0) loadTrack(appState.currentIndex - 1);
+        }
+
+        function startProgressLoop() {
+            setInterval(() => {
+                if (player && player.getCurrentTime) {
+                    const time = player.getCurrentTime();
+                    const duration = player.getDuration() || 1;
+                    document.getElementById('progressBar').style.width = `${(time / duration) * 100}%`;
+                    document.getElementById('currentTime').textContent = formatTime(time);
+                    document.getElementById('durationTime').textContent = formatTime(duration);
+                }
+            }, 500);
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `\( {m}: \){s < 10 ? '0' : ''}${s}`;
+        }
+    </script>
+</body>
+</html>
