@@ -83,23 +83,9 @@
     </div>
 
     <script>
-        // Mix di API Piped e Invidious pubbliche resistenti ai blocchi
-        const API_NODES = [
-            { type: "invidious", url: "https://invidious.projectsegfau.lt" },
-            { type: "invidious", url: "https://iv.melmac.space" },
-            { type: "piped", url: "https://pipedapi.adminforge.de" },
-            { type: "piped", url: "https://pipedapi.leptons.xyz" }
-        ];
-        let currentNodeIdx = 0;
-
-        function getNode() {
-            return API_NODES[currentNodeIdx];
-        }
-
-        function rotateNode() {
-            currentNodeIdx = (currentNodeIdx + 1) % API_NODES.length;
-            console.log(`Cambio server: provo con ${getNode().url}`);
-        }
+        // Utilizziamo un proxy CORS pubblico per evitare qualsiasi blocco del browser
+        const CORS_PROXY = "https://api.allorigins.win/get?url=";
+        const TARGET_API = "https://iv.melmac.space"; // Server Invidious stabile per estrarre i dati di YouTube
 
         const audio = document.getElementById('audioPlayer');
         const searchInput = document.getElementById('searchInput');
@@ -118,69 +104,48 @@
             isPlaying: false
         };
 
-        // Funzione di Ricerca Universale (Invidious + Piped)
+        // Ricerca dei video di YouTube tramite Proxy Anti-CORS
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
             searchBtn.disabled = true;
             searchBtn.innerText = "...";
-            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Connessione ai nodi musicali...</div>`;
+            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Bypass dei blocchi di rete...</div>`;
             resultsContainer.classList.remove('hidden');
             playerView.classList.add('hidden');
 
-            for (let attempt = 0; attempt < API_NODES.length; attempt++) {
-                const node = getNode();
-                try {
-                    let fetchUrl = "";
-                    if (node.type === "piped") {
-                        fetchUrl = `${node.url}/search?q=${encodeURIComponent(query)}&filter=videos`;
-                    } else {
-                        fetchUrl = `${node.url}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-                    }
+            try {
+                // Impacchetta la richiesta dentro il proxy CORS
+                const targetUrl = `${TARGET_API}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+                const res = await fetch(`${CORS_PROXY}${encodeURIComponent(targetUrl)}`);
+                if (!res.ok) throw new Error();
+                
+                const wrapper = await res.json();
+                const items = JSON.parse(wrapper.contents); // AllOrigins restituisce la risposta dentro 'contents' sotto forma di stringa
 
-                    const res = await fetch(fetchUrl);
-                    if (!res.ok) throw new Error();
-                    const data = await res.json();
-
-                    let items = node.type === "piped" ? data.items : data;
-
-                    if (!items || items.length === 0) {
-                        rotateNode();
-                        continue;
-                    }
-
-                    // Uniforma la struttura dati ricevuta dai diversi tipi di API
-                    appState.tracks = items.slice(0, 20).map(item => {
-                        if (node.type === "piped") {
-                            return {
-                                id: item.url.split('v=')[1] || item.url.split('/').pop(),
-                                title: item.title,
-                                artist: item.uploaderName,
-                                thumbnail: item.thumbnail
-                            };
-                        } else {
-                            return {
-                                id: item.videoId,
-                                title: item.title,
-                                artist: item.author,
-                                thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || (item.videoThumbnails && item.videoThumbnails[0]?.url) || ''
-                            };
-                        }
-                    });
-
-                    renderResults();
+                if (!items || items.length === 0) {
+                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun beat trovato su YouTube.</div>`;
                     searchBtn.disabled = false;
                     searchBtn.innerText = "Cerca";
                     return;
-                } catch (err) {
-                    rotateNode();
                 }
+
+                appState.tracks = items.slice(0, 20).map(item => ({
+                    id: item.videoId,
+                    title: item.title,
+                    artist: item.author,
+                    thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || (item.videoThumbnails && item.videoThumbnails[0]?.url) || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=200'
+                }));
+
+                renderResults();
+            } catch (err) {
+                console.error(err);
+                resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Il proxy di sblocco è momentaneamente occupato. Riprova tra poco.</div>`;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerText = "Cerca";
             }
-            
-            resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Tutti i nodi sono saturi. Riprova tra pochi secondi.</div>`;
-            searchBtn.disabled = false;
-            searchBtn.innerText = "Cerca";
         }
 
         function renderResults() {
@@ -201,7 +166,7 @@
             });
         }
 
-        // Estrazione e Avvio Streaming Audio
+        // Caricamento del flusso audio diretto da YouTube (senza restrizioni CORS sulla traccia video/audio)
         async function selectTrack(index) {
             appState.currentIndex = index;
             const track = appState.tracks[index];
@@ -214,42 +179,25 @@
             resultsContainer.classList.add('hidden');
             playerView.classList.remove('hidden');
 
-            for (let attempt = 0; attempt < API_NODES.length; attempt++) {
-                const node = getNode();
-                try {
-                    playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
-                    let streamUrl = "";
+            try {
+                playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
+                
+                // YouTube permette l'ascolto diretto dei file multimediali saltando il CORS se richiamati dall'endpoint stream di un'istanza solida
+                const streamUrl = `${TARGET_API}/latest_version?id=${track.id}&itag=140`; 
 
-                    if (node.type === "piped") {
-                        const res = await fetch(`${node.url}/streams/${track.id}`);
-                        if (!res.ok) throw new Error();
-                        const data = await res.json();
-                        if (data.audioStreams && data.audioStreams.length > 0) {
-                            streamUrl = data.audioStreams[0].url;
-                        }
-                    } else {
-                        // Invidious permette lo streaming audio diretto passando l'ID in query
-                        streamUrl = `${node.url}/latest_version?id=${track.id}&itag=140`; 
-                    }
-
-                    if (!streamUrl) throw new Error();
-
-                    audio.src = streamUrl;
-                    audio.play();
-                    appState.isPlaying = true;
-                    updatePlayButton();
-                    setupMediaSession(track);
-                    return; 
-                } catch (err) {
-                    rotateNode();
-                }
+                audio.src = streamUrl;
+                audio.play();
+                appState.isPlaying = true;
+                updatePlayButton();
+                setupMediaSession(track);
+            } catch (err) {
+                console.error(err);
+                alert("Impossibile avviare lo streaming audio di questo beat. Scegline un altro.");
+                playIcon.className = "fa-solid fa-play ml-0.5";
             }
-
-            alert("Impossibile caricare l'audio dai server. Riprova con un altro brano.");
-            playIcon.className = "fa-solid fa-play ml-0.5";
         }
 
-        // Controlli Player standard
+        // Gestione standard dei controlli musicali
         function togglePlay() {
             if (appState.currentIndex === -1) return;
             if (appState.isPlaying) {
