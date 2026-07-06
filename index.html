@@ -465,11 +465,16 @@
             }, 200);
         }
 
+        // CORRETTA: Rilevazione sicura di innerText anche all'avvio
         function checkAndApplyMarquee() {
+            const titleEl = document.getElementById('playerTrackTitle');
+            const channelEl = document.getElementById('playerTrackChannel');
+            
+            const titleText = titleEl ? titleEl.innerText : 'YouTubette';
+            const channelText = channelEl ? channelEl.innerText : '';
+            
             marqueeContent.classList.remove('animate-marquee');
             const wrapper = swipeTitle.querySelector('.marquee-wrapper');
-            const titleText = document.getElementById('playerTrackTitle').innerText;
-            const channelText = document.getElementById('playerTrackChannel').innerText;
             
             let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">${titleText}</span>`;
             if (channelText) {
@@ -478,7 +483,7 @@
             
             marqueeContent.innerHTML = cleanText;
 
-            if (marqueeContent.scrollWidth > wrapper.clientWidth) {
+            if (wrapper && marqueeContent.scrollWidth > wrapper.clientWidth) {
                 marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
                 marqueeContent.classList.add('animate-marquee');
             }
@@ -599,8 +604,10 @@
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
-            document.getElementById('playerTrackTitle').innerText = track.title;
-            document.getElementById('playerTrackChannel').innerText = track.channel;
+            const titleEl = document.getElementById('playerTrackTitle');
+            const channelEl = document.getElementById('playerTrackChannel');
+            if (titleEl) titleEl.innerText = track.title;
+            if (channelEl) channelEl.innerText = track.channel;
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
@@ -616,7 +623,6 @@
             updateMediaSessionMetadata(track);
         }
 
-        // Resto della logica multimediale inalterata...
         function updateMediaSessionMetadata(track) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -671,7 +677,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-             // Forza l'avvio della barra di progressione indipendente
              startProgressLoop();
         });
 
