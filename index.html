@@ -30,6 +30,7 @@
             position: relative;
             flex: 1;
             overflow: hidden;
+            height: 100%;
         }
         .scroll-mask-container::before,
         .scroll-mask-container::after {
@@ -162,8 +163,7 @@
     </header>
 
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden gap-2 sm:gap-3 mb-2">
-        <section class="flex-1 md:w-[66%] bg-[#161616] p-4 flex flex-col rounded-2xl overflow-hidden h-full shadow-md">
-            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
+        <section class="flex-1 md:w-[66%] bg-[#161616] p-4 pt-2 flex flex-col rounded-2xl overflow-hidden h-full shadow-md">
             <div class="scroll-mask-container">
                 <div id="trackList" class="space-y-1 pb-6 pt-2 h-full overflow-y-auto">
                     <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6"></p>
@@ -182,9 +182,9 @@
         </section>
     </main>
 
-    <footer id="footerControls" class="bg-[#161616] rounded-2xl px-4 pt-4 pb-6 flex flex-col items-center shrink-0 z-50 select-none relative shadow-lg">
+    <footer id="footerControls" class="bg-[#161616] rounded-2xl px-4 pt-2 pb-4 flex flex-col items-center shrink-0 z-50 select-none relative shadow-lg">
         
-        <div id="swipeTitleContainer" class="w-full text-center py-2 mb-2 cursor-grab active:cursor-grabbing bg-transparent select-none">
+        <div id="swipeTitleContainer" class="w-full text-center py-1.5 mb-1 cursor-grab active:cursor-grabbing bg-transparent select-none">
             <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
                 <div id="marqueeContent" class="marquee-content">
                     <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">YouTubette</span>
@@ -193,7 +193,7 @@
             </div>
         </div>
 
-        <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-4 max-w-2xl relative">
+        <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-2 max-w-2xl relative">
             <span id="currentTime" class="w-9 text-left select-none">0:00</span>
             
             <div class="flex-1 bg-[#333] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
@@ -209,29 +209,29 @@
         </div>
 
         <div class="flex items-center justify-center space-x-6 md:hidden w-full">
-            <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-base p-2"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
-            <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="mobilePlayPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center active:scale-95 text-xl pl-0.5 shadow-lg">
+            <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-sm p-1.5"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
+            <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-lg p-1.5"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="mobilePlayPauseBtn" class="bg-white text-black w-11 h-11 rounded-full flex items-center justify-center active:scale-95 text-lg pl-0.5 shadow-lg">
                 <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
             </button>
-            <button id="mobileNextBtn" class="text-gray-400 active:text-white text-xl p-2"><i class="fa-solid fa-forward-step"></i></button>
-            <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-base p-2">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            <button id="mobileNextBtn" class="text-gray-400 active:text-white text-lg p-1.5"><i class="fa-solid fa-forward-step"></i></button>
+            <button id="mobileForward10Btn" class="text-gray-400 active:text-white text-sm p-1.5">10 <i class="fa-solid fa-arrow-rotate-right"></i></button>
         </div>
 
         <div class="hidden md:flex items-center justify-center space-x-8 w-full">
-            <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
-            <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="playPauseBtn" class="bg-white text-black w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-xl pl-0.5 shadow-md">
+            <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1 p-1.5" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
+            <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1.5"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="playPauseBtn" class="bg-white text-black w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-lg pl-0.5 shadow-md">
                 <i class="fa-solid fa-play" id="playIcon"></i>
             </button>
-            <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-2xl p-2"><i class="fa-solid fa-forward-step"></i></button>
-            <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-1 p-2" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1.5"><i class="fa-solid fa-forward-step"></i></button>
+            <button id="forward10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1 p-1.5" title="+10 Secondi"><span>10s</span> <i class="fa-solid fa-arrow-rotate-right"></i></button>
             
             <div class="w-6"></div>
             <div class="flex items-center space-x-2 text-gray-400">
-                <i class="fa-solid fa-volume-high text-base"></i>
+                <i class="fa-solid fa-volume-high text-sm"></i>
                 <input type="range" id="volumeSlider" min="0" max="100" value="100" 
-                    class="w-28 h-1.5 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
+                    class="w-24 h-1 bg-[#4d4d4d] rounded-full appearance-none cursor-pointer accent-white">
             </div>
         </div>
     </footer>
@@ -266,7 +266,7 @@
     <script>
         let appState = {
             apiKey: localStorage.getItem('youtubette_api_key') || '',
-            vibrationEnabled: localStorage.getItem('youtubette_vibration') !== 'false', // Di base attiva se non salvato diversamente
+            vibrationEnabled: localStorage.getItem('youtubette_vibration') !== 'false', 
             tracks: [],
             currentIndex: -1,
             isPlaying: false
@@ -274,7 +274,7 @@
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
         let startX = 0, currentX = 0, isDragging = false;
-        let lastVibeMilestone = 0; // Traccia l'ultimo scaglione di vibrazione raggiunto durante lo swipe
+        let lastVibeMilestone = 0; 
         
         let isScrubbing = false; 
         let scrubPercentage = 0;
@@ -309,19 +309,20 @@
             });
         }
 
-        // Funzione helper per gestire centralmente la vibrazione
+        // Funzione per attivare il feedback vibrazionale
         function triggerHaptic(type) {
             if (!appState.vibrationEnabled || !('vibrate' in navigator)) return;
-            
-            if (type === 'click') {
-                navigator.vibrate(12); // Singolo tocco secco
-            } else if (type === 'double') {
-                navigator.vibrate([10, 30, 10]); // Doppio colpetto soft per cambio traccia automatico
-            } else if (type === 'tick') {
-                navigator.vibrate(5); // Micro-impulso quasi impercettibile per la tensione dello swipe
-            } else if (type === 'success') {
-                navigator.vibrate(35); // Vibrazione decisa al superamento della soglia dello swipe
-            }
+            try {
+                if (type === 'click') {
+                    navigator.vibrate(12);
+                } else if (type === 'double') {
+                    navigator.vibrate([10, 30, 10]);
+                } else if (type === 'tick') {
+                    navigator.vibrate(6);
+                } else if (type === 'success') {
+                    navigator.vibrate(38);
+                }
+            } catch(e) { console.log("Haptic bloccato da policy browser:", e); }
         }
 
         function onPlayerReady(event) {
@@ -353,7 +354,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
             
-            // Aggancia il feedback tattile standard ai pulsanti
+            // Inizializza graficamente lo stato corretto del toggle vibrazione all'avvio dell'app
+            updateVibrationToggleUI();
+
+            // Sblocca i permessi di vibrazione di Android al primissimo tocco dell'utente sullo schermo
+            document.body.addEventListener('touchstart', function unlockHaptics() {
+                triggerHaptic('tick');
+                document.body.removeEventListener('touchstart', unlockHaptics);
+            }, { passive: true });
+
             const hapticButtons = [
                 'searchBtn', 'filterToggleBtn', 'apiConfigBtn',
                 'playPauseBtn', 'prevBtn', 'nextBtn', 'back10Btn', 'forward10Btn',
@@ -400,7 +409,6 @@
             document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
             document.getElementById('modalSaveBtn').addEventListener('click', saveApiKeyFromModal);
 
-            // Listener per il Toggle della Vibrazione nel menu impostazioni
             document.getElementById('vibrationToggleBtn').addEventListener('click', toggleVibrationSetting);
 
             swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
@@ -482,18 +490,15 @@
             swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
             swipeTitle.style.opacity = opacity;
 
-            // LOGICA DEL ROLL CRESCENTE DI VIBRAZIONE (Da 30px a 75px)
             if (absX >= 30 && absX < 75) {
-                // Calcoliamo quanti step da 6px abbiamo superato per dare un effetto ritmico crescente
                 let currentMilestone = Math.floor((absX - 30) / 6);
                 if (currentMilestone > lastVibeMilestone) {
                     triggerHaptic('tick');
                     lastVibeMilestone = currentMilestone;
                 }
             } else if (absX >= 75 && lastVibeMilestone < 100) {
-                // Culmine raggiunto: Soglia superata! Diamo il feedback definitivo di scatto
                 triggerHaptic('success');
-                lastVibeMilestone = 100; // Blocca ulteriori tick finché non si rilascia il dito
+                lastVibeMilestone = 100; 
             } else if (absX < 30) {
                 lastVibeMilestone = 0;
             }
@@ -513,7 +518,7 @@
                 swipeTitle.style.transform = 'translate3d(0, 0, 0)';
                 swipeTitle.style.opacity = '1';
                 checkAndApplyMarquee();
-                if (Math.abs(currentX) > 15) triggerHaptic('click'); // Micro click di ritorno elastico al centro
+                if (Math.abs(currentX) > 15) triggerHaptic('click'); 
             }
             currentX = 0;
         }
@@ -561,6 +566,7 @@
 
         function updateVibrationToggleUI() {
             const btn = document.getElementById('vibrationToggleBtn');
+            if (!btn) return;
             const dot = btn.querySelector('.toggle-dot');
             if (appState.vibrationEnabled) {
                 btn.className = "toggle-bg w-12 h-6 flex items-center bg-[#1DB954] rounded-full p-0.5 cursor-pointer focus:outline-none";
@@ -703,6 +709,9 @@
                 newRow.classList.add('bg-[#242424]');
                 const newText = newRow.querySelector('p.text-xs');
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
+                
+                // ANIMAZIONE DI SCROLL AUTOMATICO PER TENERE LA CANZONE ATTIVA A VISTA
+                newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
             if (player?.loadVideoById) player.loadVideoById(track.id);
