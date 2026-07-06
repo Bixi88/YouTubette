@@ -29,7 +29,9 @@
 </head>
 <body class="text-gray-200 flex flex-col justify-between h-full p-4 selection:bg-purple-500/30">
 
-    <audio id="audioPlayer" preload="auto"></audio>
+    <div id="youtubePlayerContainer" style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none;">
+        <div id="ytPlayer"></div>
+    </div>
 
     <div class="w-full max-w-md mx-auto pt-2">
         <div class="relative flex items-center bg-zinc-900 rounded-full border border-zinc-800 focus-within:border-purple-500 transition-all px-4 py-2.5 shadow-xl">
@@ -43,11 +45,10 @@
     </div>
 
     <div class="flex-1 w-full max-w-md mx-auto my-4 overflow-hidden flex flex-col justify-center items-center relative">
-        
         <div id="resultsContainer" class="w-full h-full overflow-y-auto space-y-2 hidden pr-1"></div>
 
-        <div id="playerView" class="flex flex-col items-center text-center animate-fade-in w-full px-4">
-            <div class="w-60 h-60 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/20 border border-zinc-800 bg-zinc-900 flex items-center justify-center mb-6 relative group">
+        <div id="playerView" class="flex flex-col items-center text-center w-full px-4">
+            <div class="w-60 h-60 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/20 border border-zinc-800 bg-zinc-900 flex items-center justify-center mb-6">
                 <img id="trackArt" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400" alt="Cover" class="w-full h-full object-cover">
             </div>
             <h2 id="trackTitle" class="text-lg font-bold text-white truncate w-full max-w-xs mb-1">Nessuna traccia</h2>
@@ -60,15 +61,15 @@
             <span id="currentTime">0:00</span>
             <span id="durationTime">0:00</span>
         </div>
-        <div id="progressContainer" class="w-full h-1.5 bg-zinc-800 rounded-full mb-5 cursor-pointer relative group">
-            <div id="progressBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-500 rounded-full w-0 "></div>
+        <div id="progressContainer" class="w-full h-1.5 bg-zinc-800 rounded-full mb-5 cursor-pointer relative">
+            <div id="progressBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-500 rounded-full w-0"></div>
         </div>
 
         <div class="flex items-center justify-center gap-6">
             <button id="prevBtn" class="text-zinc-400 hover:text-white text-lg p-2"><i class="fa-solid fa-backward-step"></i></button>
             <button id="backwardBtn" class="text-zinc-500 hover:text-white text-sm p-2"><i class="fa-solid fa-backward text-xs mr-0.5"></i>10s</button>
             
-            <button id="playBtn" class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center text-xl shadow-xl hover:scale-105 active:scale-95 transition-all">
+            <button id="playBtn" class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center text-xl shadow-xl transition-all">
                 <i id="playIcon" class="fa-solid fa-play ml-0.5"></i>
             </button>
             
@@ -77,12 +78,8 @@
         </div>
     </div>
 
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        // Utilizziamo un proxy CORS ultrarapido e un'istanza Invidious stabile
-        const PROXY_URL = "https://corsproxy.io/?";
-        const INVIDIOUS_INSTANCE = "https://invidious.flokinet.to"; 
-
-        const audio = document.getElementById('audioPlayer');
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const resultsContainer = document.getElementById('resultsContainer');
@@ -91,28 +88,46 @@
         const progressBar = document.getElementById('progressBar');
         const progressContainer = document.getElementById('progressContainer');
         
+        let player;
         let appState = { tracks: [], currentIndex: -1, isPlaying: false };
 
+        // Inizializza il lettore ufficiale di YouTube
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('ytPlayer', {
+                height: '100',
+                width: '100',
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 0,
+                    'disablekb': 1,
+                    'fs': 0
+                },
+                events: {
+                    'onStateChange': onPlayerStateChange,
+                    'onReady': () => { console.log("Player YouTube pronto."); }
+                }
+            });
+        }
+
+        // Sistema di ricerca aperta tramite scomposizione feed alternativo senza CORS
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
             searchBtn.disabled = true;
             searchBtn.innerText = "...";
-            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Ricerca beats su YouTube...</div>`;
+            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Connessione a YouTube...</div>`;
             resultsContainer.classList.remove('hidden');
             playerView.classList.add('hidden');
 
             try {
-                // Interroga Invidious passando per il proxy corsproxy.io
-                const apiTarget = `${INVIDIOUS_INSTANCE}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-                const response = await fetch(`${PROXY_URL}${encodeURIComponent(apiTarget)}`);
-                
-                if (!response.ok) throw new Error();
-                const items = await response.json();
+                // Utilizza un server pubblico unificato di fallback unicamente per l'indice testuale dei video
+                const res = await fetch(`https://invidious.projectsegfau.lt/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+                if (!res.ok) throw new Error();
+                const items = await res.json();
 
                 if (!items || items.length === 0) {
-                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun risultato. Riprova con parole chiave diverse.</div>`;
+                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun beat trovato.</div>`;
                     return;
                 }
 
@@ -120,13 +135,25 @@
                     id: item.videoId,
                     title: item.title,
                     artist: item.author,
-                    thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || (item.videoThumbnails && item.videoThumbnails[0]?.url) || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=200'
+                    thumbnail: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`
                 }));
 
                 renderResults();
             } catch (err) {
-                console.error(err);
-                resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Connessione temporaneamente instabile. Premi di nuovo Cerca.</div>`;
+                // Secondo tentativo istantaneo su nodo specchio se il primo fallisce
+                try {
+                    const res = await fetch(`https://iv.melmac.space/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+                    const items = await res.json();
+                    appState.tracks = items.slice(0, 15).map(item => ({
+                        id: item.videoId,
+                        title: item.title,
+                        artist: item.author,
+                        thumbnail: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`
+                    }));
+                    renderResults();
+                } catch(e) {
+                    resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">I nodi di ricerca sono sovraccarichi. Riprova tra un attimo.</div>`;
+                }
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.innerText = "Cerca";
@@ -137,11 +164,11 @@
             resultsContainer.innerHTML = "";
             appState.tracks.forEach((track, idx) => {
                 const row = document.createElement('div');
-                row.className = "flex items-center gap-3 bg-zinc-900/60 hover:bg-zinc-800/80 p-2.5 rounded-xl cursor-pointer transition-all group";
+                row.className = "flex items-center gap-3 bg-zinc-900/60 hover:bg-zinc-800/80 p-2.5 rounded-xl cursor-pointer transition-all";
                 row.innerHTML = `
-                    <img src="${track.thumbnail}" class="w-12 h-12 object-cover rounded-lg shrink-0 bg-zinc-800" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=100'">
+                    <img src="${track.thumbnail}" class="w-12 h-12 object-cover rounded-lg shrink-0 bg-zinc-800">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-white truncate group-hover:text-purple-400 transition-colors">${track.title}</p>
+                        <p class="text-sm font-semibold text-white truncate">${track.title}</p>
                         <p class="text-xs text-zinc-400 truncate">${track.artist}</p>
                     </div>
                 `;
@@ -150,7 +177,7 @@
             });
         }
 
-        async function selectTrack(index) {
+        function selectTrack(index) {
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
@@ -161,61 +188,63 @@
             resultsContainer.classList.add('hidden');
             playerView.classList.remove('hidden');
 
-            try {
+            if (player && player.loadVideoById) {
                 playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
-                
-                // Genera l'url stream audio diretto bypassando il CORS
-                const streamTarget = `${INVIDIOUS_INSTANCE}/latest_version?id=${track.id}&itag=140`;
-                audio.src = `${PROXY_URL}${encodeURIComponent(streamTarget)}`;
-                
-                await audio.play();
+                player.loadVideoById(track.id);
                 appState.isPlaying = true;
                 updatePlayButton();
-                setupMediaSession(track);
-            } catch (err) {
-                console.error(err);
-                // Fallback nel caso in cui l'itag audio 140 fallisca, prova il flusso video/audio combinato standard
-                try {
-                    const fallbackTarget = `${INVIDIOUS_INSTANCE}/latest_version?id=${track.id}`;
-                    audio.src = `${PROXY_URL}${encodeURIComponent(fallbackTarget)}`;
-                    await audio.play();
-                    appState.isPlaying = true;
-                    updatePlayButton();
-                } catch(e) {
-                    alert("Questo beat è protetto o non disponibile allo streaming diretto. Scegline un altro.");
-                    playIcon.className = "fa-solid fa-play ml-0.5";
-                }
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            // YT.PlayerState.PLAYING = 1, PAUSED = 2, ENDED = 0
+            if (event.data === 1) {
+                appState.isPlaying = true;
+                updatePlayButton();
+                startProgressLoop();
+            } else if (event.data === 2) {
+                appState.isPlaying = false;
+                updatePlayButton();
+            } else if (event.data === 0) {
+                nextTrack();
             }
         }
 
         function togglePlay() {
-            if (appState.currentIndex === -1) return;
-            if (appState.isPlaying) { audio.pause(); appState.isPlaying = false; } 
-            else { audio.play(); appState.isPlaying = true; }
-            updatePlayButton();
+            if (appState.currentIndex === -1 || !player) return;
+            if (appState.isPlaying) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
         }
 
         function updatePlayButton() {
             playIcon.className = appState.isPlaying ? "fa-solid fa-pause" : "fa-solid fa-play ml-0.5";
         }
 
-        audio.addEventListener('timeupdate', () => {
-            if (audio.duration) {
-                progressBar.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
-                document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
-            }
-        });
-
-        audio.addEventListener('loadedmetadata', () => {
-            document.getElementById('durationTime').innerText = formatTime(audio.duration);
-        });
-
-        audio.addEventListener('ended', () => { nextTrack(); });
+        let progressInterval;
+        function startProgressLoop() {
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (player && player.getCurrentTime && appState.isPlaying) {
+                    const current = player.getCurrentTime();
+                    const duration = player.getDuration();
+                    if (duration > 0) {
+                        progressBar.style.width = `${(current / duration) * 100}%`;
+                        document.getElementById('currentTime').innerText = formatTime(current);
+                        document.getElementById('durationTime').innerText = formatTime(duration);
+                    }
+                }
+            }, 500);
+        }
 
         progressContainer.addEventListener('click', (e) => {
-            if (!audio.duration) return;
+            if (!player || !player.getDuration) return;
             const rect = progressContainer.getBoundingClientRect();
-            audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+            const pct = (e.clientX - rect.left) / rect.width;
+            const targetTime = pct * player.getDuration();
+            player.seekTo(targetTime, true);
         });
 
         function nextTrack() {
@@ -230,21 +259,8 @@
         }
 
         function formatTime(s) {
-            if (isNaN(s)) return "0:00";
+            if (isNaN(s) || s < 0) return "0:00";
             return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
-        }
-
-        function setupMediaSession(track) {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title, artist: track.artist,
-                    artwork: [{ src: track.thumbnail, sizes: '512x512', type: 'image/png' }]
-                });
-                navigator.mediaSession.setActionHandler('play', () => { audio.play(); appState.isPlaying = true; updatePlayButton(); });
-                navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); appState.isPlaying = false; updatePlayButton(); });
-                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
-                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
-            }
         }
 
         searchBtn.addEventListener('click', performSearch);
@@ -252,8 +268,8 @@
         playBtn.addEventListener('click', togglePlay);
         nextBtn.addEventListener('click', nextTrack);
         prevBtn.addEventListener('click', prevTrack);
-        document.getElementById('forwardBtn').addEventListener('click', () => { audio.currentTime += 10; });
-        document.getElementById('backwardBtn').addEventListener('click', () => { audio.currentTime -= 10; });
+        document.getElementById('forwardBtn').addEventListener('click', () => { if(player) player.seekTo(player.getCurrentTime() + 10, true); });
+        document.getElementById('backwardBtn').addEventListener('click', () => { if(player) player.seekTo(player.getCurrentTime() - 10, true); });
     </script>
 </body>
 </html>
