@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>YouTubette - Player</title>
-    <link rel=\"manifest\" href=\"manifest.json\">
+    <link rel="manifest" href="manifest.json">
     
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -83,8 +83,23 @@
     </div>
 
     <script>
-        // Configurazione Istanza API Pubblica (Piped)
-        const PIPED_API = "https://pipedapi.kavin.rocks"; 
+        // Lista di istanze pubbliche di Piped a rotazione automatica
+        const PIPED_INSTANCES = [
+            "https://pipedapi.adminforge.de",
+            "https://pipedapi.leptons.xyz",
+            "https://piped-api.lunar.icu",
+            "https://pipedapi.kavin.rocks"
+        ];
+        let currentInstanceIdx = 0;
+
+        function getApiUrl() {
+            return PIPED_INSTANCES[currentInstanceIdx];
+        }
+
+        function rotateInstance() {
+            currentInstanceIdx = (currentInstanceIdx + 1) % PIPED_INSTANCES.length;
+            console.log(`Rotazione istanza: provo ora con ${getApiUrl()}`);
+        }
 
         const audio = document.getElementById('audioPlayer');
         const searchInput = document.getElementById('searchInput');
@@ -103,7 +118,7 @@
             isPlaying: false
         };
 
-        // Gestione Ricerca Brani
+        // Gestione Ricerca Brani con meccanismo di Fallback
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
@@ -114,32 +129,40 @@
             resultsContainer.classList.remove('hidden');
             playerView.classList.add('hidden');
 
-            try {
-                // Interroga l'API pubblica di Piped filtrando solo per video/musica
-                const res = await fetch(`${PIPED_API}/search?q=${encodeURIComponent(query)}&filter=videos`);
-                const data = await res.json();
+            // Prova le diverse istanze finché una non funziona
+            for (let attempt = 0; attempt < PIPED_INSTANCES.length; attempt++) {
+                try {
+                    const res = await fetch(`${getApiUrl()}/search?q=${encodeURIComponent(query)}&filter=videos`);
+                    if (!res.ok) throw new Error("Errore risposta server");
+                    const data = await res.json();
 
-                if (!data.items || data.items.length === 0) {
-                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun risultato trovato.</div>`;
-                    return;
+                    if (!data.items || data.items.length === 0) {
+                        resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun risultato trovato.</div>`;
+                        searchBtn.disabled = false;
+                        searchBtn.innerText = "Cerca";
+                        return;
+                    }
+
+                    appState.tracks = data.items.map(item => ({
+                        id: item.url.split('v=')[1] || item.url.split('/').pop(),
+                        title: item.title,
+                        artist: item.uploaderName,
+                        thumbnail: item.thumbnail
+                    }));
+
+                    renderResults();
+                    searchBtn.disabled = false;
+                    searchBtn.innerText = "Cerca";
+                    return; // Successo, esce dalla funzione
+                } catch (err) {
+                    console.warn(`Fallito tentativo su ${getApiUrl()}:`, err);
+                    rotateInstance(); // Cambia server per il prossimo ciclo
                 }
-
-                // Mappa i risultati salvando le info essenziali
-                appState.tracks = data.items.map(item => ({
-                    id: item.url.split('v=')[1] || item.url.split('/').pop(),
-                    title: item.title,
-                    artist: item.uploaderName,
-                    thumbnail: item.thumbnail
-                }));
-
-                renderResults();
-            } catch (err) {
-                console.error(err);
-                resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Errore di connessione alla rete di streaming. Riprova.</div>`;
-            } finally {
-                searchBtn.disabled = false;
-                searchBtn.innerText = "Cerca";
             }
+            
+            resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Tutti i nodi di streaming sono momentaneamente occupati. Riprova tra poco.</div>`;
+            searchBtn.disabled = false;
+            searchBtn.innerText = "Cerca";
         }
 
         function renderResults() {
@@ -160,47 +183,50 @@
             });
         }
 
-        // Estrazione flusso Audio Puro e Riproduzione
+        // Estrazione Flusso Audio Puro con meccanismo di Fallback
         async function selectTrack(index) {
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
-            // Aggiorna l'interfaccia grafica immediata
             document.getElementById('trackTitle').innerText = track.title;
             document.getElementById('trackArtist').innerText = track.artist;
             document.getElementById('trackArt').src = track.thumbnail;
+            document.getElementById('channelName').innerText = track.artist;
             
             resultsContainer.classList.add('hidden');
             playerView.classList.remove('hidden');
 
-            try {
-                playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
-                
-                // Chiamata all'endpoint degli stream per ottenere i link diretti ai file audio
-                const res = await fetch(`${PIPED_API}/streams/${track.id}`);
-                const data = await res.json();
+            for (let attempt = 0; attempt < PIPED_INSTANCES.length; attempt++) {
+                try {
+                    playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
+                    
+                    const res = await fetch(`${getApiUrl()}/streams/${track.id}`);
+                    if (!res.ok) throw new Error("Errore nel recupero dello stream");
+                    const data = await res.json();
 
-                // Trova il miglior flusso solo audio (solitamente formato m4a o webm)
-                const audioStreams = data.audioStreams || [];
-                if (audioStreams.length === 0) throw new Error("Nessun flusso audio disponibile");
-                
-                // Ordina per qualità o prendi il primo disponibile stabile
-                const streamUrl = audioStreams[0].url;
+                    const audioStreams = data.audioStreams || [];
+                    if (audioStreams.length === 0) throw new Error("Nessuna traccia audio disponibile");
+                    
+                    // Seleziona il primo flusso audio stabile (.m4a / .webm)
+                    const streamUrl = audioStreams[0].url;
 
-                // Carica la sorgente audio nel tag HTML5 nativo
-                audio.src = streamUrl;
-                audio.play();
-                appState.isPlaying = true;
-                updatePlayButton();
-                setupMediaSession(track);
-            } catch (err) {
-                console.error(err);
-                alert("Impossibile riprodurre questo brano. Scegli un'altra traccia.");
-                playIcon.className = "fa-solid fa-play ml-0.5";
+                    audio.src = streamUrl;
+                    audio.play();
+                    appState.isPlaying = true;
+                    updatePlayButton();
+                    setupMediaSession(track);
+                    return; // Successo, esce dalla funzione
+                } catch (err) {
+                    console.warn(`Estrazione fallita su ${getApiUrl()}:`, err);
+                    rotateInstance(); // Passa alla prossima istanza per il prossimo tentativo
+                }
             }
+
+            alert("Impossibile avviare la riproduzione da questa rete. Scegli un'altra traccia.");
+            playIcon.className = "fa-solid fa-play ml-0.5";
         }
 
-        // Controlli Player Audio Nativi
+        // Gestione Controlli Audio
         function togglePlay() {
             if (appState.currentIndex === -1) return;
             if (appState.isPlaying) {
@@ -221,7 +247,7 @@
             }
         }
 
-        // Avanzamento e Timeline
+        // Avanzamento e Sincronizzazione Timeline
         audio.addEventListener('timeupdate', () => {
             if (audio.duration) {
                 const pct = (audio.currentTime / audio.duration) * 100;
@@ -267,7 +293,7 @@
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
-        // Integrazione Controlli di Sistema/Background (MediaSession API)
+        // Riproduzione in Background nativa (OS)
         function setupMediaSession(track) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -282,7 +308,7 @@
             }
         }
 
-        // Event Listeners di base
+        // Listeners standard
         searchBtn.addEventListener('click', performSearch);
         searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') performSearch(); });
         playBtn.addEventListener('click', togglePlay);
