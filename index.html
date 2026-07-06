@@ -71,11 +71,11 @@
             <div class="relative flex items-center w-full">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
                 <input type="text" id="searchInput" placeholder="Cerca beat... (es. free rnb)" 
-                    class="w-full bg-[#242424] text-sm text-white pl-10 pr-24 py-2 rounded-full border border-transparent focus:outline-none focus:border-white focus:bg-[#2a2a2a] transition-all">
+                    class="w-full bg-[#242424] text-sm text-white pl-10 pr-28 py-2 rounded-full border border-transparent focus:outline-none focus:border-white focus:bg-[#2a2a2a] transition-all">
                 
                 <div class="absolute right-1.5 flex items-center space-x-1">
-                    <button id="filterToggleBtn" class="text-gray-400 hover:text-white p-1.5 text-sm" title="Filtri avanzati">
-                        <i class="fa-solid fa-sliders"></i>
+                    <button id="apiSettingsBtn" class="text-gray-400 hover:text-white p-1.5 text-sm" title="Impostazioni API Key">
+                        <i class="fa-solid fa-gear"></i>
                     </button>
                     <button id="searchBtn" class="bg-[#1DB954] text-black font-semibold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
                         Cerca
@@ -83,28 +83,14 @@
                 </div>
             </div>
 
-            <div id="filterMenu" class="hidden absolute top-full left-0 right-0 mt-2 bg-[#181818] border border-[#282828] rounded-2xl p-4 shadow-2xl z-50 space-y-3">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Filtri di Ricerca</p>
-                <div class="grid grid-cols-3 gap-2">
-                    <div>
-                        <label class="block text-[10px] text-gray-400 mb-1">Ordina per</label>
-                        <select id="filterOrder" class="w-full bg-[#242424] text-xs text-white p-2 rounded-xl border border-transparent focus:outline-none focus:border-white">
-                            <option value="relevance" selected>Rilevanza</option>
-                            <option value="date">Data</option>
-                            <option value="viewCount">Visualizzazioni</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-gray-400 mb-1">Filtro Tipo</label>
-                        <select id="filterType" class="w-full bg-[#242424] text-xs text-white p-2 rounded-xl border border-transparent focus:outline-none focus:border-white">
-                            <option value="video" selected>Solo Video</option>
-                            <option value="all">Tutto</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-gray-400 mb-1">Stato Nodi</label>
-                        <div class="text-[11px] text-[#1DB954] pt-2 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Auto-Bypass</div>
-                    </div>
+            <div id="apiMenu" class="hidden absolute top-full left-0 right-0 mt-2 bg-[#181818] border border-[#282828] rounded-2xl p-4 shadow-2xl z-50 space-y-3">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Configurazione YouTube API</p>
+                <div class="space-y-2">
+                    <label class="block text-[11px] text-gray-300">Inserisci YouTube Data API Key v3:</label>
+                    <input type="password" id="apiKeyInput" placeholder="Incolla AIzaSy..." class="w-full bg-[#242424] text-xs text-white p-2 rounded-xl border border-zinc-700 focus:outline-none focus:border-[#1DB954]">
+                    <button id="saveApiKeyBtn" class="w-full bg-[#1DB954] text-black text-xs font-bold py-2 rounded-xl active:scale-95 transition-transform">
+                        Salva Chiave
+                    </button>
                 </div>
             </div>
         </div>
@@ -119,18 +105,21 @@
 
     <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
         <section class="flex-1 md:w-3/5 bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
-            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca (No-API Mode)</h2>
+            <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca Ufficiali</h2>
             <div id="trackList" class="space-y-1 pb-4">
-                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Inserisci una chiave di ricerca in alto.</p>
+                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6">Inserisci un termine e premi cerca (Assicurati di aver configurato l'API Key dall'ingranaggio).</p>
             </div>
         </section>
 
         <section class="flex flex-col bg-black md:w-2/5 h-44 md:h-full relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
             <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
-                <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
+                <div style="position: absolute; width: 1px; height: 1px; opacity: 0.001; pointer-events: none;">
+                    <div id="ytPlayerContainer"></div>
+                </div>
+                
                 <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#181818] text-gray-500 pointer-events-none z-10">
-                    <i class="fa-solid fa-music text-2xl md:text-4xl mb-1"></i>
-                    <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle">Nessun beat in riproduzione</p>
+                    <i class="fa-solid fa-music text-2xl md:text-4xl mb-2 text-[#1DB954]"></i>
+                    <p class="text-xs font-medium px-4 text-center text-gray-400" id="currentDisplayTitle">Scegli un beat per iniziare</p>
                 </div>
             </div>
         </section>
@@ -219,6 +208,7 @@
             if (document.getElementById('pwaInstallBtn')) document.getElementById('pwaInstallBtn').classList.remove('hidden');
         });
 
+        // Iniezione Iframe API Ufficiale
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
@@ -244,7 +234,6 @@
                 appState.isPlaying = true;
                 if(playIcon) playIcon.className = "fa-solid fa-pause";
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
-                document.getElementById('coverFallback').style.display = "none";
                 updateDuration(); updateMediaSessionState(true);
             } else {
                 appState.isPlaying = false;
@@ -258,15 +247,32 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
             
+            // Carica la chiave salvata in precedenza se presente
+            const savedKey = localStorage.getItem('youtube_api_key');
+            if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
+
             document.getElementById('searchBtn').addEventListener('click', () => performSearch());
             document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
             
-            document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
+            // Gestione Menu API Key
+            document.getElementById('apiSettingsBtn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.getElementById('filterMenu').classList.toggle('hidden');
+                document.getElementById('apiMenu').classList.toggle('hidden');
             });
-            document.addEventListener('click', () => document.getElementById('filterMenu').classList.add('hidden'));
-            document.getElementById('filterMenu').addEventListener('click', (e) => e.stopPropagation());
+            document.addEventListener('click', () => document.getElementById('apiMenu').classList.add('hidden'));
+            document.getElementById('apiMenu').addEventListener('click', (e) => e.stopPropagation());
+
+            document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
+                const key = document.getElementById('apiKeyInput').value.trim();
+                if (key) {
+                    localStorage.setItem('youtube_api_key', key);
+                    alert("API Key salvata con successo! Ora puoi effettuare ricerche senza blocchi.");
+                    document.getElementById('apiMenu').classList.add('hidden');
+                } else {
+                    localStorage.removeItem('youtube_api_key');
+                    alert("Chiave rimossa.");
+                }
+            });
 
             document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
             document.getElementById('prevBtn').addEventListener('click', prevTrack);
@@ -302,7 +308,6 @@
 
         function getClientX(e) {
             if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
-            if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
             return e.clientX;
         }
 
@@ -409,58 +414,53 @@
             }
         }
 
-        /* FUNZIONE DI RICERCA SENZA CHIAVI API CON PROXY CORS */
+        /* RICERCA STABILE ATTRAVERSO LA CHIAVE API DI GOOGLE (ZERO ERRORI CORS) */
         async function performSearch() {
+            const apiKey = localStorage.getItem('youtube_api_key');
+            const placeholderText = document.getElementById('placeholderText');
+
+            if (!apiKey) {
+                alert("Attenzione: Inserisci la tua YouTube API Key cliccando sull'icona dell'ingranaggio in alto a destra per sbloccare la ricerca.");
+                if (placeholderText) placeholderText.innerText = "Configura l'API Key (icona ingranaggio) per cercare i tuoi beat.";
+                return;
+            }
+
             const query = document.getElementById('searchInput').value.trim();
             if (!query) return;
 
-            const placeholderText = document.getElementById('placeholderText');
-            if (placeholderText) placeholderText.innerText = "Bypass dei blocchi di rete CORS in corso...";
-            
+            if (placeholderText) placeholderText.innerText = "Connessione diretta a YouTube in corso...";
             appState.tracks = []; 
             appState.currentIndex = -1;
 
-            const order = document.getElementById('filterOrder').value;
-
             try {
-                // Interroga un nodo Invidious robusto e incapsula la richiesta dentro il proxy AllOrigins
-                const targetUrl = `https://iv.melmac.space/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error("Risposta non valida dal server proxy");
+                // Chiamata standard senza proxy intermediari, sicura al 100% e priva di problemi CORS
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&key=${apiKey}`;
                 
-                const wrapper = await response.json();
-                // AllOrigins restituisce la risposta come stringa di testo dentro l'oggetto '.contents'
-                const items = JSON.parse(wrapper.contents);
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData?.error?.message || "Errore API");
+                }
+                
+                const data = await response.json();
 
-                if (!items || items.length === 0) {
-                    if (placeholderText) placeholderText.innerText = "Nessun beat trovato su YouTube. Prova altri termini.";
+                if (!data.items || data.items.length === 0) {
+                    if (placeholderText) placeholderText.innerText = "Nessun beat trovato. Modifica i termini di ricerca.";
                     return;
                 }
 
-                // Mappatura dei risultati mantenendo i parametri strutturali compatibili col tuo player
-                let newTracks = items.slice(0, 25).map(item => ({
-                    id: item.videoId, 
-                    title: item.title, 
-                    channel: item.author, 
-                    thumbnail: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`
+                appState.tracks = data.items.map(item => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title,
+                    channel: item.snippet.channelTitle,
+                    thumbnail: item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id.videoId}/mqdefault.jpg`
                 }));
 
-                if (order === 'relevance') {
-                    // Mescola leggermente per dare varietà se l'utente richiede rilevanza (opzionale)
-                    for (let i = newTracks.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
-                    }
-                }
-
-                appState.tracks = newTracks;
                 renderTracklist();
             } catch (error) {
                 console.error(error);
-                if (placeholderText) placeholderText.innerText = "Connessione instabile. Fai un altro tentativo premendo Cerca.";
-                alert("I nodi di rete sono sovraccarichi. Riprova tra un istante.");
+                if (placeholderText) placeholderText.innerText = "Errore della chiave. Verifica di aver inserito una chiave corretta ed attiva.";
+                alert("Errore durante la ricerca: " + error.message);
             }
         }
 
@@ -509,6 +509,7 @@
 
             document.getElementById('playerTrackTitle').innerText = track.title;
             document.getElementById('playerTrackChannel').innerText = track.channel;
+            document.getElementById('currentDisplayTitle').innerText = track.title;
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
@@ -526,7 +527,7 @@
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: track.title, artist: track.channel, album: 'YouTubette Beats',
-                    artwork: [{ src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }]
+                    artwork: [{ src: track.thumbnail, sizes: '320x180', type: 'image/jpeg' }]
                 });
             }
         }
