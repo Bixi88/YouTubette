@@ -6,7 +6,7 @@
     <title>YouTubette - Player</title>
     <link rel="manifest" href="manifest.json">
     
-    <meta name="theme-color" content="#121212">
+    <meta name="theme-color" content="#0b0b0b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="YouTubette">
@@ -19,11 +19,35 @@
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100%; height: 100%;
             overflow: hidden;
-            background-color: #121212;
+            background-color: #0b0b0b;
         }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-track { background: #161616; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* EFFETTO SFUMATURA (Scroll Mask) SOPRA E SOTTO LA LISTA CANZONI */
+        .scroll-mask-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+        }
+        .scroll-mask-container::before,
+        .scroll-mask-container::after {
+            content: "";
+            position: absolute;
+            left: 0; right: 0;
+            height: 24px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .scroll-mask-container::before {
+            top: 0;
+            background: linear-gradient(to bottom, #161616 0%, transparent 100%);
+        }
+        .scroll-mask-container::after {
+            bottom: 0;
+            background: linear-gradient(to top, #161616 0%, transparent 100%);
+        }
 
         .marquee-wrapper {
             position: relative;
@@ -57,17 +81,25 @@
         #progressBar.scrubbing {
             transition: none !important;
         }
+
+        /* TOGGLE SWITCH ANIMATO FLUIDO */
+        .toggle-dot {
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toggle-bg {
+            transition: background-color 0.25s ease;
+        }
     </style>
 </head>
-<body class="text-white font-sans flex flex-col justify-between hidden bg-[#121212]">
+<body class="text-white font-sans flex flex-col justify-between hidden bg-[#0b0b0b] p-2 sm:p-3 box-border h-full">
 
-    <header class="h-16 bg-black px-3 flex items-center justify-between border-b border-[#282828] shrink-0 z-50">
+    <header class="h-16 bg-[#161616] px-4 flex items-center justify-between rounded-2xl mb-2 shrink-0 z-50 shadow-md">
         <div class="flex items-center space-x-1.5 text-[#1DB954] text-xl font-bold tracking-tight shrink-0">
             <i class="fa-solid fa-radio"></i>
             <span class="hidden sm:inline text-white font-bold ml-1">YouTubette</span>
         </div>
         
-        <div class="flex-1 max-w-md mx-2 relative">
+        <div class="flex-1 max-w-md mx-4 relative">
             <div class="relative flex items-center w-full">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
                 <input type="text" id="searchInput" placeholder="" 
@@ -123,24 +155,26 @@
             <button id="pwaInstallBtn" class="hidden bg-[#1DB954] text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform">
                 <i class="fa-solid fa-download mr-1"></i> Installa
             </button>
-            <button id="apiConfigBtn" class="text-gray-400 hover:text-white p-2" title="Configura API Key">
+            <button id="apiConfigBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-[#242424] transition-colors w-9 h-9 flex items-center justify-center" title="Impostazioni">
                 <i class="fa-solid fa-gear text-lg"></i>
             </button>
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden bg-[#121212]">
-        <section class="flex-1 md:w-[66%] bg-black p-3 flex flex-col border-t md:border-t-0 md:border-r border-[#282828] overflow-y-auto h-full">
+    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden gap-2 sm:gap-3 mb-2">
+        <section class="flex-1 md:w-[66%] bg-[#161616] p-4 flex flex-col rounded-2xl overflow-hidden h-full shadow-md">
             <h2 class="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 px-1">Risultati Ricerca</h2>
-            <div id="trackList" class="space-y-1 pb-4">
-                <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6"></p>
+            <div class="scroll-mask-container">
+                <div id="trackList" class="space-y-1 pb-6 pt-2 h-full overflow-y-auto">
+                    <p id="placeholderText" class="text-gray-500 text-xs p-4 italic text-center mt-6"></p>
+                </div>
             </div>
         </section>
 
-        <section class="flex flex-col bg-black h-36 md:w-[34%] relative shrink-0 md:shrink border-b md:border-b-0 border-[#282828]">
+        <section class="flex flex-col bg-[#161616] h-36 md:h-full md:w-[34%] relative shrink-0 md:shrink rounded-2xl overflow-hidden shadow-md">
             <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
                 <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
-                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#181818] text-gray-500 pointer-events-none z-10">
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center bg-[#161616] text-gray-500 pointer-events-none z-10">
                     <i class="fa-solid fa-music text-2xl md:text-3xl mb-1"></i>
                     <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle"></p>
                 </div>
@@ -148,7 +182,7 @@
         </section>
     </main>
 
-    <footer id="footerControls" class="bg-[#181818] border-t border-[#282828] px-4 pt-4 pb-6 flex flex-col items-center shrink-0 z-50 select-none relative">
+    <footer id="footerControls" class="bg-[#161616] rounded-2xl px-4 pt-4 pb-6 flex flex-col items-center shrink-0 z-50 select-none relative shadow-lg">
         
         <div id="swipeTitleContainer" class="w-full text-center py-2 mb-2 cursor-grab active:cursor-grabbing bg-transparent select-none">
             <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
@@ -162,8 +196,8 @@
         <div class="w-full flex items-center space-x-3 text-xs text-gray-400 mb-4 max-w-2xl relative">
             <span id="currentTime" class="w-9 text-left select-none">0:00</span>
             
-            <div class="flex-1 bg-[#4d4d4d] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
-                <div class="bg-[#333] w-full h-2 rounded-full absolute top-1 left-0"></div>
+            <div class="flex-1 bg-[#333] h-4 rounded-full relative cursor-pointer py-1" id="progressBarContainer">
+                <div class="bg-[#242424] w-full h-2 rounded-full absolute top-1 left-0"></div>
                 <div class="bg-[#1DB954] h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100" id="progressBar"></div>
                 
                 <div id="progressTooltip" class="hidden absolute bottom-full mb-2 bg-[#1DB954] text-black font-bold text-[11px] px-2 py-0.5 rounded shadow-md pointer-events-none transform -translate-x-1/2 z-50">
@@ -203,11 +237,25 @@
     </footer>
 
     <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-[#181818] border border-[#282828] w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
-            <h3 class="text-lg font-bold text-white mb-2 flex items-center"><i class="fa-solid fa-key text-[#1DB954] mr-2"></i> Configura API Key</h3>
-            <p class="text-xs text-gray-400 mb-4">Inserisci la tua YouTube Data API v3 Key per attivare le funzionalità dell'app.</p>
-            <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la chiave API..." 
-                class="w-full bg-[#242424] text-sm text-white px-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-white mb-5">
+        <div class="bg-[#161616] border border-[#282828] w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <h3 class="text-lg font-bold text-white mb-5 flex items-center"><i class="fa-solid fa-sliders text-[#1DB954] mr-2"></i> Impostazioni</h3>
+            
+            <div class="mb-5">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">YouTube API Key</label>
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la chiave API..." 
+                    class="w-full bg-[#242424] text-sm text-white px-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-white">
+            </div>
+
+            <div class="flex items-center justify-between border-t border-[#242424] pt-4 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold text-white">Feedback Tattile</label>
+                    <span class="text-xs text-gray-400">Attiva le micro-vibrazioni sui controlli</span>
+                </div>
+                <button id="vibrationToggleBtn" class="toggle-bg w-12 h-6 flex items-center bg-[#242424] rounded-full p-0.5 cursor-pointer focus:outline-none">
+                    <div class="toggle-dot bg-white w-5 h-5 rounded-full shadow-md transform translate-x-0"></div>
+                </button>
+            </div>
+
             <div class="flex items-center justify-end space-x-3">
                 <button id="modalCancelBtn" class="text-gray-400 hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors">Annulla</button>
                 <button id="modalSaveBtn" class="bg-[#1DB954] text-black font-bold text-xs px-5 py-2 rounded-full active:scale-95 transition-all">Salva</button>
@@ -218,6 +266,7 @@
     <script>
         let appState = {
             apiKey: localStorage.getItem('youtubette_api_key') || '',
+            vibrationEnabled: localStorage.getItem('youtubette_vibration') !== 'false', // Di base attiva se non salvato diversamente
             tracks: [],
             currentIndex: -1,
             isPlaying: false
@@ -225,6 +274,7 @@
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
         let startX = 0, currentX = 0, isDragging = false;
+        let lastVibeMilestone = 0; // Traccia l'ultimo scaglione di vibrazione raggiunto durante lo swipe
         
         let isScrubbing = false; 
         let scrubPercentage = 0;
@@ -259,6 +309,21 @@
             });
         }
 
+        // Funzione helper per gestire centralmente la vibrazione
+        function triggerHaptic(type) {
+            if (!appState.vibrationEnabled || !('vibrate' in navigator)) return;
+            
+            if (type === 'click') {
+                navigator.vibrate(12); // Singolo tocco secco
+            } else if (type === 'double') {
+                navigator.vibrate([10, 30, 10]); // Doppio colpetto soft per cambio traccia automatico
+            } else if (type === 'tick') {
+                navigator.vibrate(5); // Micro-impulso quasi impercettibile per la tensione dello swipe
+            } else if (type === 'success') {
+                navigator.vibrate(35); // Vibrazione decisa al superamento della soglia dello swipe
+            }
+        }
+
         function onPlayerReady(event) {
             player.setVolume(document.getElementById('volumeSlider')?.value || 100);
             startProgressLoop();
@@ -278,13 +343,26 @@
                 if(playIcon) playIcon.className = "fa-solid fa-play pl-0.5";
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
                 updateMediaSessionState(false);
-                if (event.data == YT.PlayerState.ENDED) nextTrack();
+                if (event.data == YT.PlayerState.ENDED) {
+                    triggerHaptic('double');
+                    nextTrack();
+                }
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
             
+            // Aggancia il feedback tattile standard ai pulsanti
+            const hapticButtons = [
+                'searchBtn', 'filterToggleBtn', 'apiConfigBtn',
+                'playPauseBtn', 'prevBtn', 'nextBtn', 'back10Btn', 'forward10Btn',
+                'mobilePlayPauseBtn', 'mobilePrevBtn', 'mobileNextBtn', 'mobileBack10Btn', 'mobileForward10Btn'
+            ];
+            hapticButtons.forEach(id => {
+                document.getElementById(id)?.addEventListener('click', () => triggerHaptic('click'));
+            });
+
             document.getElementById('searchBtn').addEventListener('click', () => performSearch(false));
             document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(false); });
             
@@ -322,6 +400,9 @@
             document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
             document.getElementById('modalSaveBtn').addEventListener('click', saveApiKeyFromModal);
 
+            // Listener per il Toggle della Vibrazione nel menu impostazioni
+            document.getElementById('vibrationToggleBtn').addEventListener('click', toggleVibrationSetting);
+
             swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
             swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
             swipeTitle.addEventListener('touchend', dragEnd, { passive: true });
@@ -330,7 +411,6 @@
             window.addEventListener('mousemove', dragMove);
             window.addEventListener('mouseup', dragEnd);
             
-            // Inizializza il layout per nascondere la traccia vuota all'avvio
             checkAndApplyMarquee();
         });
 
@@ -364,6 +444,7 @@
             if (!player?.getDuration || appState.currentIndex === -1) return;
             isScrubbing = true;
             progressBar.classList.add('scrubbing');
+            triggerHaptic('click');
             updateScrubPosition(e);
         }
 
@@ -381,6 +462,7 @@
 
             const duration = player.getDuration() || 0;
             player.seekTo(duration * scrubPercentage, true);
+            triggerHaptic('click');
         }
 
         function dragStart(e) {
@@ -388,14 +470,33 @@
             startX = e.touches ? e.touches[0].clientX : e.clientX;
             swipeTitle.classList.add('dragging');
             marqueeContent.classList.remove('animate-marquee');
+            lastVibeMilestone = 0; 
         }
 
         function dragMove(e) {
             if (!isDragging) return;
             currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
-            const opacity = Math.max(0.2, 1 - Math.abs(currentX) / 350);
+            const absX = Math.abs(currentX);
+            
+            const opacity = Math.max(0.2, 1 - absX / 350);
             swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
             swipeTitle.style.opacity = opacity;
+
+            // LOGICA DEL ROLL CRESCENTE DI VIBRAZIONE (Da 30px a 75px)
+            if (absX >= 30 && absX < 75) {
+                // Calcoliamo quanti step da 6px abbiamo superato per dare un effetto ritmico crescente
+                let currentMilestone = Math.floor((absX - 30) / 6);
+                if (currentMilestone > lastVibeMilestone) {
+                    triggerHaptic('tick');
+                    lastVibeMilestone = currentMilestone;
+                }
+            } else if (absX >= 75 && lastVibeMilestone < 100) {
+                // Culmine raggiunto: Soglia superata! Diamo il feedback definitivo di scatto
+                triggerHaptic('success');
+                lastVibeMilestone = 100; // Blocca ulteriori tick finché non si rilascia il dito
+            } else if (absX < 30) {
+                lastVibeMilestone = 0;
+            }
         }
 
         function dragEnd() {
@@ -412,6 +513,7 @@
                 swipeTitle.style.transform = 'translate3d(0, 0, 0)';
                 swipeTitle.style.opacity = '1';
                 checkAndApplyMarquee();
+                if (Math.abs(currentX) > 15) triggerHaptic('click'); // Micro click di ritorno elastico al centro
             }
             currentX = 0;
         }
@@ -457,8 +559,28 @@
             }
         }
 
+        function updateVibrationToggleUI() {
+            const btn = document.getElementById('vibrationToggleBtn');
+            const dot = btn.querySelector('.toggle-dot');
+            if (appState.vibrationEnabled) {
+                btn.className = "toggle-bg w-12 h-6 flex items-center bg-[#1DB954] rounded-full p-0.5 cursor-pointer focus:outline-none";
+                dot.className = "toggle-dot bg-white w-5 h-5 rounded-full shadow-md transform translate-x-6";
+            } else {
+                btn.className = "toggle-bg w-12 h-6 flex items-center bg-[#242424] rounded-full p-0.5 cursor-pointer focus:outline-none";
+                dot.className = "toggle-dot bg-white w-5 h-5 rounded-full shadow-md transform translate-x-0";
+            }
+        }
+
+        function toggleVibrationSetting() {
+            appState.vibrationEnabled = !appState.vibrationEnabled;
+            localStorage.setItem('youtubette_vibration', appState.vibrationEnabled);
+            updateVibrationToggleUI();
+            triggerHaptic('click');
+        }
+
         function openApiModal() {
             document.getElementById('modalApiKeyInput').value = appState.apiKey;
+            updateVibrationToggleUI();
             document.getElementById('apiModal').classList.remove('hidden');
         }
 
@@ -471,7 +593,7 @@
             appState.apiKey = key;
             localStorage.setItem('youtubette_api_key', key);
             closeApiModal();
-            alert(key ? "API Key salvata!" : "API Key rimossa.");
+            alert(key ? "Impostazioni salvate!" : "API Key rimossa.");
         }
 
         async function performSearch(isLoadMore = false) {
@@ -540,17 +662,18 @@
             appState.tracks.forEach((track, index) => {
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
-                trackRow.className = `flex items-center p-2 rounded active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#1a1a1a]' : ''}`;
+                trackRow.className = `flex items-center p-2 rounded-xl active:bg-[#282828] md:hover:bg-[#282828] cursor-pointer transition-colors ${appState.currentIndex === index ? 'bg-[#242424]' : ''}`;
                
                 trackRow.innerHTML = `
                     <div class="w-6 text-gray-400 text-xs text-center">${index + 1}</div>
-                    <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded mx-2.5">
+                    <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded-lg mx-2.5">
                     <div class="flex-1 overflow-hidden">
                         <p class="text-xs font-medium truncate ${appState.currentIndex === index ? 'text-[#1DB954]' : 'text-white'}">${track.title}</p>
                         <p class="text-[10px] text-gray-400 truncate mt-0.5">${track.channel}</p>
                     </div>
                 `;
                 trackRow.addEventListener('click', () => {
+                    triggerHaptic('click');
                     loadTrack(index);
                     if (index === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
                 });
@@ -563,7 +686,7 @@
             if (appState.currentIndex !== -1) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
-                    oldRow.classList.remove('bg-[#1a1a1a]');
+                    oldRow.classList.remove('bg-[#242424]');
                     const oldText = oldRow.querySelector('p.text-xs');
                     if (oldText) { oldText.classList.remove('text-[#1DB954]'); oldText.classList.add('text-white'); }
                 }
@@ -577,7 +700,7 @@
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
-                newRow.classList.add('bg-[#1a1a1a]');
+                newRow.classList.add('bg-[#242424]');
                 const newText = newRow.querySelector('p.text-xs');
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
             }
