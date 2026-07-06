@@ -48,10 +48,7 @@
 
         <div id="playerView" class="flex flex-col items-center text-center animate-fade-in w-full px-4">
             <div class="w-60 h-60 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl shadow-purple-900/20 border border-zinc-800 bg-zinc-900 flex items-center justify-center mb-6 relative group">
-                <img id="trackArt" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400" alt="Cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                    <p class="text-xs text-zinc-400" id="channelName">Seleziona un brano</p>
-                </div>
+                <img id="trackArt" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400" alt="Cover" class="w-full h-full object-cover">
             </div>
             <h2 id="trackTitle" class="text-lg font-bold text-white truncate w-full max-w-xs mb-1">Nessuna traccia</h2>
             <p id="trackArtist" class="text-sm text-zinc-400 truncate w-full max-w-xs">Cerca un brano per iniziare</p>
@@ -64,74 +61,62 @@
             <span id="durationTime">0:00</span>
         </div>
         <div id="progressContainer" class="w-full h-1.5 bg-zinc-800 rounded-full mb-5 cursor-pointer relative group">
-            <div id="progressBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-500 rounded-full w-0 transition-all duration-100 relative">
-                <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md scale-0 group-hover:scale-100 transition-transform"></div>
-            </div>
+            <div id="progressBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-500 rounded-full w-0 "></div>
         </div>
 
         <div class="flex items-center justify-center gap-6">
-            <button id="prevBtn" class="text-zinc-400 hover:text-white transition-colors text-lg p-2"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="backwardBtn" class="text-zinc-500 hover:text-white transition-colors text-sm p-2"><i class="fa-solid fa-backward text-xs mr-0.5"></i>10s</button>
+            <button id="prevBtn" class="text-zinc-400 hover:text-white text-lg p-2"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="backwardBtn" class="text-zinc-500 hover:text-white text-sm p-2"><i class="fa-solid fa-backward text-xs mr-0.5"></i>10s</button>
             
             <button id="playBtn" class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center text-xl shadow-xl hover:scale-105 active:scale-95 transition-all">
                 <i id="playIcon" class="fa-solid fa-play ml-0.5"></i>
             </button>
             
-            <button id="forwardBtn" class="text-zinc-500 hover:text-white transition-colors text-sm p-2">10s<i class="fa-solid fa-forward text-xs ml-0.5"></i></button>
-            <button id="nextBtn" class="text-zinc-400 hover:text-white transition-colors text-lg p-2"><i class="fa-solid fa-forward-step"></i></button>
+            <button id="forwardBtn" class="text-zinc-500 hover:text-white text-sm p-2">10s<i class="fa-solid fa-forward text-xs ml-0.5"></i></button>
+            <button id="nextBtn" class="text-zinc-400 hover:text-white text-lg p-2"><i class="fa-solid fa-forward-step"></i></button>
         </div>
     </div>
 
     <script>
-        // Utilizziamo un proxy CORS pubblico per evitare qualsiasi blocco del browser
-        const CORS_PROXY = "https://api.allorigins.win/get?url=";
-        const TARGET_API = "https://iv.melmac.space"; // Server Invidious stabile per estrarre i dati di YouTube
+        // Utilizziamo un proxy CORS ultrarapido e un'istanza Invidious stabile
+        const PROXY_URL = "https://corsproxy.io/?";
+        const INVIDIOUS_INSTANCE = "https://invidious.flokinet.to"; 
 
         const audio = document.getElementById('audioPlayer');
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const resultsContainer = document.getElementById('resultsContainer');
         const playerView = document.getElementById('playerView');
-        
-        const playBtn = document.getElementById('playBtn');
         const playIcon = document.getElementById('playIcon');
         const progressBar = document.getElementById('progressBar');
         const progressContainer = document.getElementById('progressContainer');
         
-        let appState = {
-            tracks: [],
-            currentIndex: -1,
-            isPlaying: false
-        };
+        let appState = { tracks: [], currentIndex: -1, isPlaying: false };
 
-        // Ricerca dei video di YouTube tramite Proxy Anti-CORS
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
 
             searchBtn.disabled = true;
             searchBtn.innerText = "...";
-            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Bypass dei blocchi di rete...</div>`;
+            resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Ricerca beats su YouTube...</div>`;
             resultsContainer.classList.remove('hidden');
             playerView.classList.add('hidden');
 
             try {
-                // Impacchetta la richiesta dentro il proxy CORS
-                const targetUrl = `${TARGET_API}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-                const res = await fetch(`${CORS_PROXY}${encodeURIComponent(targetUrl)}`);
-                if (!res.ok) throw new Error();
+                // Interroga Invidious passando per il proxy corsproxy.io
+                const apiTarget = `${INVIDIOUS_INSTANCE}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+                const response = await fetch(`${PROXY_URL}${encodeURIComponent(apiTarget)}`);
                 
-                const wrapper = await res.json();
-                const items = JSON.parse(wrapper.contents); // AllOrigins restituisce la risposta dentro 'contents' sotto forma di stringa
+                if (!response.ok) throw new Error();
+                const items = await response.json();
 
                 if (!items || items.length === 0) {
-                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun beat trovato su YouTube.</div>`;
-                    searchBtn.disabled = false;
-                    searchBtn.innerText = "Cerca";
+                    resultsContainer.innerHTML = `<div class="text-center text-zinc-500 text-sm py-8">Nessun risultato. Riprova con parole chiave diverse.</div>`;
                     return;
                 }
 
-                appState.tracks = items.slice(0, 20).map(item => ({
+                appState.tracks = items.slice(0, 15).map(item => ({
                     id: item.videoId,
                     title: item.title,
                     artist: item.author,
@@ -141,7 +126,7 @@
                 renderResults();
             } catch (err) {
                 console.error(err);
-                resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Il proxy di sblocco è momentaneamente occupato. Riprova tra poco.</div>`;
+                resultsContainer.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Connessione temporaneamente instabile. Premi di nuovo Cerca.</div>`;
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.innerText = "Cerca";
@@ -152,21 +137,19 @@
             resultsContainer.innerHTML = "";
             appState.tracks.forEach((track, idx) => {
                 const row = document.createElement('div');
-                row.className = "flex items-center gap-3 bg-zinc-900/60 hover:bg-zinc-800/80 p-2.5 rounded-xl cursor-pointer border border-zinc-900 transition-all group";
+                row.className = "flex items-center gap-3 bg-zinc-900/60 hover:bg-zinc-800/80 p-2.5 rounded-xl cursor-pointer transition-all group";
                 row.innerHTML = `
                     <img src="${track.thumbnail}" class="w-12 h-12 object-cover rounded-lg shrink-0 bg-zinc-800" onerror="this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=100'">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-white truncate group-hover:text-purple-400 transition-colors">${track.title}</p>
                         <p class="text-xs text-zinc-400 truncate">${track.artist}</p>
                     </div>
-                    <div class="text-zinc-500 group-hover:text-white px-2"><i class="fa-solid fa-play text-xs"></i></div>
                 `;
                 row.onclick = () => selectTrack(idx);
                 resultsContainer.appendChild(row);
             });
         }
 
-        // Caricamento del flusso audio diretto da YouTube (senza restrizioni CORS sulla traccia video/audio)
         async function selectTrack(index) {
             appState.currentIndex = index;
             const track = appState.tracks[index];
@@ -174,7 +157,6 @@
             document.getElementById('trackTitle').innerText = track.title;
             document.getElementById('trackArtist').innerText = track.artist;
             document.getElementById('trackArt').src = track.thumbnail;
-            document.getElementById('channelName').innerText = track.artist;
             
             resultsContainer.classList.add('hidden');
             playerView.classList.remove('hidden');
@@ -182,46 +164,44 @@
             try {
                 playIcon.className = "fa-solid fa-circle-notch animate-spin ml-0";
                 
-                // YouTube permette l'ascolto diretto dei file multimediali saltando il CORS se richiamati dall'endpoint stream di un'istanza solida
-                const streamUrl = `${TARGET_API}/latest_version?id=${track.id}&itag=140`; 
-
-                audio.src = streamUrl;
-                audio.play();
+                // Genera l'url stream audio diretto bypassando il CORS
+                const streamTarget = `${INVIDIOUS_INSTANCE}/latest_version?id=${track.id}&itag=140`;
+                audio.src = `${PROXY_URL}${encodeURIComponent(streamTarget)}`;
+                
+                await audio.play();
                 appState.isPlaying = true;
                 updatePlayButton();
                 setupMediaSession(track);
             } catch (err) {
                 console.error(err);
-                alert("Impossibile avviare lo streaming audio di questo beat. Scegline un altro.");
-                playIcon.className = "fa-solid fa-play ml-0.5";
+                // Fallback nel caso in cui l'itag audio 140 fallisca, prova il flusso video/audio combinato standard
+                try {
+                    const fallbackTarget = `${INVIDIOUS_INSTANCE}/latest_version?id=${track.id}`;
+                    audio.src = `${PROXY_URL}${encodeURIComponent(fallbackTarget)}`;
+                    await audio.play();
+                    appState.isPlaying = true;
+                    updatePlayButton();
+                } catch(e) {
+                    alert("Questo beat è protetto o non disponibile allo streaming diretto. Scegline un altro.");
+                    playIcon.className = "fa-solid fa-play ml-0.5";
+                }
             }
         }
 
-        // Gestione standard dei controlli musicali
         function togglePlay() {
             if (appState.currentIndex === -1) return;
-            if (appState.isPlaying) {
-                audio.pause();
-                appState.isPlaying = false;
-            } else {
-                audio.play();
-                appState.isPlaying = true;
-            }
+            if (appState.isPlaying) { audio.pause(); appState.isPlaying = false; } 
+            else { audio.play(); appState.isPlaying = true; }
             updatePlayButton();
         }
 
         function updatePlayButton() {
-            if (appState.isPlaying) {
-                playIcon.className = "fa-solid fa-pause";
-            } else {
-                playIcon.className = "fa-solid fa-play ml-0.5";
-            }
+            playIcon.className = appState.isPlaying ? "fa-solid fa-pause" : "fa-solid fa-play ml-0.5";
         }
 
         audio.addEventListener('timeupdate', () => {
             if (audio.duration) {
-                const pct = (audio.currentTime / audio.duration) * 100;
-                progressBar.style.width = `${pct}%`;
+                progressBar.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
                 document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
             }
         });
@@ -235,35 +215,29 @@
         progressContainer.addEventListener('click', (e) => {
             if (!audio.duration) return;
             const rect = progressContainer.getBoundingClientRect();
-            const pct = (e.clientX - rect.left) / rect.width;
-            audio.currentTime = pct * audio.duration;
+            audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
         });
 
         function nextTrack() {
             if (appState.tracks.length === 0) return;
-            let nextIdx = (appState.currentIndex + 1) % appState.tracks.length;
-            selectTrack(nextIdx);
+            selectTrack((appState.currentIndex + 1) % appState.tracks.length);
         }
 
         function prevTrack() {
             if (appState.tracks.length === 0) return;
-            let prevIdx = appState.currentIndex - 1;
-            if (prevIdx < 0) prevIdx = appState.tracks.length - 1;
-            selectTrack(prevIdx);
+            let p = appState.currentIndex - 1;
+            selectTrack(p < 0 ? appState.tracks.length - 1 : p);
         }
 
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return "0:00";
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        function formatTime(s) {
+            if (isNaN(s)) return "0:00";
+            return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
         }
 
         function setupMediaSession(track) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title,
-                    artist: track.artist,
+                    title: track.title, artist: track.artist,
                     artwork: [{ src: track.thumbnail, sizes: '512x512', type: 'image/png' }]
                 });
                 navigator.mediaSession.setActionHandler('play', () => { audio.play(); appState.isPlaying = true; updatePlayButton(); });
