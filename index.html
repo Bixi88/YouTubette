@@ -25,7 +25,6 @@
         ::-webkit-scrollbar-track { background: #161616; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        /* EFFETTO SFUMATURA (Scroll Mask) SOPRA E SOTTO LA LISTA CANZONI */
         .scroll-mask-container {
             position: relative;
             flex: 1;
@@ -81,14 +80,6 @@
         
         #progressBar.scrubbing {
             transition: none !important;
-        }
-
-        /* TOGGLE SWITCH ANIMATO FLUIDO */
-        .toggle-dot {
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .toggle-bg {
-            transition: background-color 0.25s ease;
         }
     </style>
 </head>
@@ -182,9 +173,9 @@
         </section>
     </main>
 
-    <footer id="footerControls" class="bg-[#161616] rounded-2xl px-4 pt-2 pb-4 flex flex-col items-center shrink-0 z-50 select-none relative shadow-lg">
+    <footer id="footerControls" class="bg-[#161616] rounded-2xl px-4 pt-1.5 pb-3 flex flex-col items-center shrink-0 z-50 select-none relative shadow-lg">
         
-        <div id="swipeTitleContainer" class="w-full text-center py-1.5 mb-1 cursor-grab active:cursor-grabbing bg-transparent select-none">
+        <div id="swipeTitleContainer" class="w-full text-center py-1 mb-1 cursor-grab active:cursor-grabbing bg-transparent select-none">
             <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
                 <div id="marqueeContent" class="marquee-content">
                     <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">YouTubette</span>
@@ -211,7 +202,7 @@
         <div class="flex items-center justify-center space-x-6 md:hidden w-full">
             <button id="mobileBack10Btn" class="text-gray-400 active:text-white text-sm p-1.5"><i class="fa-solid fa-arrow-rotate-left"></i> 10</button>
             <button id="mobilePrevBtn" class="text-gray-400 active:text-white text-lg p-1.5"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="mobilePlayPauseBtn" class="bg-white text-black w-11 h-11 rounded-full flex items-center justify-center active:scale-95 text-lg pl-0.5 shadow-lg">
+            <button id="mobilePlayPauseBtn" class="bg-white text-black w-10 h-10 rounded-full flex items-center justify-center active:scale-95 text-base pl-0.5 shadow-lg">
                 <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
             </button>
             <button id="mobileNextBtn" class="text-gray-400 active:text-white text-lg p-1.5"><i class="fa-solid fa-forward-step"></i></button>
@@ -221,7 +212,7 @@
         <div class="hidden md:flex items-center justify-center space-x-8 w-full">
             <button id="back10Btn" class="text-gray-400 hover:text-white transition-colors text-xs flex items-center space-x-1 p-1.5" title="-10 Secondi"><i class="fa-solid fa-arrow-rotate-left"></i> <span>10s</span></button>
             <button id="prevBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1.5"><i class="fa-solid fa-backward-step"></i></button>
-            <button id="playPauseBtn" class="bg-white text-black w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-lg pl-0.5 shadow-md">
+            <button id="playPauseBtn" class="bg-white text-black w-11 h-11 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-base pl-0.5 shadow-md">
                 <i class="fa-solid fa-play" id="playIcon"></i>
             </button>
             <button id="nextBtn" class="text-gray-400 hover:text-white transition-colors text-xl p-1.5"><i class="fa-solid fa-forward-step"></i></button>
@@ -246,16 +237,6 @@
                     class="w-full bg-[#242424] text-sm text-white px-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-white">
             </div>
 
-            <div class="flex items-center justify-between border-t border-[#242424] pt-4 mb-6">
-                <div>
-                    <label class="block text-sm font-semibold text-white">Feedback Tattile</label>
-                    <span class="text-xs text-gray-400">Attiva le micro-vibrazioni sui controlli</span>
-                </div>
-                <button id="vibrationToggleBtn" class="toggle-bg w-12 h-6 flex items-center bg-[#242424] rounded-full p-0.5 cursor-pointer focus:outline-none">
-                    <div class="toggle-dot bg-white w-5 h-5 rounded-full shadow-md transform translate-x-0"></div>
-                </button>
-            </div>
-
             <div class="flex items-center justify-end space-x-3">
                 <button id="modalCancelBtn" class="text-gray-400 hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors">Annulla</button>
                 <button id="modalSaveBtn" class="bg-[#1DB954] text-black font-bold text-xs px-5 py-2 rounded-full active:scale-95 transition-all">Salva</button>
@@ -266,7 +247,7 @@
     <script>
         let appState = {
             apiKey: localStorage.getItem('youtubette_api_key') || '',
-            vibrationEnabled: localStorage.getItem('youtubette_vibration') !== 'false', 
+            vibrationEnabled: true, // Sempre attive su Android
             tracks: [],
             currentIndex: -1,
             isPlaying: false
@@ -309,20 +290,18 @@
             });
         }
 
-        // Funzione hardware rivista: tempi minimi aumentati a 15ms per sbloccare la risposta dei motori Android economici
+        // MOTORE DI VIBRAZIONE COMPATIBILE CON REGOLE CRHOME MOBILE
         function triggerHaptic(type) {
             if (!appState.vibrationEnabled || !('vibrate' in navigator)) return;
             try {
                 if (type === 'click') {
                     navigator.vibrate(15);
-                } else if (type === 'double') {
-                    navigator.vibrate([15, 30, 15]);
                 } else if (type === 'tick') {
-                    navigator.vibrate(10); // Alzato a 10ms, altrimenti Chrome mobile lo scarta a livello software
+                    navigator.vibrate(10); 
                 } else if (type === 'success') {
-                    navigator.vibrate(40);
+                    navigator.vibrate(35);
                 }
-            } catch(e) { console.log("Haptic rifiutato:", e); }
+            } catch(e) { console.log("Haptic bloccato da policy:", e); }
         }
 
         function onPlayerReady(event) {
@@ -345,7 +324,7 @@
                 if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
                 updateMediaSessionState(false);
                 if (event.data == YT.PlayerState.ENDED) {
-                    triggerHaptic('double');
+                    triggerHaptic('success');
                     nextTrack();
                 }
             }
@@ -354,12 +333,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
             
-            updateVibrationToggleUI();
-
-            // METODO DI SBLOCCO DI SICUREZZA AGGIORNATO: un listener globale al click sblocca definitivamente l'istanza hardware
-            document.body.addEventListener('click', function unlockHapticAPI() {
-                triggerHaptic('click'); // Vibra immediatamente al primo tocco ovunque sullo schermo
-                document.body.removeEventListener('click', unlockHapticAPI);
+            // TRICK DI ATTIVAZIONE: Il primissimo tocco dell'utente sblocca le API di vibrazione di Android
+            document.body.addEventListener('click', function unlockHaptics() {
+                triggerHaptic('click');
+                document.body.removeEventListener('click', unlockHaptics);
             }, { once: true });
 
             const hapticButtons = [
@@ -407,8 +384,6 @@
             document.getElementById('apiConfigBtn').addEventListener('click', openApiModal);
             document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
             document.getElementById('modalSaveBtn').addEventListener('click', saveApiKeyFromModal);
-
-            document.getElementById('vibrationToggleBtn').addEventListener('click', toggleVibrationSetting);
 
             swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
             swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
@@ -489,9 +464,8 @@
             swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
             swipeTitle.style.opacity = opacity;
 
-            // Roll progressivo calibrato a step leggermente più distanziati per non sovraccaricare il buffer Android
             if (absX >= 30 && absX < 75) {
-                let currentMilestone = Math.floor((absX - 30) / 8);
+                let currentMilestone = Math.floor((absX - 30) / 10);
                 if (currentMilestone > lastVibeMilestone) {
                     triggerHaptic('tick');
                     lastVibeMilestone = currentMilestone;
@@ -518,7 +492,6 @@
                 swipeTitle.style.transform = 'translate3d(0, 0, 0)';
                 swipeTitle.style.opacity = '1';
                 checkAndApplyMarquee();
-                if (Math.abs(currentX) > 15) triggerHaptic('click'); 
             }
             currentX = 0;
         }
@@ -552,8 +525,6 @@
             let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-bold text-white">${titleText}</span>`;
             if (channelText) {
                 cleanText += `<span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal">${channelText}</span>`;
-            } else {
-                cleanText += `<span id="playerTrackChannel" class="text-xs text-gray-400 ml-3 font-normal hidden"></span>`;
             }
             
             marqueeContent.innerHTML = cleanText;
@@ -564,29 +535,8 @@
             }
         }
 
-        function updateVibrationToggleUI() {
-            const btn = document.getElementById('vibrationToggleBtn');
-            if (!btn) return;
-            const dot = btn.querySelector('.toggle-dot');
-            if (appState.vibrationEnabled) {
-                btn.className = "toggle-bg w-12 h-6 flex items-center bg-[#1DB954] rounded-full p-0.5 cursor-pointer focus:outline-none";
-                dot.className = "toggle-dot bg-white w-5 h-5 rounded-full shadow-md transform translate-x-6";
-            } else {
-                btn.className = "toggle-bg w-12 h-6 flex items-center bg-[#242424] rounded-full p-0.5 cursor-pointer focus:outline-none";
-                dot.className = "toggle-dot bg-white w-5 h-5 rounded-full shadow-md transform translate-x-0";
-            }
-        }
-
-        function toggleVibrationSetting() {
-            appState.vibrationEnabled = !appState.vibrationEnabled;
-            localStorage.setItem('youtubette_vibration', appState.vibrationEnabled);
-            updateVibrationToggleUI();
-            triggerHaptic('click');
-        }
-
         function openApiModal() {
             document.getElementById('modalApiKeyInput').value = appState.apiKey;
-            updateVibrationToggleUI();
             document.getElementById('apiModal').classList.remove('hidden');
         }
 
@@ -653,7 +603,7 @@
             } catch (error) {
                 alert(error.message);
                 if (placeholderText && !isLoadMore) placeholderText.innerText = "";
-            } finally { if (isLoadMore) isFetchingMore = false; }
+            } finaly { if (isLoadMore) isFetchingMore = false; }
         }
 
         function renderTracklist() {
@@ -710,7 +660,7 @@
                 const newText = newRow.querySelector('p.text-xs');
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
                 
-                // SPOSTAMENTO AUTO-SCROLL FLUIDO IN VISTA
+                // AUTO SCROLL ANIMATO FLUIDO
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
