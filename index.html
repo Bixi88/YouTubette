@@ -309,20 +309,20 @@
             });
         }
 
-        // Funzione per attivare il feedback vibrazionale
+        // Funzione hardware rivista: tempi minimi aumentati a 15ms per sbloccare la risposta dei motori Android economici
         function triggerHaptic(type) {
             if (!appState.vibrationEnabled || !('vibrate' in navigator)) return;
             try {
                 if (type === 'click') {
-                    navigator.vibrate(12);
+                    navigator.vibrate(15);
                 } else if (type === 'double') {
-                    navigator.vibrate([10, 30, 10]);
+                    navigator.vibrate([15, 30, 15]);
                 } else if (type === 'tick') {
-                    navigator.vibrate(6);
+                    navigator.vibrate(10); // Alzato a 10ms, altrimenti Chrome mobile lo scarta a livello software
                 } else if (type === 'success') {
-                    navigator.vibrate(38);
+                    navigator.vibrate(40);
                 }
-            } catch(e) { console.log("Haptic bloccato da policy browser:", e); }
+            } catch(e) { console.log("Haptic rifiutato:", e); }
         }
 
         function onPlayerReady(event) {
@@ -354,14 +354,13 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('hidden');
             
-            // Inizializza graficamente lo stato corretto del toggle vibrazione all'avvio dell'app
             updateVibrationToggleUI();
 
-            // Sblocca i permessi di vibrazione di Android al primissimo tocco dell'utente sullo schermo
-            document.body.addEventListener('touchstart', function unlockHaptics() {
-                triggerHaptic('tick');
-                document.body.removeEventListener('touchstart', unlockHaptics);
-            }, { passive: true });
+            // METODO DI SBLOCCO DI SICUREZZA AGGIORNATO: un listener globale al click sblocca definitivamente l'istanza hardware
+            document.body.addEventListener('click', function unlockHapticAPI() {
+                triggerHaptic('click'); // Vibra immediatamente al primo tocco ovunque sullo schermo
+                document.body.removeEventListener('click', unlockHapticAPI);
+            }, { once: true });
 
             const hapticButtons = [
                 'searchBtn', 'filterToggleBtn', 'apiConfigBtn',
@@ -490,8 +489,9 @@
             swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
             swipeTitle.style.opacity = opacity;
 
+            // Roll progressivo calibrato a step leggermente più distanziati per non sovraccaricare il buffer Android
             if (absX >= 30 && absX < 75) {
-                let currentMilestone = Math.floor((absX - 30) / 6);
+                let currentMilestone = Math.floor((absX - 30) / 8);
                 if (currentMilestone > lastVibeMilestone) {
                     triggerHaptic('tick');
                     lastVibeMilestone = currentMilestone;
@@ -710,7 +710,7 @@
                 const newText = newRow.querySelector('p.text-xs');
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('text-[#1DB954]'); }
                 
-                // ANIMAZIONE DI SCROLL AUTOMATICO PER TENERE LA CANZONE ATTIVA A VISTA
+                // SPOSTAMENTO AUTO-SCROLL FLUIDO IN VISTA
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
