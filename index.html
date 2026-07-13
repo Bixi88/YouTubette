@@ -3,1116 +3,957 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LiFa - La tua lista della spesa</title>
+    <title>YouTubette - Player</title>
+    <link rel="manifest" href="manifest.json">
     
-    <link rel="manifest" href="/Liste-Famiglia/manifest.json?v=2">
-    
-    <meta id="meta-theme-color" name="theme-color" content="#0B0D0B">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1f5f9">
-    <meta name="msapplication-navbutton-color" content="#000000">
+    <meta name="theme-color" content="#0b0b0b" id="metaThemeColor">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <meta name="apple-mobile-web-app-title" content="YouTubette">
     
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         :root {
-            /* Palette Chiara Dinamica */
-            --bg-color: #f1f5f9;          
-            --surface-color: #ffffff;     
-            --item-bg: #f0f4f8;           
-            --text-color: #0f172a;        
-            --text-secondary: #64748b;
-            --accent-color: #2563eb;       
-            --accent-light: #eff6ff;
-            --border-color: #cbd5e1;       
-            --item-border: #e2e8f0;
-            --squircle-radius: 14px;
-            --item-radius: 8px;      
-            --transition-speed: 0.2s;
-            
-            --delete-bg: #e2e8f0;
-            --delete-color: #334155;
-
-            --tile-shadow: 0 4px 16px rgba(0,0,0,0.03);
-            --tile-shadow-sm: 0 1px 3px rgba(0,0,0,0.01);
+            --bg-main: #0b0b0b;
+            --bg-card: #161616;
+            --bg-input: #242424;
+            --accent: #1DB954;
+            --text-main: #ffffff;
+            --text-muted: #a3a3a3;
+            --is-light: 0;
         }
 
-        html[data-theme="dark"] {
-            /* Palette Scura Dinamica Default */
-            --bg-color: #000000;          
-            --surface-color: #121314;     
-            --item-bg: #1a1c1e;           
-            --text-color: #ffffff;        
-            --text-secondary: #94a3b8;
-            --accent-color: #10b981;       
-            --accent-light: rgba(16, 185, 129, 0.15);
-            --border-color: #232527;       
-            --item-border: #2c2e31;       
-            
-            --delete-bg: #2c2e31;
-            --delete-color: #cbd5e1;
+        html, body {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-card); }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            transition: background-color var(--transition-speed), color var(--transition-speed);
-            overscroll-behavior-y: contain;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
+        .scroll-mask-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            height: 100%;
         }
-
-        header {
-            padding: 12px 14px; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 600px;
-            margin: 0 auto;
-            background: var(--bg-color);
-            position: sticky;
+        .scroll-mask-container::before,
+        .scroll-mask-container::after {
+            content: "";
+            position: absolute;
+            left: 0; right: 0;
+            height: 24px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .scroll-mask-container::before {
             top: 0;
-            z-index: 10;
+            background: linear-gradient(to bottom, var(--bg-card) 0%, transparent 100%);
+        }
+        .scroll-mask-container::after {
+            bottom: 0;
+            background: linear-gradient(to top, var(--bg-card) 0%, transparent 100%);
         }
 
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        
-        .header-titles {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.1; } 
-        
-        .header-subtitle {
-            margin: 1px 0 0 0;
-            font-size: 11px; 
-            font-weight: 700;
-            color: var(--text-secondary);
-            letter-spacing: -0.1px;
-        }
-        
-        .settings-btn {
-            background: var(--surface-color); border: 2px solid var(--border-color); color: var(--text-color);
-            font-size: 15px; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.04); transition: transform 0.2s;
-        }
-        .settings-btn:active { transform: scale(0.9); }
-
-        .nav-tabs {
-            display: flex;
-            gap: 6px;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 6px 14px;
-            background-color: var(--bg-color);
-            position: sticky;
-            top: 60px; 
-            z-index: 10;
-        }
-
-        .tab-btn {
-            flex: 1;
-            text-align: center;
-            padding: 8px 6px; 
-            cursor: pointer;
-            font-weight: 800;
-            font-size: 11px; 
-            letter-spacing: 0.3px;
-            color: var(--text-secondary);
-            border-radius: 10px;
-            border: 2px solid transparent;
-            background: var(--surface-color);
-            box-shadow: 0 1px 4px rgba(0,0,0,0.01);
-            transition: all var(--transition-speed) ease;
-            text-transform: uppercase;
-        }
-        .tab-btn.active {
-            color: #ffffff;
-            background: var(--accent-color);
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
-        }
-
-        .main-container { width: 100%; overflow: hidden; }
-        .tabs-slider { 
-            display: flex; 
-            width: 100%; 
-            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
-            will-change: transform; 
-        }
-        .tab-content { width: 100%; flex-shrink: 0; padding: 10px 14px; max-width: 600px; margin: 0 auto; padding-bottom: 70px; min-height: calc(100vh - 130px); }
-
-        .block-group { 
-            background-color: var(--surface-color);
-            border: 2px solid var(--border-color);
-            border-radius: var(--squircle-radius);
-            padding: 12px; 
-            margin-bottom: 12px; 
-            box-shadow: var(--tile-shadow);
-        }
-        
-        .block-header-squircle {
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            margin-bottom: 10px; 
-        }
-        .block-header-squircle span {
-            font-size: 15px; 
-            font-weight: 900;
-            color: var(--text-color);
-            letter-spacing: -0.3px;
-        }
-
-        .block-add-btn {
-            background: var(--accent-color); border: none; color: #ffffff;
-            width: 30px; height: 30px; border-radius: 50%; font-size: 18px; font-weight: 700; cursor: pointer; 
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-            transition: transform 0.1s;
-        }
-        .block-add-btn:active { transform: scale(0.85); }
-
-        .ai-suggestions-container { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px 0; }
-        .ai-suggestions-container::-webkit-scrollbar { display: none; }
-        
-        .ai-chip {
-            padding: 5px 10px; 
-            background-color: var(--item-bg); 
-            border: 1px solid var(--accent-color); 
-            border-radius: 8px; 
-            font-size: 11px; 
-            font-weight: 700; 
-            color: var(--text-secondary); 
-            white-space: nowrap; 
-            cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-            transition: background-color var(--transition-speed);
-        }
-        .ai-chip:active {
-            background-color: var(--accent-light);
-        }
-
-        .list-container { display: flex; flex-direction: column; gap: 6px; } 
-
-        .list-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 10px 12px; 
-            background: var(--item-bg);
-            border-radius: var(--item-radius);
-            border: 1px solid var(--item-border);
-            box-shadow: var(--tile-shadow-sm);
-        }
-        .list-item-text { font-size: 14px; font-weight: 700; flex: 1; color: var(--text-color); } 
-        .list-item-actions { display: flex; align-items: center; gap: 10px; }
-        
-        /* --- OPTIMIZATION TAB FILM --- */
-        #content-tab-film .block-group { padding: 14px 14px 6px 14px; }
-        #content-tab-film .block-header-squircle { margin-bottom: 12px; }
-        .film-list { gap: 4px !important; background: transparent !important; border: none !important; border-radius: 0px !important; overflow: visible; }
-        .film-list .list-item { background: transparent !important; border: none !important; border-radius: 0px !important; padding: 6px 0px; box-shadow: none !important; }
-        .film-list .list-item-text { font-size: 16px; font-weight: 700; }
-        .film-list .drag-handle { font-size: 14px; margin-right: 8px; opacity: 0.5; }
-        .film-list .delete-btn { width: 24px; height: 24px; font-size: 9px; }
-        
-        .drag-handle { 
-            color: var(--text-secondary); 
-            font-size: 14px; 
-            cursor: grab; 
-            margin-right: 8px;
-            display: flex; 
-            align-items: center; 
-            user-select: none;
-        }
-        
-        .sortable-ghost { opacity: 0.4; background: var(--border-color); }
-
-        .delete-btn { 
-            background: var(--delete-bg); 
-            border: none; 
-            color: var(--delete-color); 
-            width: 26px; 
-            height: 26px; 
-            border-radius: 50%; 
-            font-size: 10px; 
-            font-weight: 900;
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            cursor: pointer; 
-            transition: transform 0.1s, opacity 0.2s; 
-        }
-        .delete-btn:active { transform: scale(0.85); }
-
-        .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100; display: none; opacity: 0; transition: opacity var(--transition-speed); }
-        .backdrop.open { display: block; opacity: 1; }
-
-        .sheet { 
-            position: fixed; left: 50%; transform: translate(-50%, 100%); width: 100%; max-width: 600px; 
-            background: var(--surface-color); padding: 18px; border-radius: var(--squircle-radius) var(--squircle-radius) 0 0; z-index: 101; 
-            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 -6px 24px rgba(0,0,0,0.12);
-            bottom: 0; max-height: 85vh; overflow-y: auto;
-            border-top: 2px solid var(--border-color);
-        }
-        .sheet.open { transform: translate(-50%, 0); }
-
-        /* MODIFICA POPUP AGGIUNGI: PULSANTI AFFIANCATI */
-        #addSheet.sheet {
-            bottom: auto;
-            top: 25%;
-            transform: translate(-50%, -20%) scale(0.9);
-            width: 90%;
-            max-width: 360px;
-            border-radius: var(--squircle-radius);
-            border: 2px solid var(--border-color);
-            opacity: 0;
-            visibility: hidden;
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s, visibility 0.2s;
-            padding: 18px;
-        }
-        #addSheet.sheet.open {
-            transform: translate(-50%, -20%) scale(1);
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .sheet-actions-row {
-            display: flex;
-            gap: 10px;
+        .marquee-wrapper {
+            position: relative;
             width: 100%;
+            overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
         }
-        .sheet-actions-row .btn {
-            flex: 1;
-            margin-bottom: 0;
+        .marquee-content {
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+        }
+        .animate-marquee {
+            animation: marqueeLoop 15s linear infinite;
+        }
+        @keyframes marqueeLoop {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
         }
 
-        h3 { margin: 0 0 14px 0; font-size: 17px; font-weight: 900; letter-spacing: -0.3px; }
-
-        .input-field { 
-            width: 100%; padding: 12px; border-radius: 10px; 
-            border: 2px solid var(--border-color); background: var(--item-bg); 
-            color: var(--text-color); margin-bottom: 14px; outline: none; 
-            font-size: 15px; font-weight: 700; -webkit-appearance: none;
+        #swipeTitleContainer {
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+            will-change: transform, opacity;
+            touch-action: pan-y;
         }
-        .input-field:focus { border-color: var(--accent-color); }
-
-        .btn { width: 100%; border: none; padding: 12px; border-radius: 10px; font-weight: 800; cursor: pointer; margin-bottom: 8px; font-size: 14px; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.96); }
-        .btn-danger { background-color: rgba(255, 77, 79, 0.1) !important; color: #ff4d4f !important; border: 1px solid rgba(255, 77, 79, 0.2); }
-        .btn-secondary { background-color: var(--item-bg) !important; color: var(--text-color) !important; border: 2px solid var(--border-color); }
-        .btn-confirm { background: var(--accent-color) !important; color: #ffffff !important; box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
-
-        /* GRIGLIA SELEZIONE COLORI PALETTE */
-        .palette-select-wrap { margin: 10px 0 15px 0; }
-
-        .settings-section { margin-bottom: 18px; border-bottom: 2px solid var(--border-color); padding-bottom: 14px; }
-        .settings-title { font-size: 12px; font-weight: 900; margin-bottom: 10px; color: var(--text-secondary); letter-spacing: 0.5px; text-transform: uppercase; }
-        .manage-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-        .manage-item input { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid var(--border-color); background: var(--item-bg); color: var(--text-color); font-weight: 700; font-size: 14px; }
-        
-        .uppercase-input { text-transform: uppercase; }
-        .manage-item-block .delete-btn { width: 30px; height: 30px; }
-
-        .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
-        .switch-label { font-size: 14px; font-weight: 700; }
-
-        /* SWITCH GENERALE RIGUARDANTE LE ANIMAZIONI */
-        .theme-switch { 
-            width: 46px; height: 26px; background: var(--border-color); 
-            border-radius: 26px; position: relative; cursor: pointer; 
-            border: 1px solid transparent; transition: background-color var(--transition-speed);
-        }
-        .theme-switch-handle { 
-            width: 20px; height: 20px; background: #ffffff; 
-            border-radius: 50%; position: absolute; top: 2px; left: 2px; 
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        #swipeTitleContainer.dragging {
+            transition: none !important;
         }
         
-        /* Gestione stato attivo/scuro degli switch */
-        .theme-switch.active { background: var(--accent-color); }
-        .theme-switch.active .theme-switch-handle { transform: translateX(20px); }
+        #progressBar.scrubbing {
+            transition: none !important;
+        }
 
-        #ai-toggle-switch { background: var(--border-color); }
-        #ai-toggle-switch.active { background: var(--accent-color); }
-
-        .selector-label { font-size: 11px; font-weight: 800; color: var(--text-secondary); margin-bottom: 8px; display: block; letter-spacing: 0.3px; }
-        .empty-text { color: var(--text-secondary); font-size: 13px; font-weight: 600; opacity: 0.5; padding: 2px; }
+        .custom-bg-main { background-color: var(--bg-main); }
+        .custom-bg-card { background-color: var(--bg-card); }
+        .custom-bg-input { background-color: var(--bg-input); }
+        .custom-text-accent { color: var(--accent); }
+        .custom-bg-accent { background-color: var(--accent); }
+        .custom-border-accent { border-color: var(--accent); }
+        .custom-text-muted { color: var(--text-muted); }
     </style>
 </head>
-<body>
+<body class="font-sans flex flex-col justify-between hidden p-2 sm:p-3 box-border h-full custom-bg-main">
 
-    <header>
-        <div class="header-left">
-            <button class="settings-btn" onclick="openSettingsSheet()">⚙️</button>
-            <div class="header-titles">
-                <h1>LiFa</h1>
-                <div class="header-subtitle">La tua lista della spesa</div>
+    <header class="h-16 px-4 flex items-center justify-between rounded-2xl mb-2 shrink-0 z-50 shadow-md custom-bg-card">
+        <div class="flex items-center space-x-1.5 text-xl font-bold tracking-tight shrink-0 custom-text-accent">
+            <i class="fa-solid fa-radio"></i>
+            <span class="hidden sm:inline font-bold ml-1 text-[var(--text-main)]">YouTubette</span>
+        </div>
+        
+        <div class="flex-1 max-w-md mx-4 relative">
+            <div class="relative flex items-center w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
+                <input type="text" id="searchInput" placeholder="Cerca un beat..." 
+                    class="w-full text-sm pl-10 pr-24 py-2 rounded-full border border-transparent focus:outline-none focus:border-[var(--text-main)] transition-all custom-bg-input text-[var(--text-main)]">
+                
+                <div class="absolute right-1.5 flex items-center space-x-1">
+                    <button id="filterToggleBtn" class="text-gray-400 hover:text-[var(--text-main)] p-1.5 text-sm" title="Filtri avanzati">
+                        <i class="fa-solid fa-sliders"></i>
+                    </button>
+                    <button id="searchBtn" class="font-semibold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform custom-bg-accent text-black">
+                        Cerca
+                    </button>
+                </div>
+            </div>
+
+            <div id="filterMenu" class="hidden absolute top-full left-0 right-0 mt-2 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-700/30">
+                <p class="text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtri di Ricerca</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[10px] mb-1 custom-text-muted">Ordina per</label>
+                        <select id="filterOrder" class="w-full text-xs p-2 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                            <option value="relevance">Rilevanza</option>
+                            <option value="date" selected>Data</option>
+                            <option value="viewCount">Visualizzazioni</option>
+                            <option value="rating">Valutazione</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] mb-1 custom-text-muted">Durata</label>
+                        <select id="filterDuration" class="w-full text-xs p-2 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                            <option value="any" selected>Qualsiasi</option>
+                            <option value="short">Breve (&lt; 4 min)</option>
+                            <option value="medium">Media (4-20 min)</option>
+                            <option value="long">Lunga (&gt; 20 min)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] mb-1 custom-text-muted">Caricato in</label>
+                        <select id="filterPublishedAfter" class="w-full text-xs p-2 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                            <option value="any" selected>Sempre</option>
+                            <option value="hour">Ultima ora</option>
+                            <option value="day">Oggi</option>
+                            <option value="week">Questa settimana</option>
+                            <option value="month">Questo mese</option>
+                            <option value="year">Quest'anno</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="theme-switch" id="main-theme-switch" onclick="toggleTheme()"><div class="theme-switch-handle"></div></div>
+
+        <div class="shrink-0 flex items-center space-x-1">
+            <button id="pwaInstallBtn" class="hidden text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform custom-bg-accent">
+                <i class="fa-solid fa-download mr-1"></i> Installa
+            </button>
+            <button id="apiConfigBtn" class="text-gray-400 hover:text-[var(--text-main)] p-2 rounded-full transition-colors w-9 h-9 flex items-center justify-center hover:bg-[var(--bg-input)]" title="Impostazioni">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+        </div>
     </header>
 
-    <div class="nav-tabs" id="nav-tabs-container"></div>
-
-    <div class="main-container" id="swipe-area">
-        <div class="tabs-slider" id="tabs-slider"></div>
-    </div>
-
-    <div class="backdrop" id="backdrop" onclick="closeAllSheets()"></div>
-
-    <div class="sheet" id="addSheet">
-        <h3 id="add-popup-title">Aggiungi Elemento</h3>
-        <input type="search" 
-               inputmode="text"
-               id="item-input" 
-               class="input-field" 
-               placeholder="Cosa vuoi aggiungere?" 
-               onkeyup="handleKeyUp(event)"
-               autocomplete="off" 
-               autocorrect="off" 
-               autocapitalize="off" 
-               spellcheck="false">
-               
-        <div class="sheet-actions-row">
-            <button class="btn btn-secondary" onclick="closeAllSheets()">Annulla</button>
-            <button class="btn btn-confirm" onclick="addItem()">Aggiungi</button>
-        </div>
-    </div>
-
-    <div class="sheet" id="settingsSheet">
-        <h3>Impostazioni Struttura</h3>
-        
-        <div class="settings-section">
-            <div class="toggle-row">
-                <span class="switch-label">Mostra suggerimenti AI predittivi</span>
-                <div class="theme-switch" id="ai-toggle-switch" onclick="toggleAISuggestions()"><div class="theme-switch-handle" id="ai-toggle-handle"></div></div>
+    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden gap-2 sm:gap-3 mb-2">
+        <section class="flex-1 md:w-[66%] p-4 pt-2 flex flex-col rounded-2xl overflow-hidden h-full shadow-md custom-bg-card">
+            <div class="scroll-mask-container">
+                <div id="trackList" class="space-y-1 pb-6 pt-2 h-full overflow-y-auto">
+                    <p id="placeholderText" class="text-xs p-4 italic text-center mt-6 custom-text-muted">Fai una ricerca per caricare i brani.</p>
+                </div>
             </div>
-            <button class="btn btn-danger" style="padding: 10px; font-size: 12px; margin-top: 6px;" onclick="resetAllAIClicks()">Reset Totale Cache Suggerimenti</button>
-        </div>
+        </section>
 
-        <div class="settings-section">
-            <div class="settings-title" id="palette-section-title">Stile interfaccia (Palette)</div>
-            <div class="palette-select-wrap">
-                <select id="palette-options-select" class="input-field" style="margin-bottom:0;" onchange="onPaletteSelectChange(this.value)"></select>
+        <section id="videoSection" class="flex flex-col h-36 md:h-full md:w-[34%] relative shrink-0 md:shrink rounded-2xl overflow-hidden shadow-md custom-bg-card">
+            <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
+                <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none z-10 custom-bg-card">
+                    <i class="fa-solid fa-music text-2xl md:text-3xl mb-1"></i>
+                    <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle"></p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="footerControls" class="rounded-2xl px-4 pt-1.5 pb-3 flex flex-col items-center shrink-0 z-40 select-none relative shadow-lg custom-bg-card">
+        
+        <div id="swipeTitleContainer" class="w-full text-center py-1 mb-1 cursor-grab active:cursor-grabbing bg-transparent select-none">
+            <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
+                <div id="marqueeContent" class="marquee-content">
+                    <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-[var(--text-main)]">YouTubette</span>
+                    <span id="playerTrackChannel" class="text-xs ml-3 font-normal custom-text-muted"></span>
+                </div>
             </div>
         </div>
 
-        <div class="settings-section">
-            <div class="settings-title">Gestisci Tab Principali</div>
-            <div id="manage-tabs-list"></div>
-            <button class="btn btn-secondary" style="padding: 10px; font-size: 12px;" onclick="addNewTabStructure()">+ Aggiungi Nuovo Tab</button>
+        <div class="w-full flex items-center space-x-3 text-xs mb-2 max-w-2xl relative custom-text-muted">
+            <span id="currentTime" class="w-9 text-left select-none">0:00</span>
+            
+            <div class="flex-1 h-4 rounded-full relative cursor-pointer py-1 bg-neutral-700/40" id="progressBarContainer">
+                <div class="w-full h-2 rounded-full absolute top-1 left-0 custom-bg-input"></div>
+                <div class="h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100 custom-bg-accent" id="progressBar"></div>
+                
+                <div id="progressTooltip" class="hidden absolute bottom-full mb-2 text-black font-bold text-[11px] px-2 py-0.5 rounded shadow-md pointer-events-none transform -translate-x-1/2 z-50 custom-bg-accent">
+                    0:00
+                </div>
+            </div>
+            
+            <span id="durationTime" class="w-9 text-right select-none">0:00</span>
         </div>
 
-        <div class="settings-section">
-            <div class="settings-title">Gestisci Sotto-Sezioni</div>
-            <label class="selector-label">Seleziona il tab da modificare:</label>
-            <select id="settings-tab-select" class="input-field" style="padding:10px; margin-bottom:10px; border-radius: 8px; font-size: 14px;" onchange="renderSettingsBlocks()"></select>
-            <div id="manage-blocks-list"></div>
-            <button class="btn btn-secondary" style="padding: 10px; font-size: 12px;" onclick="addNewBlockStructure()">+ Aggiungi Sotto-Sezione</button>
+        <!-- CONTROLLI MOBILE -->
+        <div class="grid grid-cols-3 w-full items-center md:hidden h-10">
+            <div></div> 
+            <div class="flex items-center justify-center space-x-6 h-full">
+                <button id="mobilePrevBtn" class="text-gray-400 active:text-[var(--text-main)] text-lg p-1.5 flex items-center justify-center"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="mobilePlayPauseBtn" class="w-10 h-10 min-h-10 max-h-10 min-w-10 max-w-10 rounded-full flex items-center justify-center active:scale-95 text-base shadow-lg shrink-0 bg-[var(--text-main)] text-[var(--bg-main)]">
+                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+                </button>
+                <button id="mobileNextBtn" class="text-gray-400 active:text-[var(--text-main)] text-lg p-1.5 flex items-center justify-center"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+            <div class="flex justify-end items-center h-full">
+                <button id="mobileDownloadBtn" class="text-gray-500 active:text-[var(--accent)] text-lg p-1.5 mr-2 opacity-30 transition-all flex items-center justify-center" title="Scarica MP3" disabled>
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
+            </div>
         </div>
-        
-        <button class="btn btn-confirm" onclick="closeAllSheets()" style="margin-top:6px;">Salva e Chiudi</button>
+
+        <!-- CONTROLLI DESKTOP -->
+        <div class="hidden md:flex items-center justify-between w-full max-w-3xl px-4">
+            <div class="flex items-center space-x-2 w-1/4 justify-start custom-text-muted">
+                <i class="fa-solid fa-volume-high text-sm"></i>
+                <input type="range" id="volumeSlider" min="0" max="100" value="100" 
+                    class="w-24 h-1 rounded-full appearance-none cursor-pointer accent-[var(--text-main)] bg-neutral-600">
+            </div>
+            
+            <div class="flex items-center justify-center space-x-8 w-2/4">
+                <button id="prevBtn" class="text-gray-400 hover:text-[var(--text-main)] transition-colors text-xl p-1.5"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="w-11 h-11 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-base pl-0.5 shadow-md bg-[var(--text-main)] text-[var(--bg-main)]">
+                    <i class="fa-solid fa-play" id="playIcon"></i>
+                </button>
+                <button id="nextBtn" class="text-gray-400 hover:text-[var(--text-main)] transition-colors text-xl p-1.5"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+            
+            <div class="flex items-center w-1/4 justify-end">
+                <button id="downloadBtn" class="text-gray-500 hover:text-[var(--text-main)] transition-all text-lg p-1.5 opacity-30 cursor-not-allowed" title="Scarica MP3" disabled>
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL IMPOSTAZIONI -->
+    <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="border w-full max-w-md rounded-2xl p-6 shadow-2xl relative custom-bg-card border-neutral-800">
+            <h3 class="text-lg font-bold mb-5 flex items-center text-[var(--text-main)]">
+                <i class="fa-solid fa-sliders mr-2 custom-text-accent"></i> Impostazioni
+            </h3>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">YouTube API Key</label>
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la chiave API..." 
+                    class="w-full text-sm px-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia (Palette)</label>
+                <select id="modalThemeSelect" class="w-full text-sm px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                </select>
+            </div>
+
+            <div class="mb-6 flex items-center justify-between border-t border-neutral-800/50 pt-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">Visualizza Video</label>
+                    <span class="text-[10px] custom-text-muted">Nascondi il riquadro video per espandere la playlist</span>
+                </div>
+                <input type="checkbox" id="modalShowVideoInput" class="w-4 h-4 rounded appearance-none checked:bg-[var(--accent)] bg-[var(--bg-input)] border border-neutral-700 checked:border-transparent cursor-pointer relative flex items-center justify-center before:content-['✓'] before:text-black before:text-xs before:font-bold before:hidden checked:before:block">
+            </div>
+
+            <div class="flex items-center justify-end space-x-3">
+                <button id="modalCancelBtn" class="hover:text-[var(--text-main)] font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
+                <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-full active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // CONFIGURAZIONE COLORI CON 10 LIGHT E 30 DARK
-        const PALETTES = {
-            light: {
-                default:     { bg: '#f1f5f9', surf: '#ffffff', item: '#f0f4f8', text: '#0f172a', sec: '#64748b', acc: '#2563eb', accL: '#eff6ff', border: '#cbd5e1', itemB: '#e2e8f0', delB: '#e2e8f0', delC: '#334155' },
-                pureWhite:   { bg: '#ffffff', surf: '#ffffff', item: '#ffffff', text: '#111111', sec: '#8a8a8e', acc: '#007aff', accL: '#e5f2ff', border: '#ffffff', itemB: '#ffffff', delB: '#ffffff', delC: '#007aff', shadow: '0 4px 14px rgba(15,23,42,0.08)', shadowSm: '0 2px 6px rgba(15,23,42,0.05)' },
-                emerald:     { bg: '#f4fbf7', surf: '#ffffff', item: '#eef9f3', text: '#064e3b', sec: '#475569', acc: '#10b981', accL: '#e6fbf3', border: '#d1fae5', itemB: '#e6fbf3', delB: '#e6fbf3', delC: '#064e3b' },
-                nordic:      { bg: '#f0f4f8', surf: '#ffffff', item: '#e2e8f0', text: '#102a43', sec: '#627d98', acc: '#48bb78', accL: '#f0fff4', border: '#d9e2ec', itemB: '#e2e8f0', delB: '#bcccdc', delC: '#102a43' },
-                cream:       { bg: '#faf7f2', surf: '#ffffff', item: '#f3ede2', text: '#2d241e', sec: '#85766c', acc: '#d97706', accL: '#fef3c7', border: '#e7dfd5', itemB: '#f3ede2', delB: '#e7dfd5', delC: '#2d241e' },
-                lavender:    { bg: '#f7f5fa', surf: '#ffffff', item: '#efeaf5', text: '#2a1a3a', sec: '#716580', acc: '#7c3aed', accL: '#f5f3ff', border: '#e8e3f0', itemB: '#efeaf5', delB: '#e8e3f0', delC: '#2a1a3a' },
-                rose:        { bg: '#fdf6f6', surf: '#ffffff', item: '#faeaea', text: '#3a1a1a', sec: '#806565', acc: '#db2777', accL: '#fdf2f8', border: '#f7e3e3', itemB: '#faeaea', delB: '#f7e3e3', delC: '#3a1a1a' },
-                ocean:       { bg: '#f0f7ff', surf: '#ffffff', item: '#e0f0ff', text: '#0f2d4a', sec: '#527599', acc: '#0284c7', accL: '#e0f2fe', border: '#d0e7ff', itemB: '#e0f0ff', delB: '#d0e7ff', delC: '#0f2d4a' },
-                sage:        { bg: '#f4f6f4', surf: '#ffffff', item: '#e7ebe7', text: '#242c24', sec: '#667366', acc: '#16a34a', accL: '#f0fdf4', border: '#e2e8e2', itemB: '#e7ebe7', delB: '#e2e8e2', delC: '#242c24' },
-                monochrome:  { bg: '#f8fafc', surf: '#ffffff', item: '#f1f5f9', text: '#0f172a', sec: '#475569', acc: '#334155', accL: '#f8fafc', border: '#cbd5e1', itemB: '#e2e8f0', delB: '#cbd5e1', delC: '#0f172a' }
-            },
-            dark: {
-                default:      { bg: '#0b0f19', surf: '#161f30', item: '#1e293b', text: '#ffffff', sec: '#94a3b8', acc: '#3b82f6', accL: 'rgba(59,130,246,0.15)', border: '#243242', itemB: '#2e3e52', delB: '#243242', delC: '#cbd5e1' },
-                amoledWhite:  { bg: '#000000', surf: '#000000', item: '#121212', text: '#ffffff', sec: '#a0a0a0', acc: '#ffffff', accL: 'rgba(255,255,255,0.1)',  border: '#222222', itemB: '#333333', delB: '#222222', delC: '#ffffff' },
-                amoledEmerald:{ bg: '#000000', surf: '#000000', item: '#0d130f', text: '#ffffff', sec: '#8fa397', acc: '#10b981', accL: 'rgba(16,185,129,0.15)', border: '#16241c', itemB: '#1d3025', delB: '#16241c', delC: '#10b981' },
-                cyberpunk:    { bg: '#140018', surf: '#250036', item: '#3a0054', text: '#00ffcc', sec: '#ff0055', acc: '#f59e0b', accL: 'rgba(245,158,11,0.15)', border: '#ff0055', itemB: '#3a0054', delB: '#250036', delC: '#00ffcc' },
-                lavaCrimson:  { bg: '#0b0101', surf: '#1a0505', item: '#2b0a0a', text: '#fca5a5', sec: '#b91c1c', acc: '#ef4444', accL: 'rgba(239,68,68,0.15)',  border: '#3d0f0f', itemB: '#521414', delB: '#3d0f0f', delC: '#fca5a5' },
-                synthwave:    { bg: '#0f051d', surf: '#1a0b2e', item: '#251242', text: '#f8f0ff', sec: '#a894c0', acc: '#ff007f', accL: 'rgba(255,0,127,0.15)', border: '#33145a', itemB: '#3f1b6d', delB: '#33145a', delC: '#f8f0ff' },
-                classicDark:  { bg: '#121612', surf: '#1c221c', item: '#252c25', text: '#e2e8f0', sec: '#8da28d', acc: '#10b981', accL: 'rgba(16,185,129,0.15)', border: '#273027', itemB: '#2f3b2f', delB: '#273027', delC: '#e2e8f0' },
-                nordicNight:  { bg: '#0b132b', surf: '#1c2541', item: '#233156', text: '#edf2f4', sec: '#8d99ae', acc: '#4ea8de', accL: 'rgba(78,168,222,0.15)', border: '#233156', itemB: '#2b3e6c', delB: '#233156', delC: '#edf2f4' },
-                midnight:     { bg: '#0a0f1d', surf: '#141b2d', item: '#1d273e', text: '#e2e8f0', sec: '#7c8ba1', acc: '#3b82f6', accL: 'rgba(59,130,246,0.15)', border: '#222d4a', itemB: '#2b395c', delB: '#222d4a', delC: '#e2e8f0' },
-                forest:       { bg: '#0d140d', surf: '#172217', item: '#203020', text: '#e6efe6', sec: '#8fa38f', acc: '#22c55e', accL: 'rgba(34,197,94,0.15)', border: '#243524', itemB: '#2d432d', delB: '#243524', delC: '#e6efe6' },
-                dracula:      { bg: '#282a36', surf: '#44475a', item: '#383a48', text: '#f8f8f2', sec: '#6272a4', acc: '#ff5555', accL: 'rgba(255,85,85,0.15)',  border: '#6272a4', itemB: '#4f5268', delB: '#6272a4', delC: '#f8f8f2' },
-                obsidian:     { bg: '#0c1013', surf: '#172026', item: '#202c35', text: '#e2eaf0', sec: '#788996', acc: '#0ea5e9', accL: 'rgba(14,165,233,0.15)', border: '#24323c', itemB: '#2e3f4b', delB: '#24323c', delC: '#e2eaf0' },
-                deepSpace:    { bg: '#05050a', surf: '#0f0f1a', item: '#18182c', text: '#e0e0ff', sec: '#7a7a9a', acc: '#6366f1', accL: 'rgba(99,102,241,0.15)', border: '#1f1f3a', itemB: '#2a2a4e', delB: '#1f1f3a', delC: '#e0e0ff' },
-                tokyoNight:   { bg: '#1a1b26', surf: '#24283b', item: '#2f3549', text: '#a9b1d6', sec: '#565f89', acc: '#7aa2f7', accL: 'rgba(122,162,247,0.15)', border: '#383e5a', itemB: '#414868', delB: '#383e5a', delC: '#a9b1d6' },
-                oneDark:      { bg: '#1e1e24', surf: '#282c34', item: '#31353f', text: '#abb2bf', sec: '#5c6370', acc: '#61afef', accL: 'rgba(97,175,239,0.15)', border: '#3e4451', itemB: '#4b5263', delB: '#3e4451', delC: '#abb2bf' },
-                matrix:       { bg: '#000000', surf: '#051405', item: '#0a240a', text: '#00ff00', sec: '#00aa00', acc: '#00ff00', accL: 'rgba(0,255,0,0.15)',   border: '#0d340d', itemB: '#144414', delB: '#0d340d', delC: '#00ff00' },
-                oceanic:      { bg: '#0f172a', surf: '#1e293b', item: '#334155', text: '#f8fafc', sec: '#64748b', acc: '#06b6d4', accL: 'rgba(6,182,212,0.15)',  border: '#334155', itemB: '#475569', delB: '#334155', delC: '#f8fafc' },
-                bordeaux:     { bg: '#100508', surf: '#240c13', item: '#38141e', text: '#fbcfe8', sec: '#9d174d', acc: '#f43f5e', accL: 'rgba(244,63,94,0.15)',  border: '#4c1523', itemB: '#631c2e', delB: '#4c1523', delC: '#fbcfe8' },
-                nordDark:     { bg: '#2e3440', surf: '#3b4252', item: '#434c5e', text: '#eceff4', sec: '#d8dee9', acc: '#88c0d0', accL: 'rgba(136,192,208,0.15)', border: '#4c566a', itemB: '#4c566a', delB: '#4c566a', delC: '#eceff4' },
-                gruvbox:      { bg: '#1d2021', surf: '#282828', item: '#3c3836', text: '#fbf1c7', sec: '#a89984', acc: '#fe8019', accL: 'rgba(254,128,25,0.15)',  border: '#504945', itemB: '#665c54', delB: '#504945', delC: '#fbf1c7' },
-                solarized:    { bg: '#002b36', surf: '#073642', item: '#586e75', text: '#fdf6e3', sec: '#93a1a1', acc: '#268bd2', accL: 'rgba(38,139,210,0.15)',  border: '#073642', itemB: '#586e75', delB: '#073642', delC: '#fdf6e3' },
-                violet:       { bg: '#13001f', surf: '#26003d', item: '#39005c', text: '#f3e8ff', sec: '#c084fc', acc: '#a855f7', accL: 'rgba(168,85,247,0.15)', border: '#4c007a', itemB: '#5f0099', delB: '#4c007a', delC: '#f3e8ff' },
-                coffeeDark:   { bg: '#140f0d', surf: '#231b17', item: '#322721', text: '#f5ebe6', sec: '#a07864', acc: '#855845', accL: 'rgba(133,88,69,0.15)',  border: '#3d2f29', itemB: '#4d3b33', delB: '#3d2f29', delC: '#f5ebe6' },
-                steel:        { bg: '#11171a', surf: '#1d272c', item: '#29373e', text: '#eaf1f5', sec: '#78909c', acc: '#607d8b', accL: 'rgba(96,125,139,0.15)', border: '#344750', itemB: '#405863', delB: '#344750', delC: '#eaf1f5' },
-                goldBlack:    { bg: '#050505', surf: '#141414', item: '#222222', text: '#fef08a', sec: '#ca8a04', acc: '#eab308', accL: 'rgba(234,179,8,0.15)',  border: '#2d2d2d', itemB: '#383838', delB: '#2d2d2d', delC: '#fef08a' },
-                iceberg:      { bg: '#0a0e14', surf: '#161f29', item: '#222f3e', text: '#e2e9f3', sec: '#8193a9', acc: '#00d2ff', accL: 'rgba(0,210,255,0.15)',  border: '#2c3d52', itemB: '#364b64', delB: '#2c3d52', delC: '#e2e9f3' },
-                rust:         { bg: '#140905', surf: '#26120b', item: '#381c12', text: '#ffedd5', sec: '#c2410c', acc: '#ea580c', accL: 'rgba(234,88,12,0.15)',  border: '#4a2518', itemB: '#5c2f1e', delB: '#4a2518', delC: '#ffedd5' },
-                plum:         { bg: '#120514', surf: '#240b29', item: '#36123e', text: '#fae8ff', sec: '#a21caf', acc: '#d946ef', accL: 'rgba(217,70,239,0.15)', border: '#491854', itemB: '#5c1f6a', delB: '#491854', delC: '#fae8ff' },
-                carbon:       { bg: '#161616', surf: '#262626', item: '#353535', text: '#f4f4f4', sec: '#8d8d8d', acc: '#525252', accL: 'rgba(255,255,255,0.05)',border: '#393939', itemB: '#474747', delB: '#393939', delC: '#f4f4f4' },
-                military:     { bg: '#0f110c', surf: '#1b1f16', item: '#282e21', text: '#f1f5e9', sec: '#4d5c3f', acc: '#65a30d', accL: 'rgba(101,163,13,0.15)', border: '#343c2b', itemB: '#414b36', delB: '#343c2b', delC: '#f1f5e9' }
-            }
+        const themes = {
+            spotifyGreen: { name: "Spotify Green (Dark / Green)", bgMain: "#0b0b0b", bgCard: "#161616", bgInput: "#242424", accent: "#1DB954", textMain: "#ffffff", textMuted: "#a3a3a3", isLight: 0 },
+            amoledWhite:  { name: "Pure AMOLED (Black / White)", bgMain: "#000000", bgCard: "#000000", bgInput: "#000000", accent: "#ffffff", textMain: "#ffffff", textMuted: "#888888", isLight: 0 },
+            cyberPurple:  { name: "Cyber Purple (Dark / Neon Purple)", bgMain: "#0c0714", bgCard: "#150e22", bgInput: "#231834", accent: "#bf5af2", textMain: "#ffffff", textMuted: "#9893a5", isLight: 0 },
+            deepBlue:     { name: "Oceanic Depth (Dark / Electric Blue)", bgMain: "#050b14", bgCard: "#0d1527", bgInput: "#19253f", accent: "#0a84ff", textMain: "#ffffff", textMuted: "#8e9bb4", isLight: 0 },
+            lavaRed:      { name: "Lava Crimson (Dark / Material Red)", bgMain: "#0f0707", bgCard: "#1a0f0f", bgInput: "#2b1b1b", accent: "#ff453a", textMain: "#ffffff", textMuted: "#aa9999", isLight: 0 },
+            amberGold:    { name: "Amber Gold (Dark / Orange Amber)", bgMain: "#0d0a05", bgCard: "#19140c", bgInput: "#282015", accent: "#ff9f0a", textMain: "#ffffff", textMuted: "#aba499", isLight: 0 },
+            synthWave:    { name: "Synth Magenta (Dark / Hot Pink)", bgMain: "#0b050f", bgCard: "#170c1e", bgInput: "#271633", accent: "#ff375f", textMain: "#ffffff", textMuted: "#b29fb7", isLight: 0 },
+            materialTeal: { name: "Material Teal (Dark / Teal Green)", bgMain: "#040a09", bgCard: "#0c1715", bgInput: "#182825", accent: "#64ffda", textMain: "#ffffff", textMuted: "#91a3a0", isLight: 0 },
+            slateGray:    { name: "Minimal Slate (Dark / Silver Gray)", bgMain: "#121212", bgCard: "#1e1e1e", bgInput: "#2d2d2d", accent: "#e5e5ea", textMain: "#ffffff", textMuted: "#aeaeae", isLight: 0 },
+            midnightBlue: { name: "Midnight Blue (Dark / Indigo Accent)", bgMain: "#02040a", bgCard: "#090d16", bgInput: "#131a2c", accent: "#5e5ce6", textMain: "#ffffff", textMuted: "#828b9c", isLight: 0 },
+            cleanLight:   { name: "Clean Light (White / Royal Blue)", bgMain: "#ffffff", bgCard: "#eef2f6", bgInput: "#dce4ec", accent: "#0052cc", textMain: "#1c1c1e", textMuted: "#636366", isLight: 1 }
         };
 
-        const PALETTE_NAMES = {
-            light: {
-                default: 'Predefinito (White/Blue)', pureWhite: 'Full White (White/White)', emerald: 'Smeraldo (LightGreen/Emerald)', 
-                nordic: 'Nordico (LightGray/NordicGreen)', cream: 'Crema (Cream/Amber)', lavender: 'Lavanda (Lavender/Purple)', 
-                rose: 'Rosa (Rose/Pink)', ocean: 'Oceano (LightBlue/OceanBlue)', sage: 'Salvia (Mint/Green)', monochrome: 'Monocromo (Slate/Gray)'
-            },
-            dark: {
-                default: 'Predefinito (DarkBlue/Blue)', amoledWhite: 'Pure AMOLED (Black/White)', amoledEmerald: 'AMOLED Smeraldo (Black/Emerald)', 
-                cyberpunk: 'Cyberpunk (Purple/Yellow)', lavaCrimson: 'Lava Crimson (Black/Red)', synthwave: 'Synthwave (Purple/Pink)', 
-                classicDark: 'Verde Scuro (DarkGreen/Emerald)', nordicNight: 'Notte Nordica (Navy/LightBlue)', midnight: 'Mezzanotte (DarkBlue/Blue)', 
-                forest: 'Foresta (DarkGreen/Green)', dracula: 'Dracula (Grey/Purple)', obsidian: 'Ossidiana (DarkSlate/Cyan)', 
-                deepSpace: 'Deep Space (DarkPurple/Indigo)', tokyoNight: 'Tokyo Night (Navy/Indigo)', oneDark: 'One Dark (Grey/Blue)', 
-                matrix: 'Matrix (Black/Green)', oceanic: 'Oceanic (Slate/Cyan)', bordeaux: 'Bordeaux (DarkBurgundy/Rose)', 
-                nordDark: 'Nord Dark (Grey/Teal)', gruvbox: 'Gruvbox (Charcoal/Orange)', solarized: 'Solarized Dark (Cyan/Blue)', 
-                violet: 'Violet (DarkPurple/Purple)', coffeeDark: 'Espresso (DarkBrown/Brown)', steel: 'Steel (Slate/BlueGrey)', 
-                goldBlack: 'Gold Black (Black/Gold)', iceberg: 'Iceberg (DarkNavy/IceBlue)', rust: 'Rust (DarkOrange/Orange)', 
-                plum: 'Plum (DarkMagenta/Magenta)', carbon: 'Carbon (Charcoal/Grey)', military: 'Military (DarkOlive/Lime)'
-            }
+        let appState = {
+            apiKey: localStorage.getItem('youtubette_api_key') || '',
+            currentTheme: localStorage.getItem('youtubette_theme') || 'spotifyGreen',
+            showVideo: localStorage.getItem('youtubette_show_video') !== 'false',
+            tracks: [],
+            currentIndex: -1,
+            isPlaying: false
         };
+        let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAM0QE9NR7V_xwQ8UjfEc9M5y_HiCnV1fo",
-            authDomain: "homehub-96c18.firebaseapp.com",
-            databaseURL: "https://homehub-96c18-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "homehub-96c18",
-            storageBucket: "homehub-96c18.firebasestorage.app",
-            messagingSenderId: "31651198901",
-            appId: "1:31651198901:web:f62c8a6e3621c951da8bfc"
-        };
+        let startX = 0, currentX = 0, isDragging = false;
+        let isScrubbing = false; 
+        let scrubPercentage = 0;
         
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const swipeTitle = document.getElementById('swipeTitleContainer');
+        const marqueeContent = document.getElementById('marqueeContent');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressTooltip = document.getElementById('progressTooltip');
 
-        let structure = {
-            tabs: ['spesa', 'film', 'famiglia'],
-            blocks: {
-                spesa: ['LIDL', 'EUROSPIN', 'SOLE365', 'ACTION'],
-                film: ['DA VEDERE'],
-                famiglia: ['LISTA']
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e;
+            if (document.getElementById('pwaInstallBtn')) document.getElementById('pwaInstallBtn').classList.remove('hidden');
+        });
+
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
+
+        let player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('ytPlayerContainer', {
+                height: '100%', width: '100%', videoId: '',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function onPlayerReady(event) {
+            player.setVolume(document.getElementById('volumeSlider')?.value || 100);
+            startProgressLoop();
+            setupMediaSessionHandlers();
+        }
+
+        function onPlayerStateChange(event) {
+            const playIcon = document.getElementById('playIcon'), mobilePlayIcon = document.getElementById('mobilePlayIcon');
+            if (event.data == YT.PlayerState.PLAYING) {
+                appState.isPlaying = true;
+                if(playIcon) playIcon.className = "fa-solid fa-pause";
+                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
+                document.getElementById('coverFallback').style.display = "none";
+                updateDuration(); updateMediaSessionState(true);
+            } else {
+                appState.isPlaying = false;
+                if(playIcon) playIcon.className = "fa-solid fa-play";
+                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
+                updateMediaSessionState(false);
+                if (event.data == YT.PlayerState.ENDED) {
+                    nextTrack();
+                }
             }
-        };
-
-        let state = {};
-        let aiHistory = {};
-        let serverSettings = { theme: 'light', selectedLightPalette: 'default', selectedDarkPalette: 'default' };
-        
-        let currentTabIdx = parseInt(localStorage.getItem('activeTabIdx')) || 0;
-        let selectedTarget = '';
-        let tStart = 0;
-        let showAI = localStorage.getItem('showAI') !== 'false'; 
-
-        function capitalizeFirstLetter(string) {
-            if (!string) return '';
-            const trimmed = string.trim();
-            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const initialTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', initialTheme);
-            updateThemeSwitchUI(initialTheme);
+            applyTheme(appState.currentTheme);
+            applyVideoVisibility();
+            populateThemeSelect();
+
+            document.body.classList.remove('hidden');
             
-            const initialPaletteKey = initialTheme === 'light' 
-                ? (localStorage.getItem('selectedLightPalette') || 'default')
-                : (localStorage.getItem('selectedDarkPalette') || 'default');
-            applyPaletteStyle(initialTheme, initialPaletteKey, false);
-
-            updateAISwitchUI();
-            initSwipe();
-            initFirebaseSync();
-
-            window.addEventListener('popstate', (e) => {
-                const isAnySheetOpen = document.querySelector('.sheet.open');
-                if (isAnySheetOpen) {
-                    document.querySelectorAll('.sheet, .backdrop').forEach(el => el.classList.remove('open'));
-                    document.getElementById('item-input').blur();
-                }
+            document.getElementById('searchBtn').addEventListener('click', () => performSearch(false));
+            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(false); });
+            
+            document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('filterMenu').classList.toggle('hidden');
             });
+            document.addEventListener('click', () => document.getElementById('filterMenu').classList.add('hidden'));
+            document.getElementById('filterMenu').addEventListener('click', (e) => e.stopPropagation());
+
+            document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('prevBtn').addEventListener('click', prevTrack);
+            document.getElementById('nextBtn').addEventListener('click', nextTrack);
+
+            document.getElementById('mobilePlayPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('mobilePrevBtn').addEventListener('click', prevTrack);
+            document.getElementById('mobileNextBtn').addEventListener('click', nextTrack);
+
+            document.getElementById('downloadBtn').addEventListener('click', redirectToDownload);
+            document.getElementById('mobileDownloadBtn').addEventListener('click', redirectToDownload);
+            
+            document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
+            
+            progressBarContainer.addEventListener('mousedown', startScrub);
+            progressBarContainer.addEventListener('touchstart', startScrub, { passive: false });
+
+            window.addEventListener('mousemove', moveScrub);
+            window.addEventListener('touchmove', moveScrub, { passive: false });
+
+            window.addEventListener('mouseup', endScrub);
+            window.addEventListener('touchend', endScrub);
+
+            document.getElementById('apiConfigBtn').addEventListener('click', openApiModal);
+            document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
+            document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
+
+            swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
+            swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
+            swipeTitle.addEventListener('touchend', dragEnd, { passive: true });
+
+            swipeTitle.addEventListener('mousedown', dragStart);
+            window.addEventListener('mousemove', dragMove);
+            window.addEventListener('mouseup', dragEnd);
+            
+            checkAndApplyMarquee();
         });
 
-        function applyPaletteStyle(theme, key, saveToServer = true) {
-            const p = PALETTES[theme][key] || PALETTES[theme]['default'];
-            const root = document.documentElement;
-
-            root.style.setProperty('--bg-color', p.bg);
-            root.style.setProperty('--surface-color', p.surf);
-            root.style.setProperty('--item-bg', p.item);
-            root.style.setProperty('--text-color', p.text);
-            root.style.setProperty('--text-secondary', p.sec);
-            root.style.setProperty('--accent-color', p.acc);
-            root.style.setProperty('--accent-light', p.accL);
-            root.style.setProperty('--border-color', p.border);
-            root.style.setProperty('--item-border', p.itemB);
-            root.style.setProperty('--delete-bg', p.delB);
-            root.style.setProperty('--delete-color', p.delC);
-            root.style.setProperty('--tile-shadow', p.shadow || '0 4px 16px rgba(0,0,0,0.03)');
-            root.style.setProperty('--tile-shadow-sm', p.shadowSm || '0 1px 3px rgba(0,0,0,0.01)');
-
-            if (theme === 'light') {
-                localStorage.setItem('selectedLightPalette', key);
-                serverSettings.selectedLightPalette = key;
-            } else {
-                localStorage.setItem('selectedDarkPalette', key);
-                serverSettings.selectedDarkPalette = key;
-            }
-            
-            if (saveToServer) {
-                db.ref('homeHub/settings').set(serverSettings);
-            }
-            updateAndroidBarColor(theme);
-        }
-
-        function onPaletteSelectChange(key) {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            applyPaletteStyle(currentTheme, key, true);
-        }
-
-        function renderPaletteSelectorUI() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const select = document.getElementById('palette-options-select');
-            const title = document.getElementById('palette-section-title');
-            if(!select) return;
-
-            title.innerText = currentTheme === 'light' ? 'Stile interfaccia (Palette Chiara)' : 'Stile interfaccia (Palette Scura)';
-
-            const activeKey = currentTheme === 'light' ? serverSettings.selectedLightPalette : serverSettings.selectedDarkPalette;
-
+        function populateThemeSelect() {
+            const select = document.getElementById('modalThemeSelect');
+            if (!select) return;
             select.innerHTML = '';
-            Object.keys(PALETTES[currentTheme]).forEach(key => {
-                const fullLabel = PALETTE_NAMES[currentTheme][key] || key;
-                
-                const opt = document.createElement('option');
-                opt.value = key;
-                opt.innerText = fullLabel;
-                if(key === activeKey) opt.selected = true;
-                select.appendChild(opt);
-            });
-        }
-
-        function initFirebaseSync() {
-            db.ref('homeHub/structure').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if(data) {
-                    structure = data;
-                    if(!structure.tabs) structure.tabs = [];
-                    if(!structure.blocks) structure.blocks = {};
-                } else {
-                    db.ref('homeHub/structure').set(structure);
-                }
-                buildTabsUI();
-                renderAll();
-            });
-
-            db.ref('homeHub/state').on('value', (snapshot) => {
-                state = snapshot.val() || {};
-                renderAll();
-            });
-
-            db.ref('homeHub/aiHistory').on('value', (snapshot) => {
-                aiHistory = snapshot.val() || {};
-                renderAll();
-            });
-
-            db.ref('homeHub/settings').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    serverSettings = data;
-                    localStorage.setItem('theme', serverSettings.theme);
-                    document.documentElement.setAttribute('data-theme', serverSettings.theme);
-                    updateThemeSwitchUI(serverSettings.theme);
-                    
-                    const currentPaletteKey = serverSettings.theme === 'light' ? serverSettings.selectedLightPalette : serverSettings.selectedDarkPalette;
-                    applyPaletteStyle(serverSettings.theme, currentPaletteKey, false);
-                } else {
-                    serverSettings.theme = localStorage.getItem('theme') || 'light';
-                    serverSettings.selectedLightPalette = localStorage.getItem('selectedLightPalette') || 'default';
-                    serverSettings.selectedDarkPalette = localStorage.getItem('selectedDarkPalette') || 'default';
-                    db.ref('homeHub/settings').set(serverSettings);
-                }
-            });
-        }
-
-        function updateThemeSwitchUI(theme) {
-            const themeSwitch = document.getElementById('main-theme-switch');
-            if (!themeSwitch) return;
-            if (theme === 'dark') {
-                themeSwitch.classList.add('active');
-            } else {
-                themeSwitch.classList.remove('active');
+            for (const [key, theme] of Object.entries(themes)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = theme.name;
+                if (key === appState.currentTheme) option.selected = true;
+                select.appendChild(option);
             }
         }
 
-        function buildTabsUI() {
-            const tabsContainer = document.getElementById('nav-tabs-container');
-            const slider = document.getElementById('tabs-slider');
-            if (!tabsContainer || !slider) return;
-
-            tabsContainer.innerHTML = '';
-            slider.innerHTML = '';
-
-            structure.tabs.forEach((tab, idx) => {
-                const btn = document.createElement('button');
-                btn.className = `tab-btn ${idx === currentTabIdx ? 'active' : ''}`;
-                btn.innerText = tab;
-                btn.onclick = () => switchTab(idx);
-                tabsContainer.appendChild(btn);
-
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'tab-content';
-                contentDiv.id = `content-tab-${tab}`;
-                slider.appendChild(contentDiv);
-            });
-
-            slider.style.width = `${structure.tabs.length * 100}%`;
-            updateSliderPosition();
-        }
-
-        function switchTab(idx) {
-            if (idx < 0 || idx >= structure.tabs.length) return;
-            currentTabIdx = idx;
-            localStorage.setItem('activeTabIdx', currentTabIdx);
-
-            const btns = document.querySelectorAll('.tab-btn');
-            btns.forEach((btn, i) => {
-                if (i === idx) btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
-
-            updateSliderPosition();
-        }
-
-        function updateSliderPosition() {
-            const slider = document.getElementById('tabs-slider');
-            if (!slider) return;
-            const offset = -currentTabIdx * (100 / structure.tabs.length);
-            slider.style.transform = `translateX(${offset}%)`;
-        }
-
-        function initSwipe() {
-            const area = document.getElementById('swipe-area');
-            let xStart = 0; let yStart = 0;
-            let isSwiping = false;
-
-            area.addEventListener('touchstart', (e) => {
-                xStart = e.touches[0].clientX;
-                yStart = e.touches[0].clientY;
-                isSwiping = true;
-            }, { passive: true });
-
-            area.addEventListener('touchend', (e) => {
-                if (!isSwiping) return;
-                const xDiff = xStart - e.changedTouches[0].clientX;
-                const yDiff = yStart - e.changedTouches[0].clientY;
-
-                if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > 60) {
-                    if (xDiff > 0) switchTab(currentTabIdx + 1);
-                    else switchTab(currentTabIdx - 1);
-                }
-                isSwiping = false;
-            }, { passive: true });
-        }
-
-        function renderAll() {
-            structure.tabs.forEach(tab => {
-                const container = document.getElementById(`content-tab-${tab}`);
-                if (!container) return;
-                container.innerHTML = '';
-
-                const blocks = structure.blocks[tab] || [];
-                if (blocks.length === 0) {
-                    const empty = document.createElement('div');
-                    empty.className = 'empty-text';
-                    empty.innerText = 'Nessuna sotto-sezione presente in questo tab.';
-                    container.appendChild(empty);
-                }
-
-                blocks.forEach(block => {
-                    const group = document.createElement('div');
-                    group.className = 'block-group';
-
-                    const header = document.createElement('div');
-                    header.className = 'block-header-squircle';
-                    header.innerHTML = `<span>${block}</span>`;
-
-                    const addBtn = document.createElement('button');
-                    addBtn.className = 'block-add-btn';
-                    addBtn.innerText = '+';
-                    addBtn.onclick = () => openAddSheet(`${tab}:${block}`);
-                    header.appendChild(addBtn);
-                    group.appendChild(header);
-
-                    if (showAI && tab === 'spesa') {
-                        const sugContainer = document.createElement('div');
-                        sugContainer.className = 'ai-suggestions-container';
-                        const listSug = getAISuggestions(block);
-                        if (listSug.length > 0) {
-                            listSug.forEach(item => {
-                                const chip = document.createElement('div');
-                                chip.className = 'ai-chip';
-                                chip.innerText = `+ ${item}`;
-                                chip.onclick = () => addAIItemDirectly(tab, block, item);
-                                sugContainer.appendChild(chip);
-                            });
-                            group.appendChild(sugContainer);
-                        }
-                    }
-
-                    const listContainer = document.createElement('div');
-                    listContainer.className = 'list-container';
-                    if (tab === 'film') listContainer.classList.add('film-list');
-                    listContainer.id = `list-${tab}-${block}`;
-
-                    const items = state[`${tab}:${block}`] || [];
-                    if (items.length === 0) {
-                        const emptyTxt = document.createElement('div');
-                        emptyTxt.className = 'empty-text';
-                        emptyTxt.innerText = 'Lista vuota';
-                        listContainer.appendChild(emptyTxt);
-                    } else {
-                        items.forEach((item, index) => {
-                            const row = document.createElement('div');
-                            row.className = 'list-item';
-                            row.setAttribute('data-id', index);
-
-                            let handleHtml = (tab === 'film') ? `<div class="drag-handle">☰</div>` : '';
-                            row.innerHTML = `
-                                ${handleHtml}
-                                <div class="list-item-text">${item}</div>
-                                <div class="list-item-actions">
-                                    <button class="delete-btn" onclick="deleteItem('${tab}', '${block}', ${index}, '${item}')">X</button>
-                                </div>
-                            `;
-                            listContainer.appendChild(row);
-                        });
-                    }
-
-                    group.appendChild(listContainer);
-                    container.appendChild(group);
-
-                    if (tab === 'film' && items.length > 0) {
-                        Sortable.create(listContainer, {
-                            handle: '.drag-handle',
-                            animation: 150,
-                            ghostClass: 'sortable-ghost',
-                            onEnd: (evt) => {
-                                const targetKey = `${tab}:${block}`;
-                                let currentList = [...(state[targetKey] || [])];
-                                const [movedItem] = currentList.splice(evt.oldIndex, 1);
-                                currentList.splice(evt.newIndex, 0, movedItem);
-                                state[targetKey] = currentList;
-                                db.ref('homeHub/state/' + targetKey).set(currentList);
-                            }
-                        });
-                    }
-                });
-            });
-        }
-
-        function openAddSheet(target) {
-            selectedTarget = target;
-            const blockName = target.split(':')[1];
-            document.getElementById('add-popup-title').innerText = `Aggiungi a ${blockName}`;
+        function applyTheme(themeKey) {
+            const theme = themes[themeKey] || themes.spotifyGreen;
+            const root = document.documentElement;
             
-            window.history.pushState({ sheet: 'add' }, '');
-            document.getElementById('backdrop').classList.add('open');
-            const sheet = document.getElementById('addSheet');
-            sheet.classList.add('open');
+            root.style.setProperty('--bg-main', theme.bgMain);
+            root.style.setProperty('--bg-card', theme.bgCard);
+            root.style.setProperty('--bg-input', theme.bgInput);
+            root.style.setProperty('--accent', theme.accent);
+            root.style.setProperty('--text-main', theme.textMain);
+            root.style.setProperty('--text-muted', theme.textMuted);
+            root.style.setProperty('--is-light', theme.isLight);
+
+            document.getElementById('metaThemeColor')?.setAttribute('content', theme.bgMain);
+            appState.currentTheme = themeKey;
+
+            const searchBtn = document.getElementById('searchBtn');
+            const saveBtn = document.getElementById('modalSaveBtn');
+            
+            if (theme.isLight) {
+                searchBtn?.classList.remove('text-black');
+                searchBtn?.classList.add('text-white');
+                saveBtn?.classList.remove('text-black');
+                saveBtn?.classList.add('text-white');
+            } else {
+                searchBtn?.classList.remove('text-white');
+                searchBtn?.classList.add('text-black');
+                saveBtn?.classList.remove('text-white');
+                saveBtn?.classList.add('text-black');
+            }
+
+            const containers = document.querySelectorAll('header, main section, footer');
+            containers.forEach(el => {
+                if (themeKey === 'amoledWhite') {
+                    el.style.border = "1px solid #222222";
+                } else {
+                    el.style.border = "none";
+                }
+            });
+            
+            if (appState.currentIndex !== -1) renderTracklist();
+        }
+
+        function applyVideoVisibility() {
+            const videoSection = document.getElementById('videoSection');
+            if (!videoSection) return;
+            
+            if (appState.showVideo) {
+                videoSection.classList.remove('hidden');
+            } else {
+                videoSection.classList.add('hidden');
+            }
+        }
+
+        function openApiModal() {
+            const modal = document.getElementById('apiModal');
+            const input = document.getElementById('modalApiKeyInput');
+            const select = document.getElementById('modalThemeSelect');
+            const videoCheckbox = document.getElementById('modalShowVideoInput');
+            if (modal && input) {
+                input.value = appState.apiKey;
+                if (select) select.value = appState.currentTheme;
+                if (videoCheckbox) videoCheckbox.checked = appState.showVideo;
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeApiModal() {
+            const modal = document.getElementById('apiModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function saveSettingsFromModal() {
+            const key = document.getElementById('modalApiKeyInput').value.trim();
+            const selectedTheme = document.getElementById('modalThemeSelect').value;
+            const showVideo = document.getElementById('modalShowVideoInput').checked;
+            
+            appState.apiKey = key;
+            localStorage.setItem('youtubette_api_key', key);
+            
+            localStorage.setItem('youtubette_theme', selectedTheme);
+            applyTheme(selectedTheme);
+
+            appState.showVideo = showVideo;
+            localStorage.setItem('youtubette_show_video', showVideo);
+            applyVideoVisibility();
+            
+            const saveBtn = document.getElementById('modalSaveBtn');
+            const originalText = saveBtn.innerHTML;
+            
+            saveBtn.innerHTML = "Salvato! ✓";
+            saveBtn.style.backgroundColor = "var(--text-main)";
+            saveBtn.style.color = "var(--bg-main)";
             
             setTimeout(() => {
-                const input = document.getElementById('item-input');
-                input.value = '';
-                input.focus();
-            }, 80);
+                saveBtn.innerHTML = originalText;
+                saveBtn.style.backgroundColor = "";
+                saveBtn.style.color = "";
+                if (themes[selectedTheme].isLight) {
+                    saveBtn.classList.add('text-white');
+                    saveBtn.classList.remove('text-black');
+                } else {
+                    saveBtn.classList.add('text-black');
+                    saveBtn.classList.remove('text-white');
+                }
+                closeApiModal();
+            }, 800);
         }
 
-        function closeAllSheets() {
-            document.querySelectorAll('.sheet, .backdrop').forEach(el => el.classList.remove('open'));
-            document.getElementById('item-input').blur();
-            if (window.history.state?.sheet) {
-                window.history.back();
+        async function redirectToDownload() {
+            if (appState.currentIndex === -1) return;
+            const currentTrack = appState.tracks[appState.currentIndex];
+            if (!currentTrack || !currentTrack.id) return;
+            
+            const youtubeUrl = `https://www.youtube.com/watch?v=${currentTrack.id}`;
+            
+            try {
+                await navigator.clipboard.writeText(youtubeUrl);
+                showToast("Link copiato! Incollalo sul sito.");
+                
+                setTimeout(() => {
+                    const downloadServiceUrl = `https://kleger.pl/`;
+                    const newWindow = window.open(downloadServiceUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                        window.location.href = downloadServiceUrl;
+                    }
+                }, 800);
+
+            } catch (err) {
+                console.error('Errore durante la copia: ', err);
+                const downloadServiceUrl = `https://kleger.pl/`;
+                window.open(downloadServiceUrl, '_blank');
             }
         }
 
-        function addItem() {
-            const input = document.getElementById('item-input');
-            let value = capitalizeFirstLetter(input.value);
-            if (!value) return;
+        function showToast(message) {
+            const oldToast = document.getElementById('youtubette-toast');
+            if (oldToast) oldToast.remove();
 
-            if (!state[selectedTarget]) state[selectedTarget] = [];
-            state[selectedTarget].push(value);
-
-            const parts = selectedTarget.split(':');
-            if (parts[0] === 'spesa') {
-                registerAIClick(parts[1], value);
-            }
-
-            db.ref('homeHub/state/' + selectedTarget).set(state[selectedTarget]);
-            input.value = '';
-            closeAllSheets();
-        }
-
-        function addAIItemDirectly(tab, block, item) {
-            const targetKey = `${tab}:${block}`;
-            if (!state[targetKey]) state[targetKey] = [];
-            state[targetKey].push(item);
-            registerAIClick(block, item);
-            db.ref('homeHub/state/' + targetKey).set(state[targetKey]);
-        }
-
-        function deleteItem(tab, block, index, itemName) {
-            const targetKey = `${tab}:${block}`;
-            if (!state[targetKey]) return;
-            state[targetKey].splice(index, 1);
-            db.ref('homeHub/state/' + targetKey).set(state[targetKey]);
-        }
-
-        function registerAIClick(block, item) {
-            if (!aiHistory[block]) aiHistory[block] = {};
-            aiHistory[block][item] = (aiHistory[block][item] || 0) + 1;
-            db.ref('homeHub/aiHistory/' + block).set(aiHistory[block]);
-        }
-
-        function getAISuggestions(block) {
-            const currentItems = state[`spesa:${block}`] || [];
-            const blockHistory = aiHistory[block] || {};
+            const toast = document.createElement('div');
+            toast.id = 'youtubette-toast';
             
-            return Object.keys(blockHistory)
-                .filter(item => !currentItems.includes(item))
-                .sort((a, b) => blockHistory[b] - blockHistory[a])
-                .slice(0, 4);
+            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-50 transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-[var(--text-main)]';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check mr-2 custom-text-accent"></i> ${message}`;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            }, 50);
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
         }
 
-        function toggleAISuggestions() {
-            showAI = !showAI;
-            localStorage.setItem('showAI', showAI);
-            updateAISwitchUI();
-            renderAll();
-        }
+        function toggleDownloadButtons(enabled) {
+            const dBtn = document.getElementById('downloadBtn');
+            const mDBtn = document.getElementById('mobileDownloadBtn');
+            
+            if (!dBtn || !mDBtn) return;
 
-        function updateAISwitchUI() {
-            const sw = document.getElementById('ai-toggle-switch');
-            if(!sw) return;
-            if(showAI) sw.classList.add('active');
-            else sw.classList.remove('active');
-        }
-
-        function resetAllAIClicks() {
-            if(confirm("Sei sicuro di voler resettare tutta la cronologia e i suggerimenti predittivi?")) {
-                aiHistory = {};
-                db.ref('homeHub/aiHistory').set({});
+            if (enabled) {
+                dBtn.disabled = false;
+                dBtn.removeAttribute('disabled');
+                dBtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-gray-500');
+                dBtn.classList.add('opacity-100', 'text-gray-400', 'cursor-pointer');
+                
+                mDBtn.disabled = false;
+                mDBtn.removeAttribute('disabled');
+                mDBtn.classList.remove('opacity-30', 'text-gray-500');
+                mDBtn.classList.add('opacity-100', 'cursor-pointer');
+                mDBtn.style.color = "var(--accent)";
+            } else {
+                dBtn.disabled = true;
+                dBtn.setAttribute('disabled', 'true');
+                dBtn.classList.add('opacity-30', 'cursor-not-allowed', 'text-gray-500');
+                dBtn.classList.remove('opacity-100', 'text-gray-400', 'cursor-pointer');
+                
+                mDBtn.disabled = true;
+                mDBtn.setAttribute('disabled', 'true');
+                mDBtn.classList.add('opacity-30', 'text-gray-500');
+                mDBtn.classList.remove('opacity-100', 'cursor-pointer');
+                mDBtn.style.color = "";
             }
         }
 
-        function openSettingsSheet() {
-            window.history.pushState({ sheet: 'settings' }, '');
-            document.getElementById('backdrop').classList.add('open');
-            document.getElementById('settingsSheet').classList.add('open');
+        function getClientX(e) {
+            if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
+            if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
+            return e.clientX;
+        }
+
+        function updateScrubPosition(e) {
+            const rect = progressBarContainer.getBoundingClientRect();
+            const clientX = getClientX(e);
+            let offsetX = clientX - rect.left;
+            offsetX = Math.max(0, Math.min(offsetX, rect.width));
+            scrubPercentage = offsetX / rect.width;
+
+            const duration = player.getDuration() || 0;
+            const targetTime = duration * scrubPercentage;
+
+            progressBar.style.width = `${scrubPercentage * 100}%`;
+            document.getElementById('currentTime').innerText = formatTime(targetTime);
+
+            let relativeLeft = clientX - rect.left;
+            relativeLeft = Math.max(0, Math.min(relativeLeft, rect.width));
+            progressTooltip.innerText = formatTime(targetTime);
+            progressTooltip.style.left = `${relativeLeft}px`;
+            progressTooltip.classList.remove('hidden');
+        }
+
+        function startScrub(e) {
+            if (!player?.getDuration || appState.currentIndex === -1) return;
+            isScrubbing = true;
+            progressBar.classList.add('scrubbing');
+            updateScrubPosition(e);
+        }
+
+        function moveScrub(e) {
+            if (!isScrubbing) return;
+            if (e.cancelable) e.preventDefault();
+            updateScrubPosition(e);
+        }
+
+        function endScrub(e) {
+            if (!isScrubbing) return;
+            isScrubbing = false;
+            progressBar.classList.remove('scrubbing');
+            progressTooltip.classList.add('hidden');
+
+            const duration = player.getDuration() || 0;
+            player.seekTo(duration * scrubPercentage, true);
+        }
+
+        function dragStart(e) {
+            isDragging = true;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            swipeTitle.classList.add('dragging');
+            marqueeContent.classList.remove('animate-marquee');
+        }
+
+        function dragMove(e) {
+            if (!isDragging) return;
+            currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
+            const opacity = Math.max(0.2, 1 - Math.abs(currentX) / 350);
+            swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
+            swipeTitle.style.opacity = opacity;
+        }
+
+        function dragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            swipeTitle.classList.remove('dragging');
+
+            const threshold = 75;
+            if (currentX > threshold) {
+                animateOutAndChange('right');
+            } else if (currentX < -threshold) {
+                animateOutAndChange('left');
+            } else {
+                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                swipeTitle.style.opacity = '1';
+                checkAndApplyMarquee();
+            }
+            currentX = 0;
+        }
+
+        function animateOutAndChange(direction) {
+            if (appState.tracks.length === 0) {
+                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                swipeTitle.style.opacity = '1';
+                return;
+            }
+            swipeTitle.style.transition = 'transform 0.2s ease-in, opacity 0.2s ease-in';
+            swipeTitle.style.transform = `translate3d(${direction === 'right' ? '100%' : '-100%'}, 0, 0)`;
+            swipeTitle.style.opacity = '0';
+            setTimeout(() => {
+                if (direction === 'right') prevTrack(); else nextTrack();
+                swipeTitle.style.transition = 'none';
+                swipeTitle.style.transform = `translate3d(${direction === 'right' ? '-100%' : '100%'}, 0, 0)`;
+                swipeTitle.offsetHeight;
+                swipeTitle.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
+                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                swipeTitle.style.opacity = '1';
+            }, 200);
+        }
+
+        function checkAndApplyMarquee() {
+            const titleEl = document.getElementById('playerTrackTitle');
+            const channelEl = document.getElementById('playerTrackChannel');
             
-            renderPaletteSelectorUI();
-            renderSettingsTabs();
+            const titleText = titleEl ? titleEl.innerText : 'YouTubette';
+            const channelText = channelEl ? channelEl.innerText : '';
             
-            const selectTab = document.getElementById('settings-tab-select');
-            if(selectTab) {
-                selectTab.innerHTML = '';
-                structure.tabs.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t; opt.innerText = t.toUpperCase();
-                    selectTab.appendChild(opt);
+            marqueeContent.classList.remove('animate-marquee');
+            const wrapper = swipeTitle.querySelector('.marquee-wrapper');
+            
+            let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-bold text-[var(--text-main)]">${titleText}</span>`;
+            if (channelText) {
+                cleanText += `<span id="playerTrackChannel" class="text-xs ml-3 font-normal custom-text-muted">${channelText}</span>`;
+            }
+            
+            marqueeContent.innerHTML = cleanText;
+
+            if (wrapper && marqueeContent.scrollWidth > wrapper.clientWidth) {
+                marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
+                marqueeContent.classList.add('animate-marquee');
+            }
+        }
+
+        async function performSearch(isLoadMore = false) {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query || (isLoadMore && isFetchingMore)) return;
+            if (!appState.apiKey) { openApiModal(); return; }
+
+            const placeholderText = document.getElementById('placeholderText');
+            if (!isLoadMore) {
+                if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
+                appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
+                toggleDownloadButtons(false);
+            } else isFetchingMore = true;
+
+            const order = document.getElementById('filterOrder').value;
+            const duration = document.getElementById('filterDuration').value;
+            const publishedAfterSelect = document.getElementById('filterPublishedAfter').value;
+
+            try {
+                let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=${order}&key=${appState.apiKey}`;
+                if (duration !== 'any') url += `&videoDuration=${duration}`;
+                if (publishedAfterSelect !== 'any') {
+                    const now = new Date();
+                    if (publishedAfterSelect === 'hour') now.setHours(now.getHours() - 1);
+                    else if (publishedAfterSelect === 'day') now.setDate(now.getDate() - 1);
+                    else if (publishedAfterSelect === 'week') now.setDate(now.getDate() - 7);
+                    else if (publishedAfterSelect === 'month') now.setMonth(now.getMonth() - 1);
+                    else if (publishedAfterSelect === 'year') now.setFullYear(now.getFullYear() - 1);
+                    url += `&publishedAfter=${now.toISOString()}`;
+                }
+
+                if (nextSearchPageToken) url += `&pageToken=${nextSearchPageToken}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                nextSearchPageToken = data.nextPageToken || '';
+                let newTracks = data.items.map(item => ({
+                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.default.url
+                }));
+
+                if (order !== 'date') {
+                    for (let i = newTracks.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
+                    }
+                }
+
+                appState.tracks = appState.tracks.concat(newTracks);
+                renderTracklist();
+            } catch (error) {
+                alert(error.message);
+                if (placeholderText && !isLoadMore) placeholderText.innerText = "";
+            } finally { if (isLoadMore) isFetchingMore = false; }
+        }
+
+        function renderTracklist() {
+            const trackListDiv = document.getElementById('trackList');
+            if (!trackListDiv) return; trackListDiv.innerHTML = '';
+            
+            if (appState.tracks.length === 0) {
+                trackListDiv.innerHTML = '<p class="text-sm p-2 italic text-center custom-text-muted">Nessun risultato.</p>';
+                return;
+            }
+
+            const currentThemeData = themes[appState.currentTheme];
+            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/70' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900 border border-neutral-800' : 'bg-neutral-800');
+            const rowHoverClass = currentThemeData?.isLight ? 'md:hover:bg-neutral-200 active:bg-neutral-200' : 'md:hover:bg-neutral-900 active:bg-neutral-900';
+
+            appState.tracks.forEach((track, index) => {
+                const trackRow = document.createElement('div');
+                trackRow.id = `track-row-${index}`;
+                trackRow.className = `flex items-center p-2 rounded-xl cursor-pointer transition-all ${rowHoverClass} ${appState.currentIndex === index ? rowSelectedBgClass : ''}`;
+               
+                trackRow.innerHTML = `
+                    <div class="w-6 text-center text-xs custom-text-muted">${index + 1}</div>
+                    <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded-lg mx-2.5 shadow-sm">
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs font-medium truncate ${appState.currentIndex === index ? 'custom-text-accent font-semibold' : 'text-[var(--text-main)]'}">${track.title}</p>
+                        <p class="text-[10px] truncate mt-0.5 custom-text-muted">${track.channel}</p>
+                    </div>
+                `;
+                trackRow.addEventListener('click', () => {
+                    loadTrack(index);
+                    if (index === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
                 });
-                renderSettingsBlocks();
-            }
-        }
-
-        function renderSettingsTabs() {
-            const container = document.getElementById('manage-tabs-list');
-            if(!container) return;
-            container.innerHTML = '';
-
-            if(structure.tabs.length === 0) {
-                container.innerHTML = '<div class="empty-text">Nessun tab impostato.</div>';
-                return;
-            }
-
-            structure.tabs.forEach((tab, index) => {
-                const div = document.createElement('div');
-                div.className = 'manage-item';
-                div.innerHTML = `
-                    <input type="text" class="uppercase-input" value="${tab}" onchange="renameTabStructure(${index}, this.value)">
-                    <button class="delete-btn manage-item-block" style="width:36px; height:36px; font-size:12px;" onclick="deleteTabStructure(${index})">X</button>
-                `;
-                container.appendChild(div);
+                trackListDiv.appendChild(trackRow);
             });
         }
 
-        function renameTabStructure(index, newVal) {
-            const oldName = structure.tabs[index];
-            let cleanVal = newVal.trim().toLowerCase();
-            if(!cleanVal || structure.tabs.includes(cleanVal)) { renderSettingsTabs(); return; }
-
-            structure.tabs[index] = cleanVal;
-            structure.blocks[cleanVal] = structure.blocks[oldName] || [];
-            delete structure.blocks[oldName];
-
-            db.ref('homeHub/structure').set(structure);
-        }
-
-        function deleteTabStructure(index) {
-            if(!confirm("Cancellando il tab eliminerai permanentemente tutte le sue sottosezioni e liste. Procedere?")) return;
-            const tabName = structure.tabs[index];
+        function loadTrack(index) {
+            if (index < 0 || index >= appState.tracks.length) return;
             
-            structure.tabs.splice(index, 1);
-            delete structure.blocks[tabName];
-            db.ref('homeHub/structure').set(structure);
+            const currentThemeData = themes[appState.currentTheme];
+            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/70' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900' : 'bg-neutral-800');
 
-            if(currentTabIdx >= structure.tabs.length) {
-                currentTabIdx = Math.max(0, structure.tabs.length - 1);
-                localStorage.setItem('activeTabIdx', currentTabIdx);
-            }
-            openSettingsSheet(); 
-        }
-
-        function addNewTabStructure() {
-            let name = prompt("Inserisci il nome del nuovo Tab Principale:");
-            if(!name) return;
-            let clean = name.trim().toLowerCase();
-            if(!clean || structure.tabs.includes(clean)) return;
-
-            structure.tabs.push(clean);
-            structure.blocks[clean] = [];
-            db.ref('homeHub/structure').set(structure);
-            openSettingsSheet();
-        }
-
-        function renderSettingsBlocks() {
-            const currentTab = document.getElementById('settings-tab-select').value;
-            const container = document.getElementById('manage-blocks-list');
-            if(!container || !currentTab) return;
-            container.innerHTML = '';
-
-            const blocks = structure.blocks[currentTab] || [];
-            if(blocks.length === 0) {
-                container.innerHTML = '<div class="empty-text">Nessuna sotto-sezione in questo tab.</div>';
-                return;
+            if (appState.currentIndex !== -1) {
+                const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
+                if (oldRow) {
+                    oldRow.classList.remove(rowSelectedBgClass, 'bg-neutral-800', 'bg-neutral-300/70', 'bg-neutral-900', 'border', 'border-neutral-800');
+                    const oldText = oldRow.querySelector('p.text-xs');
+                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-semibold'); oldText.classList.add('text-[var(--text-main)]'); }
+                }
             }
 
-            blocks.forEach((block, index) => {
-                const div = document.createElement('div');
-                div.className = 'manage-item';
-                div.innerHTML = `
-                    <input type="text" value="${block}" onchange="renameBlockStructure('${currentTab}', ${index}, this.value)">
-                    <button class="delete-btn manage-item-block" style="width:36px; height:36px; font-size:12px;" onclick="deleteBlockStructure('${currentTab}', ${index})">X</button>
-                `;
-                container.appendChild(div);
-            });
-        }
+            appState.currentIndex = index;
+            const track = appState.tracks[index];
 
-        function renameBlockStructure(tab, index, newVal) {
-            let cleanVal = newVal.trim().toUpperCase();
-            const oldBlockName = structure.blocks[tab][index];
-            if(!cleanVal || structure.blocks[tab].includes(cleanVal)) { renderSettingsBlocks(); return; }
+            const titleEl = document.getElementById('playerTrackTitle');
+            const channelEl = document.getElementById('playerTrackChannel');
+            if (titleEl) titleEl.innerText = track.title;
+            if (channelEl) channelEl.innerText = track.channel;
 
-            structure.blocks[tab][index] = cleanVal;
-            
-            const oldKey = `${tab}:${oldBlockName}`;
-            const newKey = `${tab}:${cleanVal}`;
-            if(state[oldKey]) {
-                state[newKey] = state[oldKey];
-                db.ref('homeHub/state/' + newKey).set(state[oldKey]);
-                db.ref('homeHub/state/' + oldKey).remove();
+            const newRow = document.getElementById(`track-row-${index}`);
+            if (newRow) {
+                newRow.classList.add(rowSelectedBgClass);
+                if (appState.currentTheme === 'amoledWhite') newRow.classList.add('border', 'border-neutral-800');
+                const newText = newRow.querySelector('p.text-xs');
+                if (newText) { newText.classList.remove('text-[var(--text-main)]'); newText.classList.add('custom-text-accent', 'font-semibold'); }
+                
+                newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
-            db.ref('homeHub/structure').set(structure);
+
+            if (player?.loadVideoById) player.loadVideoById(track.id);
+            checkAndApplyMarquee();
+            updateMediaSessionMetadata(track);
+            toggleDownloadButtons(true);
         }
 
-        function deleteBlockStructure(tab, index) {
-            if(!confirm("Vuoi rimuovere questa sotto-sezione e svuotare la sua lista?")) return;
-            const blockName = structure.blocks[tab][index];
-            structure.blocks[tab].splice(index, 1);
-
-            db.ref('homeHub/state/' + `${tab}:${blockName}`).remove();
-            db.ref('homeHub/structure').set(structure);
-            renderSettingsBlocks();
-        }
-
-        function addNewBlockStructure() {
-            const currentTab = document.getElementById('settings-tab-select').value;
-            if(!currentTab) return;
-            let name = prompt(`Aggiungi sotto-sezione a ${currentTab.toUpperCase()}:`);
-            if(!name) return;
-            let clean = name.trim().toUpperCase();
-            if(!clean || structure.blocks[currentTab].includes(clean)) return;
-
-            structure.blocks[currentTab].push(clean);
-            db.ref('homeHub/structure').set(structure);
-            renderSettingsBlocks();
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const t = currentTheme === 'dark' ? 'light' : 'dark'; 
-            document.documentElement.setAttribute('data-theme', t); 
-            localStorage.setItem('theme', t); 
-            
-            serverSettings.theme = t;
-
-            const targetKey = t === 'light' 
-                ? (localStorage.getItem('selectedLightPalette') || 'default')
-                : (localStorage.getItem('selectedDarkPalette') || 'default');
-            applyPaletteStyle(t, targetKey, true);
-            updateThemeSwitchUI(t); 
-            
-            const isSettingsOpen = document.getElementById('settingsSheet').classList.contains('open');
-            if(isSettingsOpen) {
-                renderPaletteSelectorUI();
+        function updateMediaSessionMetadata(track) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title, artist: track.channel, album: 'YouTubette Beats',
+                    artwork: [{ src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }]
+                });
             }
         }
 
-        function updateAndroidBarColor(theme) {
-            const meta = document.getElementById('meta-theme-color');
-            if(meta) {
-                const activeKey = theme === 'light' ? (localStorage.getItem('selectedLightPalette') || 'default') : (localStorage.getItem('selectedDarkPalette') || 'default');
-                const currentPalette = PALETTES[theme][activeKey];
-                meta.setAttribute('content', currentPalette ? currentPalette.bg : (theme === 'dark' ? '#000000' : '#f1f5f9'));
+        function updateMediaSessionState(isPlaying) {
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+        }
+
+        function setupMediaSessionHandlers() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', togglePlay);
+                navigator.mediaSession.setActionHandler('pause', togglePlay);
+                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
             }
         }
 
-        function handleKeyUp(e) { if(e.key === 'Enter') addItem(); }
+        function togglePlay() {
+            if (!player || appState.currentIndex === -1) return;
+            if (appState.isPlaying) player.pauseVideo(); else player.playVideo();
+        }
 
-        window.addEventListener('focus', () => { window.scrollTo(window.scrollX, window.scrollY + 1); window.scrollTo(window.scrollX, window.scrollY - 1); });
+        function nextTrack() {
+            if (appState.tracks.length === 0) return;
+            let nextIdx = appState.currentIndex + 1;
+            if (nextIdx >= appState.tracks.length) {
+                if (nextSearchPageToken) {
+                    performSearch(true).then(() => { if (appState.tracks[nextIdx]) loadTrack(nextIdx); });
+                } else loadTrack(0);
+            } else {
+                loadTrack(nextIdx);
+                if (nextIdx === appState.tracks.length - 1 && nextSearchPageToken) performSearch(true);
+            }
+        }
 
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('/Liste-Famiglia/sw.js')
-            .then(() => console.log('Service Worker Registrato!'))
-            .catch(err => console.log('Errore SW:', err));
+        function prevTrack() {
+            if (appState.tracks.length === 0) return;
+            let prevIdx = appState.currentIndex - 1;
+            if (prevIdx < 0) prevIdx = appState.tracks.length - 1;
+            loadTrack(prevIdx);
+        }
+
+        function startProgressLoop() {
+            setInterval(() => {
+                if (player?.getCurrentTime && appState.isPlaying && !isScrubbing) {
+                    const currentTime = player.getCurrentTime(), duration = player.getDuration();
+                    if (duration > 0) {
+                        progressBar.style.width = `${(currentTime / duration) * 100}%`;
+                        document.getElementById('currentTime').innerText = formatTime(currentTime);
+                    }
+                }
+            }, 500);
+        }
+
+        function updateDuration() {
+            if (player?.getDuration) document.getElementById('durationTime').innerText = formatTime(player.getDuration());
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
     </script>
 </body>
