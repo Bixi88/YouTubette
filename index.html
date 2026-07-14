@@ -332,7 +332,22 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    // Controlla periodicamente se c'è un nuovo sw.js sul server.
+                    // Il nuovo sw.js chiama già self.skipWaiting()/clients.claim() da solo,
+                    // quindi l'aggiornamento è automatico: non serve interazione dell'utente.
+                    // localStorage (palette, API key) NON viene mai toccato da questo processo.
+                    setInterval(() => reg.update(), 60 * 60 * 1000); // ogni ora
+                }).catch(err => console.log(err));
+
+                // Quando il nuovo service worker prende il controllo, ricarica la pagina
+                // una sola volta per mostrare subito la versione aggiornata.
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
             });
         }
 
