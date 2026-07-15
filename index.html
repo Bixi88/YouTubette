@@ -62,12 +62,13 @@
             background-size: cover;
         }
 
-        /* Mini Player: Più scuro, traslucido e d'impatto (non grigio) */
+        /* Mini Player: Vetro satinato dinamico perfettamente integrato con l'estetica dell'app */
         .glass-panel {
-            background: rgba(5, 5, 5, 0.8);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
+            background: var(--bg-card);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
             border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
         }
 
         #nowPlayingSheet {
@@ -1272,6 +1273,7 @@
             }
         }
 
+        // Animazione Swipe per il cambio brano sulla scheda principale
         function animateOutAndChange(direction) {
             if (appState.tracks.length === 0) {
                 swipeTitle.style.transform = 'translate3d(0, 0, 0)';
