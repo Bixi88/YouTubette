@@ -1,6 +1,4 @@
-// Nome fisso: non serve bumpare nulla a mano. Il browser rileva da solo
-// (byte per byte) quando sw.js cambia, e le strategie qui sotto (network-first /
-// stale-while-revalidate) tengono aggiornati i contenuti in cache automaticamente.
+// Nome fisso: l'app controlla periodicamente i cambi di questo file byte per byte.
 const CACHE_NAME = 'youtubette-cache';
 
 const ASSETS = [
@@ -24,7 +22,7 @@ self.addEventListener('install', (e) => {
       return Promise.all(
         ASSETS.map((url) => cache.add(new Request(url, { cache: 'reload' })))
       );
-    }).then(() => self.skipWaiting())
+    }) // Rimosso skipWaiting automatico per permettere l'aggiornamento forzato manuale da pulsante
   );
 });
 
@@ -90,4 +88,11 @@ self.addEventListener('fetch', (e) => {
 
   // Tutto il resto (risorse esterne generiche): passa dritto alla rete.
   e.respondWith(fetch(req).catch(() => caches.match(req)));
+});
+
+// Ascolto del messaggio manuale inviato al click del pulsante per forzare il rimpiazzo
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
