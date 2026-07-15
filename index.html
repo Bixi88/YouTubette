@@ -8,6 +8,7 @@
     
     <meta name="theme-color" content="#0b0b0b" id="metaThemeColor">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-menu-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="YouTubette">
     
@@ -107,7 +108,7 @@
             transition: none;
         }
 
-        /* --- SEARCH CONTAINER & FILTER BUTTON DYNAMICS --- */
+        /* --- STRUTTURA DINAMICA BARRA DI RICERCA --- */
         .search-container {
             position: relative;
             display: flex;
@@ -115,6 +116,7 @@
             justify-content: flex-end;
             flex: 1;
             margin-left: 1rem;
+            height: 40px;
         }
         #searchInput {
             width: 0px;
@@ -125,15 +127,36 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 40px;
+            border-radius: 9999px;
         }
         .search-container.active #searchInput {
-            width: calc(100% - 48px); /* Lascia spazio esatto per l'icona dei filtri a sinistra */
+            width: 100%;
             opacity: 1;
             pointer-events: auto;
             padding-left: 1rem;
-            padding-right: 2.5rem;
+            padding-right: 4.75rem; /* 76px: spazio esatto per non sovrapporsi alle due icone a destra */
+        }
+
+        /* Pulsanti interni alla barra (Filtri + Invio) */
+        .search-buttons {
+            position: absolute;
+            right: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Transizione d'apparizione per il pulsante Filtri */
+        #filterToggleBtn {
+            width: 0px;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+            transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, transform 0.25s ease;
         }
         .search-container.active #filterToggleBtn {
+            width: 32px;
             opacity: 1;
             pointer-events: auto;
             transform: scale(1);
@@ -266,17 +289,20 @@
         </div>
         
         <div class="search-container" id="searchContainer">
-            <!-- Icona filtri YouTube: visibile e attiva solo ad allungamento avvenuto -->
-            <button id="filterToggleBtn" class="opacity-0 pointer-events-none scale-90 transition-all duration-300 text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 mr-2" title="Filtri">
-                <i class="fa-solid fa-sliders text-sm"></i>
-            </button>
-
             <input type="text" id="searchInput" placeholder="Cerca canzoni..." 
                 class="text-xs py-2 rounded-full focus:outline-none focus:border-[var(--accent)] text-white">
             
-            <button id="searchTriggerBtn" class="absolute right-0 w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-white active:scale-90 transition-all" title="Cerca">
-                <i class="fa-solid fa-magnifying-glass text-sm" id="searchIcon"></i>
-            </button>
+            <div class="search-buttons">
+                <!-- Icona filtri YouTube: Ora posizionata a sinistra della freccia d'invio -->
+                <button id="filterToggleBtn" class="text-white h-8 rounded-full flex items-center justify-center hover:bg-white/10" title="Filtri">
+                    <i class="fa-solid fa-sliders text-xs"></i>
+                </button>
+
+                <!-- Bottone invio / attivazione ricerca -->
+                <button id="searchTriggerBtn" class="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 text-white active:scale-90 transition-all" title="Cerca">
+                    <i class="fa-solid fa-magnifying-glass text-xs" id="searchIcon"></i>
+                </button>
+            </div>
         </div>
 
         <button id="pwaInstallBtn" class="hidden absolute top-20 right-4 text-black font-bold text-[10px] px-3 py-1 rounded-full active:scale-95 transition-transform custom-bg-accent z-50">
@@ -284,8 +310,8 @@
         </button>
     </header>
 
-    <!-- Pannello Filtri YouTube (Nativo, ad effetto specchiato opaco e non di sistema) -->
-    <div id="filterMenu" class="hidden absolute top-16 left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 custom-bg-card border-white/10 transition-all duration-300">
+    <!-- Pannello Filtri YouTube (Distanziato di pochissimi pixel - top-[70px]) -->
+    <div id="filterMenu" class="hidden absolute top-[70px] left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 custom-bg-card border-white/10 transition-all duration-300">
         <div class="grid grid-cols-2 gap-4">
             <!-- Colonna Data di Caricamento -->
             <div class="relative">
@@ -316,9 +342,9 @@
                     </div>
                     <div id="filterDurationOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi durata</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="short">Breve (< 4 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="short">Breve (&lt; 4 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="medium">Media (4 - 20 min)</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (> 20 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (&gt; 20 min)</div>
                     </div>
                 </div>
             </div>
@@ -348,7 +374,7 @@
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
             <div class="flex items-center flex-1 min-w-0 mr-3 h-12 overflow-hidden" id="miniPlayerDetails">
                 <div class="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
-                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover">
+                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="mini thumbnail">
                 </div>
                 
                 <div class="ml-2.5 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
@@ -406,7 +432,7 @@
                 <div class="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center">
                     <div class="absolute inset-0 rounded-full blur-2xl opacity-20 transition-all duration-500 bg-[var(--accent)]"></div>
                     <div class="w-full h-full rounded-full overflow-hidden border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-10 flex items-center justify-center">
-                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover">
+                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover" alt="artwork">
                     </div>
                 </div>
             </div>
@@ -615,7 +641,7 @@
             }
         }
 
-        // --- GESTIONE COPERTINE: CARICAMENTO A CASCATA (MAX-RES 16:9 -> FALLBACK MQ 16:9) ---
+        // --- GESTIONE COPERTINE: CARICAMENTO A CASCATA ---
         function displayArtwork(imgElement, videoId) {
             if (!imgElement || !videoId) return;
 
@@ -624,7 +650,6 @@
 
             const tempImg = new Image();
             tempImg.onload = function () {
-                // YouTube carica un placeholder grigio di 120px se non esiste la versione maxresdefault
                 if (this.naturalWidth === 120) {
                     imgElement.src = mq;
                 } else {
@@ -667,13 +692,13 @@
                 }
             });
 
-            // LOGICA BARRA DI RICERCA ED ESPANSIONE FILTRO YT
+            // GESTIONE INTEGRATA BARRA DI RICERCA
             searchTriggerBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!searchContainer.classList.contains('active')) {
                     searchContainer.classList.add('active');
                     headerTitle.classList.add('opacity-0');
-                    searchIcon.className = "fa-solid fa-arrow-right text-sm";
+                    searchIcon.className = "fa-solid fa-arrow-right text-xs";
                     searchInput.focus();
                 } else {
                     if (searchInput.value.trim() !== "") {
@@ -700,11 +725,11 @@
             function closeSearch() {
                 searchContainer.classList.remove('active');
                 headerTitle.classList.remove('opacity-0');
-                searchIcon.className = "fa-solid fa-magnifying-glass text-sm";
+                searchIcon.className = "fa-solid fa-magnifying-glass text-xs";
                 filterMenu.classList.add('hidden');
             }
 
-            // Click sul pulsante Filtri YouTube
+            // Click sul pulsante Filtri YouTube (interno alla barra)
             filterToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 filterMenu.classList.toggle('hidden');
@@ -830,7 +855,6 @@
             });
         }
 
-        // SETUP CONTROLLI FILTRI INTERNI (Custom Dropdowns)
         function setupFilterDropdowns() {
             const dateTrigger = document.getElementById('filterDateTrigger');
             const dateOptions = document.getElementById('filterDateOptions');
@@ -860,7 +884,7 @@
                     dateValue.textContent = opt.textContent;
                     appState.filterDate = opt.dataset.value;
                     dateOptions.classList.add('hidden');
-                    performSearch(false); // Ricerca istantanea al cambio del filtro
+                    performSearch(false);
                 });
             });
 
@@ -872,7 +896,7 @@
                     durationValue.textContent = opt.textContent;
                     appState.filterDuration = opt.dataset.value;
                     durationOptions.classList.add('hidden');
-                    performSearch(false); // Ricerca istantanea al cambio del filtro
+                    performSearch(false);
                 });
             });
 
@@ -1228,7 +1252,6 @@
             }
         }
 
-        // Calcolo dinamico timestamp RFC 3339 per il parametro "publishedAfter" dell'API
         function getPublishedAfterDate(filterValue) {
             if (filterValue === 'any') return null;
             const now = new Date();
@@ -1274,7 +1297,6 @@
             try {
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
                 
-                // Integrazione dei Filtri YouTube Custom
                 if (appState.filterDuration !== 'any') {
                     url += `&videoDuration=${appState.filterDuration}`;
                 }
@@ -1338,7 +1360,7 @@
                 trackRow.innerHTML = `
                     <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
                     <div class="w-11 h-11 rounded-full overflow-hidden mx-2.5 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
-                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover">
+                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover" alt="track thumbnail">
                     </div>
                     <div class="flex-1 overflow-hidden">
                         <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${track.title}</p>
@@ -1350,7 +1372,6 @@
                 });
                 trackListDiv.appendChild(trackRow);
 
-                // Applica l'artwork nitido non appena l'elemento viene renderizzato
                 setTimeout(() => {
                     const img = document.getElementById(`track-img-${index}`);
                     displayArtwork(img, track.id);
@@ -1381,7 +1402,6 @@
             if (globalAmbientBg) globalAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
             if (sheetAmbientBg) sheetAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
             
-            // Assegnazione nitida dell'artwork (senza zoom e sfocature)
             displayArtwork(document.getElementById('sheetArtworkImg'), track.id);
             displayArtwork(document.getElementById('miniPlayerImg'), track.id);
 
