@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YouTubette - Player</title>
+    <link rel="manifest" href="manifest.json">
+    
+    <meta name="theme-color" content="#0b0b0b" id="metaThemeColor">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YouTubette">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-main: #0a0a0a;
+            --bg-card: rgba(18, 18, 18, 0.4);
+            --bg-input: rgba(26, 26, 26, 0.6);
+            --accent: #1DB954;
+            --text-main: #ffffff;
+            --text-muted: #a3a3a3;
+            --is-light: 0;
+        }
+
+        html, body {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        ::-webkit-scrollbar {
+            display: none;
+            width: 0px;
+            background: transparent;
+        }
+
+        .ambient-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.35;
+            filter: blur(80px);
+            transform: scale(1.2);
+            pointer-events: none;
+            transition: background-image 1.2s ease;
+            background-position: center;
+            background-size: cover;
+        }
+
+        .glass-panel {
+            background: rgba(18, 18, 18, 0.55);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        #nowPlayingSheet {
+            position: fixed;
+            top: 100%;
+            left: 0;
+            right: 0;
+            height: 100%;
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+            background-color: var(--bg-main);
+            overflow: hidden;
+        }
+        #nowPlayingSheet.expanded {
+            transform: translateY(-100%);
+        }
+
+        #miniPlayer {
+            transform: translateY(150%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+        }
+        #miniPlayer.visible {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #miniTextContainer {
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+            min-width: 0;
+            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+            will-change: transform, opacity;
+        }
+        #miniTextContainer.dragging-active {
+            transition: none;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1;
+            margin-left: 1rem;
+        }
+        #searchInput {
+            width: 0px;
+            opacity: 0;
+            pointer-events: none;
+            transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, padding 0.3s ease;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .search-container.active #searchInput {
+            width: 100%;
+            opacity: 1;
+            pointer-events: auto;
+            padding-left: 1rem;
+            padding-right: 2.5rem;
+        }
+
+        .marquee-wrapper {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, #fff 6%, #fff 94%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, #fff 6%, #fff 94%, transparent);
+        }
+        .marquee-content {
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+        }
+        .animate-marquee {
+            animation: marqueeLoop 12s linear infinite;
+        }
+        @keyframes marqueeLoop {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+
+        img {
+            -webkit-user-drag: none;
+            user-drag: none;
+        }
+
+        .custom-bg-main { background-color: var(--bg-main); }
+        .custom-bg-card { background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .custom-bg-input { background-color: var(--bg-input); }
+        .custom-text-accent { color: var(--accent); }
+        .custom-bg-accent { background-color: var(--accent); }
+        .custom-border-accent { border-color: var(--accent); }
+        .custom-text-muted { color: var(--text-muted); }
+
+        .custom-select-wrapper {
+            position: relative;
+            user-select: none;
+        }
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+        .custom-options {
+            position: absolute;
+            top: 105%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 110;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.8);
+            display: none;
+            background: #121212 !important; /* Totalmente coprente per evitare trasparenze fastidiose */
+        }
+        .custom-options.show {
+            display: block;
+        }
+        .custom-option {
+            cursor: pointer;
+            transition: background 0.2s ease;
+            background: #121212 !important;
+        }
+        .custom-option:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+        .custom-option.selected {
+            background: rgba(255, 255, 255, 0.15) !important;
+            font-weight: bold;
+        }
+
+        /* --- STILI MODALITÀ AMOLED --- */
+        body.amoled-active {
+            --bg-main: #000000 !important;
+            --bg-card: #000000 !important;
+            --bg-input: #000000 !important;
+        }
+        body.amoled-active .ambient-bg,
+        body.amoled-active #sheetAmbientBg,
+        body.amoled-active #globalAmbientBg {
+            display: none !important;
+            background-image: none !important;
+        }
+        body.amoled-active .glass-panel,
+        body.amoled-active .custom-bg-card,
+        body.amoled-active #filterMenu {
+            background: #000000 !important;
+            border: 1px solid #262626 !important; /* Bordi sottili dei tile */
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.amoled-active #nowPlayingSheet {
+            background-color: #000000 !important;
+        }
+    </style>
+</head>
+<body class="font-sans flex flex-col justify-between hidden p-4 box-border h-full custom-bg-main relative">
+
+    <div id="globalAmbientBg" class="ambient-bg"></div>
+
+    <header class="h-16 px-2 flex items-center justify-between shrink-0 z-40 relative">
+        <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Impostazioni">
+            <i class="fa-solid fa-sliders text-base"></i>
+            <span id="apiErrorBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-black animate-pulse"></span>
+        </button>
+
+        <div id="headerTitle" class="absolute left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300">
+            <span class="font-black tracking-widest text-white text-xs uppercase">YOUTUBETTE</span>
+        </div>
+        
+        <div class="search-container" id="searchContainer">
+            <input type="text" id="searchInput" placeholder="Cerca canzoni..." 
+                class="text-xs py-2 rounded-full focus:outline-none focus:border-[var(--accent)] text-white">
+            
+            <button id="searchTriggerBtn" class="absolute right-0 w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-white active:scale-90 transition-all" title="Cerca">
+                <i class="fa-solid fa-magnifying-glass text-sm" id="searchIcon"></i>
+            </button>
+        </div>
+
+        <button id="pwaInstallBtn" class="hidden absolute top-20 right-4 text-black font-bold text-[10px] px-3 py-1 rounded-full active:scale-95 transition-transform custom-bg-accent z-50">
+            <i class="fa-solid fa-download mr-1"></i> Installa
+        </button>
+    </header>
+
+    <div id="filterMenu" class="hidden absolute top-16 left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-800/40">
+        <p class="text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtri di Ricerca</p>
+        <div class="grid grid-cols-1 gap-2.5">
+            <div>
+                <label class="block text-[10px] mb-1 custom-text-muted">Ordina per</label>
+                <select id="filterOrder" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                    <option value="relevance">Rilevanza</option>
+                    <option value="date" selected>Data di caricamento</option>
+                    <option value="viewCount">Visualizzazioni</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sezione Principale -->
+    <main class="flex-1 flex flex-col overflow-hidden z-10 relative">
+        <section class="flex-1 p-3 flex flex-col rounded-3xl overflow-hidden h-full custom-bg-card border border-white/5">
+            <div class="flex items-center justify-between px-2 pb-3 border-b border-white/5 shrink-0">
+                <span class="text-[10px] font-bold uppercase tracking-widest custom-text-muted">Brani trovati</span>
+                <span id="trackCount" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/5 custom-text-muted">0 brani</span>
+            </div>
+            <div class="relative flex-1 overflow-hidden mt-3">
+                <div id="trackList" class="space-y-1 pb-28 h-full overflow-y-auto pr-0">
+                    <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
+                </div>
+            </div>
+        </section>
+
+        <div id="ytPlayerContainer" class="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none"></div>
+    </main>
+
+    <!-- Mini Player -->
+    <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-24 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] cursor-pointer" style="touch-action: none;">
+        
+        <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
+            <div class="flex items-center flex-1 min-w-0 mr-3 h-12 overflow-hidden" id="miniPlayerDetails">
+                <img id="miniPlayerImg" src="" style="object-fit: cover; aspect-ratio: 1 / 1;" class="w-12 h-12 rounded-full shadow-md shrink-0 bg-neutral-800 z-10">
+                
+                <div class="ml-2.5 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
+                    <div class="marquee-wrapper w-full font-bold">
+                        <div class="marquee-content animate-marquee">
+                            <span id="miniPlayerTitle" class="text-xs font-bold text-[var(--text-main)]"></span>
+                        </div>
+                    </div>
+                    <p id="miniPlayerChannel" class="text-[10px] truncate custom-text-muted mt-0.5"></p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-1 shrink-0" id="miniPlayerControls">
+                <button id="miniPrevBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-base active:scale-90 transition-transform"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="miniPlayPauseBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black active:scale-90 transition-transform">
+                    <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
+                </button>
+                <button id="miniNextBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-base active:scale-90 transition-transform"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between w-full text-[9px] font-mono custom-text-muted px-1" id="miniProgressBarArea">
+            <span id="miniCurrentTime">0:00</span>
+            <div id="miniProgressBarContainer" class="flex-1 mx-3 h-3 flex items-center relative cursor-pointer">
+                <div class="w-full h-[3px] bg-white/10 rounded-full"></div>
+                <div id="miniProgressBar" class="absolute top-1/2 -translate-y-1/2 left-0 h-[3px] w-0 custom-bg-accent rounded-full transition-all duration-100"></div>
+            </div>
+            <span id="miniDurationTime">0:00</span>
+        </div>
+    </div>
+
+    <!-- Now Playing Sheet -->
+    <div id="nowPlayingSheet" class="flex flex-col select-none">
+        <div id="sheetAmbientBg" class="absolute inset-0 z-0 opacity-60 transition-all duration-1000 bg-cover bg-center scale-105 blur-md"></div>
+        <div class="absolute inset-0 z-1 bg-gradient-to-b from-black/25 via-black/50 to-[var(--bg-main)]"></div>
+
+        <div id="sheetSwipeCloseArea" class="absolute inset-x-0 top-0 z-10 cursor-grab active:cursor-grabbing" style="touch-action: none; bottom: 310px;"></div>
+
+        <div class="relative z-20 flex flex-col h-full px-6 pb-8 pt-4 justify-between pointer-events-none">
+            <div id="sheetHeaderDrag" class="w-full flex flex-col items-center py-2 shrink-0 cursor-pointer pointer-events-auto">
+                <div class="w-12 h-1 bg-white/30 rounded-full mb-4"></div>
+                <div class="flex items-center justify-between w-full px-1">
+                    <button id="closeSheetBtn" class="text-neutral-300 hover:text-white p-2 text-lg active:scale-90 transition-transform">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-neutral-300">In Riproduzione</span>
+                    <button id="sheetDownloadBtn" class="text-neutral-400 hover:text-[var(--accent)] p-2 text-base opacity-30 cursor-not-allowed" disabled>
+                        <i class="fa-solid fa-arrow-down"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Artwork Rotondo - CORRETTO PER EVITARE TAGLI O BANDE NERE -->
+            <div class="flex-1 flex items-center justify-center my-auto relative">
+                <div class="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center">
+                    <div class="absolute inset-0 rounded-full blur-2xl opacity-20 transition-all duration-500 bg-[var(--accent)]"></div>
+                    <!-- Il contenitore con overflow-hidden e rounded-full taglia l'immagine perfettamente a cerchio -->
+                    <div class="w-full h-full rounded-full overflow-hidden border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-10">
+                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Area Controlli Inferiore -->
+            <div class="w-full max-w-sm mx-auto shrink-0 pointer-events-auto">
+                <div class="w-full text-center mb-5">
+                    <div id="swipeTitleContainer" class="w-full py-1 cursor-grab active:cursor-grabbing select-none" style="touch-action: none;">
+                        <div class="marquee-wrapper mx-auto max-w-xs">
+                            <div id="marqueeContent" class="marquee-content font-bold">
+                                <span id="playerTrackTitle" class="text-lg md:text-xl font-extrabold text-[var(--text-main)]">Nessun Brano</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="playerTrackChannel" class="text-xs mt-1 font-semibold custom-text-muted"></p>
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] mb-2 custom-text-muted font-mono px-1">
+                    <span id="currentTime">0:00</span>
+                    <span id="durationTime">0:00</span>
+                </div>
+                
+                <div class="h-5 rounded-full relative cursor-pointer py-1.5 mb-6 group" id="progressBarContainer">
+                    <div class="w-full h-1.5 rounded-full absolute top-1.5 left-0 bg-white/10 transition-all group-hover:h-2"></div>
+                    <div class="h-1.5 rounded-full w-0 absolute top-1.5 left-0 transition-all duration-100 custom-bg-accent group-hover:h-2" id="progressBar"></div>
+                    
+                    <div id="progressTooltip" class="hidden absolute bottom-full mb-2 text-black font-bold text-[10px] px-2 py-1 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 z-50 custom-bg-accent">
+                        0:00
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between px-6 mb-8">
+                    <button id="prevBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-backward-step"></i></button>
+                    <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform text-xl shadow-2xl bg-white text-black">
+                        <i class="fa-solid fa-play ml-1" id="playIcon"></i>
+                    </button>
+                    <button id="nextBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-forward-step"></i></button>
+                </div>
+
+                <div class="hidden md:flex items-center space-x-3 justify-center custom-text-muted px-4 py-2 bg-white/5 rounded-2xl mb-2">
+                    <i class="fa-solid fa-volume-high text-xs"></i>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100" 
+                        class="w-full h-1 rounded-full appearance-none cursor-pointer accent-[var(--text-main)] bg-neutral-700">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Impostazioni -->
+    <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+        <div class="border w-full max-w-md rounded-3xl p-6 shadow-2xl relative custom-bg-card border-white/5">
+            <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
+                <i class="fa-solid fa-sliders mr-2.5 custom-text-accent"></i> Impostazioni
+            </h3>
+            
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
+                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
+                </div>
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
+                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+            </div>
+
+            <div class="mb-4 relative">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
+                <div class="custom-select-wrapper">
+                    <div id="customSelectTrigger" class="custom-select-trigger w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none custom-bg-input text-white">
+                        <span id="customSelectedValue">Seleziona Tema...</span>
+                        <i class="fa-solid fa-chevron-down text-neutral-400"></i>
+                    </div>
+                    <div id="customSelectOptions" class="custom-options w-full rounded-xl custom-bg-input text-white text-xs"></div>
+                </div>
+            </div>
+
+            <!-- INTERRUTTORE MODALITÀ AMOLED -->
+            <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-white">Modalità AMOLED</label>
+                    <span class="text-[9px] custom-text-muted">Spegni gli sfondi e ottimizza i neri</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="amoledToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                </label>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 mt-6 border-t border-white/5 pt-4">
+                <button id="modalCancelBtn" class="hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
+                <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const themes = {
+            spotifyGreen: { name: "Spotify Green", bgMain: "#090909", bgCard: "rgba(18, 18, 18, 0.45)", bgInput: "rgba(28, 28, 28, 0.6)", accent: "#1DB954", textMain: "#ffffff", textMuted: "#a3a3a3", isLight: 0 },
+            synthwave:    { name: "Synthwave Retro", bgMain: "#1a0b2e", bgCard: "rgba(35, 14, 59, 0.45)", bgInput: "rgba(51, 15, 87, 0.6)", accent: "#ff007f", textMain: "#ffffff", textMuted: "#b39ddb", isLight: 0 },
+            amberGold:    { name: "Amber Gold", bgMain: "#120d03", bgCard: "rgba(30, 22, 8, 0.45)", bgInput: "rgba(45, 33, 12, 0.6)", accent: "#ffb300", textMain: "#ffffff", textMuted: "#d7ccc8", isLight: 0 },
+            amoledWhite:  { name: "Pure AMOLED", bgMain: "#000000", bgCard: "rgba(0, 0, 0, 0.5)", bgInput: "rgba(18, 18, 18, 0.6)", accent: "#ffffff", textMain: "#ffffff", textMuted: "#888888", isLight: 0 },
+            cyberPurple:  { name: "Cyber Purple", bgMain: "#07040a", bgCard: "rgba(15, 9, 22, 0.45)", bgInput: "rgba(25, 17, 36, 0.6)", accent: "#bf5af2", textMain: "#ffffff", textMuted: "#9893a5", isLight: 0 },
+            deepBlue:     { name: "Oceanic Depth", bgMain: "#03070d", bgCard: "rgba(8, 16, 28, 0.45)", bgInput: "rgba(16, 30, 51, 0.6)", accent: "#0a84ff", textMain: "#ffffff", textMuted: "#8e9bb4", isLight: 0 },
+            lavaRed:      { name: "Lava Crimson", bgMain: "#0a0404", bgCard: "rgba(18, 9, 9, 0.45)", bgInput: "rgba(30, 17, 17, 0.6)", accent: "#ff453a", textMain: "#ffffff", textMuted: "#aa9999", isLight: 0 },
+            dracula:      { name: "Dracula", bgMain: "#1e1f29", bgCard: "rgba(40, 42, 54, 0.45)", bgInput: "rgba(53, 56, 73, 0.6)", accent: "#ff79c6", textMain: "#f8f8f2", textMuted: "#6272a4", isLight: 0 },
+            nordicIce:    { name: "Nordic Frost", bgMain: "#101419", bgCard: "rgba(23, 30, 38, 0.45)", bgInput: "rgba(36, 47, 59, 0.6)", accent: "#88c0d0", textMain: "#e5e9f0", textMuted: "#81a1c1", isLight: 0 },
+            midnightSun:  { name: "Midnight Sun", bgMain: "#0d0c14", bgCard: "rgba(24, 22, 38, 0.45)", bgInput: "rgba(37, 34, 59, 0.6)", accent: "#ff9f1c", textMain: "#ffffff", textMuted: "#9a8c99", isLight: 0 },
+            emeraldDark:  { name: "Emerald", bgMain: "#050d0a", bgCard: "rgba(10, 28, 21, 0.45)", bgInput: "rgba(16, 45, 33, 0.6)", accent: "#2ecc71", textMain: "#ffffff", textMuted: "#95a5a6", isLight: 0 },
+            tokyoNight:   { name: "Tokyo Night", bgMain: "#0a0d16", bgCard: "rgba(21, 25, 43, 0.45)", bgInput: "rgba(34, 40, 68, 0.6)", accent: "#7aa2f7", textMain: "#acb0d0", textMuted: "#565f89", isLight: 0 },
+            electricLime: { name: "Electric Lime", bgMain: "#080a04", bgCard: "rgba(20, 26, 12, 0.45)", bgInput: "rgba(32, 41, 19, 0.6)", accent: "#a6e22e", textMain: "#ffffff", textMuted: "#a0a39a", isLight: 0 },
+            cherryBlossom:{ name: "Cherry Blossom", bgMain: "#140a0e", bgCard: "rgba(36, 18, 25, 0.45)", bgInput: "rgba(56, 28, 39, 0.6)", accent: "#ffb7c5", textMain: "#ffffff", textMuted: "#e0b0bc", isLight: 0 },
+            cyberpunk2077:{ name: "Cyberpunk 2077", bgMain: "#0a0a03", bgCard: "rgba(31, 31, 10, 0.45)", bgInput: "rgba(48, 48, 15, 0.6)", accent: "#fcee0a", textMain: "#ffffff", textMuted: "#91918a", isLight: 0 }
+        };
+
+        let appState = {
+            apiKey: localStorage.getItem('youtubette_api_key') || '',
+            currentTheme: localStorage.getItem('youtubette_theme') || 'spotifyGreen',
+            isAmoled: localStorage.getItem('youtubette_amoled') === 'true',
+            tracks: [],
+            currentIndex: -1,
+            isPlaying: false
+        };
+        let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
+        let isScrubbing = false; 
+        let scrubPercentage = 0;
+        
+        const nowPlayingSheet = document.getElementById('nowPlayingSheet');
+        const miniPlayer = document.getElementById('miniPlayer');
+        const miniPlayerDetails = document.getElementById('miniPlayerDetails');
+        const miniTextContainer = document.getElementById('miniTextContainer');
+        const closeSheetBtn = document.getElementById('closeSheetBtn');
+        const globalAmbientBg = document.getElementById('globalAmbientBg');
+        const sheetAmbientBg = document.getElementById('sheetAmbientBg');
+        const sheetSwipeCloseArea = document.getElementById('sheetSwipeCloseArea');
+        const trackList = document.getElementById('trackList');
+
+        const searchContainer = document.getElementById('searchContainer');
+        const searchInput = document.getElementById('searchInput');
+        const searchTriggerBtn = document.getElementById('searchTriggerBtn');
+        const searchIcon = document.getElementById('searchIcon');
+        const headerTitle = document.getElementById('headerTitle');
+
+        const swipeTitle = document.getElementById('swipeTitleContainer');
+        const marqueeContent = document.getElementById('marqueeContent');
+        
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressTooltip = document.getElementById('progressTooltip');
+        
+        const miniProgressBarContainer = document.getElementById('miniProgressBarContainer');
+        const miniProgressBar = document.getElementById('miniProgressBar');
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    setInterval(() => reg.update(), 60 * 60 * 1000);
+                }).catch(err => console.log(err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e;
+            if (document.getElementById('pwaInstallBtn')) document.getElementById('pwaInstallBtn').classList.remove('hidden');
+        });
+
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
+
+        let player;
+        window.onYouTubeIframeAPIReady = function() {
+            player = new YT.Player('ytPlayerContainer', {
+                height: '100%', width: '100%', videoId: '',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'modestbranding': 1, 'rel': 0 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function onPlayerReady(event) {
+            player.setVolume(document.getElementById('volumeSlider')?.value || 100);
+            startProgressLoop();
+            setupMediaSessionHandlers();
+        }
+
+        function onPlayerStateChange(event) {
+            const playIcon = document.getElementById('playIcon');
+            const miniPlayIcon = document.getElementById('miniPlayIcon');
+            
+            if (event.data == YT.PlayerState.PLAYING) {
+                appState.isPlaying = true;
+                if(playIcon) playIcon.className = "fa-solid fa-pause";
+                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-pause";
+                updateDuration(); 
+                updateMediaSessionState(true);
+            } else {
+                appState.isPlaying = false;
+                if(playIcon) playIcon.className = "fa-solid fa-play ml-1";
+                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-play ml-0.5";
+                updateMediaSessionState(false);
+                if (event.data == YT.PlayerState.ENDED) {
+                    nextTrack();
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme(appState.currentTheme);
+            applyAmoledState(appState.isAmoled);
+            setupCustomSelect();
+
+            document.body.classList.remove('hidden');
+            window.history.replaceState({ page: 'main' }, 'Main');
+            
+            window.addEventListener('popstate', (e) => {
+                let handled = false;
+                if (nowPlayingSheet.classList.contains('expanded')) {
+                    nowPlayingSheet.classList.remove('expanded');
+                    nowPlayingSheet.style.transform = '';
+                    handled = true;
+                }
+                const filterMenu = document.getElementById('filterMenu');
+                if (filterMenu && !filterMenu.classList.contains('hidden')) {
+                    filterMenu.classList.add('hidden');
+                    handled = true;
+                }
+                const apiModal = document.getElementById('apiModal');
+                if (apiModal && !apiModal.classList.contains('hidden')) {
+                    apiModal.classList.add('hidden');
+                    handled = true;
+                }
+                if (handled) {
+                    window.history.pushState({ page: 'main' }, 'Main');
+                }
+            });
+
+            searchTriggerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!searchContainer.classList.contains('active')) {
+                    searchContainer.classList.add('active');
+                    headerTitle.classList.add('opacity-0');
+                    searchIcon.className = "fa-solid fa-arrow-right text-sm";
+                    searchInput.focus();
+                } else {
+                    if (searchInput.value.trim() !== "") {
+                        performSearch(false);
+                    } else {
+                        closeSearch();
+                    }
+                }
+            });
+
+            searchInput.addEventListener('keypress', (e) => { 
+                if (e.key === 'Enter') {
+                    performSearch(false);
+                    searchInput.blur();
+                } 
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!searchContainer.contains(e.target)) {
+                    closeSearch();
+                }
+            });
+
+            function closeSearch() {
+                searchContainer.classList.remove('active');
+                headerTitle.classList.remove('opacity-0');
+                searchIcon.className = "fa-solid fa-magnifying-glass text-sm";
+            }
+
+            trackList.addEventListener('scroll', () => {
+                if (trackList.scrollHeight - trackList.scrollTop - trackList.clientHeight < 100) {
+                    if (nextSearchPageToken && !isFetchingMore) {
+                        performSearch(true);
+                    }
+                }
+            });
+
+            // GESTIONE DEL CLICK SUL MINI PLAYER (RISOLTO DEFINITIVAMENTE)
+            miniPlayer.addEventListener('click', (e) => {
+                // Se clicchi sui controlli o sulla progress bar, non apre la scheda
+                if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) {
+                    return;
+                }
+                openNowPlayingSheet();
+            });
+            
+            closeSheetBtn.addEventListener('click', () => {
+                closeNowPlayingSheet();
+            });
+
+            document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('miniPlayPauseBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePlay();
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', prevTrack);
+            document.getElementById('miniPrevBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                prevTrack();
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', nextTrack);
+            document.getElementById('miniNextBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                nextTrack();
+            });
+
+            document.getElementById('sheetDownloadBtn').addEventListener('click', redirectToDownload);
+            document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
+            
+            progressBarContainer.addEventListener('mousedown', startScrub);
+            progressBarContainer.addEventListener('touchstart', startScrub, { passive: false });
+            miniProgressBarContainer.addEventListener('mousedown', startMiniScrub);
+            miniProgressBarContainer.addEventListener('touchstart', startMiniScrub, { passive: false });
+
+            window.addEventListener('mousemove', moveScrubGeneral);
+            window.addEventListener('touchmove', moveScrubGeneral, { passive: false });
+            window.addEventListener('mouseup', endScrubGeneral);
+            window.addEventListener('touchend', endScrubGeneral);
+
+            document.getElementById('apiConfigBtn').addEventListener('click', () => {
+                openApiModal();
+                window.history.pushState({ page: 'modal' }, 'Modal');
+            });
+            document.getElementById('modalCancelBtn').addEventListener('click', () => {
+                closeApiModal();
+                window.history.back();
+            });
+            document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
+
+            // Inizializza l'interruttore AMOLED nel DOM
+            const amoledCheckbox = document.getElementById('amoledToggle');
+            if (amoledCheckbox) {
+                amoledCheckbox.checked = appState.isAmoled;
+                amoledCheckbox.addEventListener('change', (e) => {
+                    appState.isAmoled = e.target.checked;
+                    applyAmoledState(appState.isAmoled);
+                });
+            }
+
+            setupSwipeHandlers();
+            setupSheetCloseSwipe();
+            checkAndApplyMarquee();
+        });
+
+        function openNowPlayingSheet() {
+            // Rimuoviamo qualsiasi transform in linea residuo per evitare scatti
+            nowPlayingSheet.style.transition = '';
+            nowPlayingSheet.style.transform = '';
+            nowPlayingSheet.classList.add('expanded');
+            window.history.pushState({ page: 'sheet' }, 'Sheet');
+        }
+
+        function closeNowPlayingSheet() {
+            nowPlayingSheet.classList.remove('expanded');
+            nowPlayingSheet.style.transform = '';
+            window.history.back();
+        }
+
+        function setupCustomSelect() {
+            const trigger = document.getElementById('customSelectTrigger');
+            const optionsContainer = document.getElementById('customSelectOptions');
+            const selectedText = document.getElementById('customSelectedValue');
+
+            optionsContainer.innerHTML = '';
+            for (const [key, theme] of Object.entries(themes)) {
+                const opt = document.createElement('div');
+                opt.className = `custom-option px-4 py-3 ${key === appState.currentTheme ? 'selected' : ''}`;
+                opt.dataset.value = key;
+                opt.textContent = theme.name;
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.custom-option').forEach(el => el.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    selectedText.textContent = theme.name;
+                    appState.currentTheme = key;
+                    applyTheme(key);
+                    optionsContainer.classList.remove('show');
+                });
+                optionsContainer.appendChild(opt);
+            }
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                optionsContainer.classList.toggle('show');
+            });
+
+            document.addEventListener('click', () => {
+                optionsContainer.classList.remove('show');
+            });
+        }
+
+        // SWIPE FLUIDO SENZA ATTESE (RISOLTO)
+        function setupSheetCloseSwipe() {
+            let startY = 0, currentY = 0, isDragging = false;
+
+            const onStart = (y) => {
+                isDragging = true;
+                startY = y;
+                // AZZERIAMO LA TRANSIZIONE IMMEDIATAMENTE al tocco per permettere lo swipe istantaneo
+                nowPlayingSheet.style.transition = 'none';
+            };
+
+            const onMove = (y) => {
+                if (!isDragging) return;
+                currentY = y - startY;
+                if (currentY > 0) {
+                    // Trasliamo con requestAnimationFrame per garantire performance ottimali a 60/120Hz
+                    window.requestAnimationFrame(() => {
+                        if (isDragging) {
+                            nowPlayingSheet.style.transform = `translate3d(0, calc(-100% + ${currentY}px), 0)`;
+                        }
+                    });
+                }
+            };
+
+            const onEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                // Ripristina la transizione fluida solo per lo scatto di chiusura o rientro
+                nowPlayingSheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                
+                if (currentY > 100) {
+                    closeNowPlayingSheet();
+                } else {
+                    nowPlayingSheet.style.transform = '';
+                }
+                currentY = 0;
+            };
+
+            sheetSwipeCloseArea.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
+            sheetSwipeCloseArea.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY), { passive: true });
+            sheetSwipeCloseArea.addEventListener('touchend', onEnd, { passive: true });
+
+            sheetSwipeCloseArea.addEventListener('mousedown', (e) => onStart(e.clientY));
+            window.addEventListener('mousemove', (e) => { if(isDragging) onMove(e.clientY); });
+            window.addEventListener('mouseup', onEnd);
+        }
+
+        function setupSwipeHandlers() {
+            let miniStartX = 0, miniStartY = 0;
+            let miniCurrentX = 0, miniCurrentY = 0;
+            let isDraggingMini = false;
+
+            miniPlayer.addEventListener('touchstart', (e) => {
+                if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) return;
+                isDraggingMini = true;
+                miniStartX = e.touches[0].clientX;
+                miniStartY = e.touches[0].clientY;
+                miniTextContainer.classList.add('dragging-active');
+            }, { passive: true });
+
+            miniPlayer.addEventListener('touchmove', (e) => {
+                if (!isDraggingMini) return;
+                miniCurrentX = e.touches[0].clientX - miniStartX;
+                miniCurrentY = e.touches[0].clientY - miniStartY;
+
+                if (Math.abs(miniCurrentX) > Math.abs(miniCurrentY)) {
+                    miniTextContainer.style.transform = `translate3d(${miniCurrentX}px, 0, 0)`;
+                    miniTextContainer.style.opacity = Math.max(0.1, 1 - Math.abs(miniCurrentX) / 200);
+                }
+            }, { passive: true });
+            
+            miniPlayer.addEventListener('touchend', () => {
+                if (!isDraggingMini) return;
+                isDraggingMini = false;
+                miniTextContainer.classList.remove('dragging-active');
+
+                if (miniCurrentY < -50 && Math.abs(miniCurrentX) < Math.abs(miniCurrentY)) {
+                    openNowPlayingSheet();
+                }
+                else if (miniCurrentX > 80) {
+                    prevTrack();
+                } else if (miniCurrentX < -80) {
+                    nextTrack();
+                }
+
+                miniTextContainer.style.transform = 'translate3d(0, 0, 0)';
+                miniTextContainer.style.opacity = '1';
+                miniCurrentX = 0;
+                miniCurrentY = 0;
+            }, { passive: true });
+
+            let titleStartX = 0, titleCurrentX = 0, isDraggingTitle = false;
+            const startTitleDrag = (x) => {
+                isDraggingTitle = true;
+                titleStartX = x;
+                swipeTitle.classList.add('dragging');
+                marqueeContent.classList.remove('animate-marquee');
+            };
+            const moveTitleDrag = (x) => {
+                if (!isDraggingTitle) return;
+                titleCurrentX = x - titleStartX;
+                const opacity = Math.max(0.2, 1 - Math.abs(titleCurrentX) / 350);
+                swipeTitle.style.transform = `translate3d(${titleCurrentX}px, 0, 0)`;
+                swipeTitle.style.opacity = opacity;
+            };
+            const endTitleDrag = () => {
+                if (!isDraggingTitle) return;
+                isDraggingTitle = false;
+                swipeTitle.classList.remove('dragging');
+                if (titleCurrentX > 75) animateOutAndChange('right');
+                else if (titleCurrentX < -75) animateOutAndChange('left');
+                else {
+                    swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                    swipeTitle.style.opacity = '1';
+                    checkAndApplyMarquee();
+                }
+                titleCurrentX = 0;
+            };
+
+            swipeTitle.addEventListener('touchstart', (e) => startTitleDrag(e.touches[0].clientX), { passive: true });
+            swipeTitle.addEventListener('touchmove', (e) => { if(isDraggingTitle) { e.preventDefault(); moveTitleDrag(e.touches[0].clientX); } }, { passive: false });
+            swipeTitle.addEventListener('touchend', endTitleDrag, { passive: true });
+            swipeTitle.addEventListener('mousedown', (e) => startTitleDrag(e.clientX));
+            window.addEventListener('mousemove', (e) => moveTitleDrag(e.clientX));
+            window.addEventListener('mouseup', endTitleDrag);
+        }
+
+        let activeScrubType = null;
+
+        function startScrub(e) {
+            if (!player?.getDuration || appState.currentIndex === -1) return;
+            isScrubbing = true;
+            activeScrubType = 'large';
+            progressBar.classList.add('scrubbing');
+            updateScrubPositionGeneral(e);
+        }
+
+        function startMiniScrub(e) {
+            if (!player?.getDuration || appState.currentIndex === -1) return;
+            isScrubbing = true;
+            activeScrubType = 'mini';
+            updateScrubPositionGeneral(e);
+        }
+
+        function moveScrubGeneral(e) {
+            if (!isScrubbing) return;
+            if (e.cancelable) e.preventDefault();
+            updateScrubPositionGeneral(e);
+        }
+
+        function updateScrubPositionGeneral(e) {
+            const container = activeScrubType === 'large' ? progressBarContainer : miniProgressBarContainer;
+            const rect = container.getBoundingClientRect();
+            
+            let clientX = 0;
+            if (e.touches && e.touches.length > 0) clientX = e.touches[0].clientX;
+            else if (e.changedTouches && e.changedTouches.length > 0) clientX = e.changedTouches[0].clientX;
+            else clientX = e.clientX;
+
+            let offsetX = clientX - rect.left;
+            offsetX = Math.max(0, Math.min(offsetX, rect.width));
+            scrubPercentage = offsetX / rect.width;
+
+            const duration = player.getDuration() || 0;
+            const targetTime = duration * scrubPercentage;
+
+            progressBar.style.width = `${scrubPercentage * 100}%`;
+            miniProgressBar.style.width = `${scrubPercentage * 100}%`;
+            
+            document.getElementById('currentTime').innerText = formatTime(targetTime);
+            document.getElementById('miniCurrentTime').innerText = formatTime(targetTime);
+
+            if (activeScrubType === 'large') {
+                let relativeLeft = clientX - rect.left;
+                relativeLeft = Math.max(0, Math.min(relativeLeft, rect.width));
+                progressTooltip.innerText = formatTime(targetTime);
+                progressTooltip.style.left = `${relativeLeft}px`;
+                progressTooltip.classList.remove('hidden');
+            }
+        }
+
+        function endScrubGeneral() {
+            if (!isScrubbing) return;
+            isScrubbing = false;
+            progressBar.classList.remove('scrubbing');
+            progressTooltip.classList.add('hidden');
+
+            const duration = player.getDuration() || 0;
+            player.seekTo(duration * scrubPercentage, true);
+            activeScrubType = null;
+        }
+
+        function applyTheme(themeKey) {
+            const theme = themes[themeKey] || themes.spotifyGreen;
+            const root = document.documentElement;
+            
+            root.style.setProperty('--bg-main', theme.bgMain);
+            root.style.setProperty('--bg-card', theme.bgCard);
+            root.style.setProperty('--bg-input', theme.bgInput);
+            root.style.setProperty('--accent', theme.accent);
+            root.style.setProperty('--text-main', theme.textMain);
+            root.style.setProperty('--text-muted', theme.textMuted);
+            root.style.setProperty('--is-light', theme.isLight);
+
+            document.getElementById('metaThemeColor')?.setAttribute('content', theme.bgMain);
+            appState.currentTheme = themeKey;
+            
+            const selectedText = document.getElementById('customSelectedValue');
+            if (selectedText) selectedText.textContent = theme.name;
+            
+            if (appState.currentIndex !== -1) renderTracklist();
+        }
+
+        // APPLICAZIONE STATO AMOLED
+        function applyAmoledState(isAmoled) {
+            if (isAmoled) {
+                document.body.classList.add('amoled-active');
+            } else {
+                document.body.classList.remove('amoled-active');
+            }
+            localStorage.setItem('youtubette_amoled', isAmoled);
+        }
+
+        function openApiModal() {
+            const modal = document.getElementById('apiModal');
+            const input = document.getElementById('modalApiKeyInput');
+            if (modal && input) {
+                input.value = appState.apiKey;
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeApiModal() {
+            const modal = document.getElementById('apiModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function saveSettingsFromModal() {
+            const key = document.getElementById('modalApiKeyInput').value.trim();
+            appState.apiKey = key;
+            localStorage.setItem('youtubette_api_key', key);
+            localStorage.setItem('youtubette_theme', appState.currentTheme);
+            applyTheme(appState.currentTheme);
+            applyAmoledState(appState.isAmoled);
+
+            document.getElementById('apiErrorBadge').classList.add('hidden');
+            document.getElementById('modalApiBadgeError').classList.add('hidden');
+
+            const saveBtn = document.getElementById('modalSaveBtn');
+            saveBtn.innerHTML = "Salvato! ✓";
+            
+            setTimeout(() => {
+                saveBtn.innerHTML = "Salva";
+                closeApiModal();
+                window.history.back();
+            }, 800);
+        }
+
+        async function redirectToDownload() {
+            if (appState.currentIndex === -1) return;
+            const currentTrack = appState.tracks[appState.currentIndex];
+            if (!currentTrack || !currentTrack.id) return;
+            
+            const youtubeUrl = `https://www.youtube.com/watch?v=${currentTrack.id}`;
+            
+            try {
+                await navigator.clipboard.writeText(youtubeUrl);
+                showToast("Link copiato!");
+                setTimeout(() => {
+                    window.open(`https://kleger.pl/`, '_blank');
+                }, 800);
+            } catch (err) {
+                window.open(`https://kleger.pl/`, '_blank');
+            }
+        }
+
+        function showToast(message) {
+            const oldToast = document.getElementById('youtubette-toast');
+            if (oldToast) oldToast.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'youtubette-toast';
+            toast.className = 'fixed bottom-28 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-[150] transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-white';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check mr-2 custom-text-accent"></i> ${message}`;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            }, 50);
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        function toggleDownloadButtons(enabled) {
+            const sheetDbtn = document.getElementById('sheetDownloadBtn');
+            if (!sheetDbtn) return;
+            if (enabled) {
+                sheetDbtn.disabled = false;
+                sheetDbtn.removeAttribute('disabled');
+                sheetDbtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-neutral-400');
+                sheetDbtn.classList.add('opacity-100', 'text-neutral-300', 'cursor-pointer');
+            } else {
+                sheetDbtn.disabled = true;
+                sheetDbtn.setAttribute('disabled', 'true');
+                sheetDbtn.classList.add('opacity-30', 'cursor-not-allowed', 'text-neutral-400');
+                sheetDbtn.classList.remove('opacity-100', 'text-neutral-300');
+            }
+        }
+
+        function animateOutAndChange(direction) {
+            if (appState.tracks.length === 0) {
+                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                swipeTitle.style.opacity = '1';
+                return;
+            }
+            swipeTitle.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out';
+            swipeTitle.style.transform = `translate3d(${direction === 'right' ? '100%' : '-100%'}, 0, 0)`;
+            swipeTitle.style.opacity = '0';
+            setTimeout(() => {
+                if (direction === 'right') prevTrack(); else nextTrack();
+                swipeTitle.style.transition = 'none';
+                swipeTitle.style.transform = `translate3d(${direction === 'right' ? '-100%' : '100%'}, 0, 0)`;
+                swipeTitle.offsetHeight;
+                swipeTitle.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out';
+                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                swipeTitle.style.opacity = '1';
+            }, 200);
+        }
+
+        function checkAndApplyMarquee() {
+            const titleEl = document.getElementById('playerTrackTitle');
+            const titleText = titleEl ? titleEl.innerText : 'YouTubette';
+            
+            marqueeContent.classList.remove('animate-marquee');
+            const wrapper = swipeTitle.querySelector('.marquee-wrapper');
+            let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-black text-white">${titleText}</span>`;
+            
+            marqueeContent.innerHTML = cleanText;
+            if (wrapper && marqueeContent.scrollWidth > wrapper.clientWidth) {
+                marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
+                marqueeContent.classList.add('animate-marquee');
+            }
+        }
+
+        async function performSearch(isLoadMore = false) {
+            const query = searchInput.value.trim();
+            const placeholderText = document.getElementById('placeholderText');
+            
+            if (!query || (isLoadMore && isFetchingMore)) return;
+
+            if (!appState.apiKey) { 
+                showVisualApiError();
+                if (placeholderText) placeholderText.innerHTML = `<span class="text-red-500 font-bold block mb-1">Chiave API Mancante!</span> Clicca sull'icona delle impostazioni in alto a sinistra per configurarla.`;
+                openApiModal(); 
+                return; 
+            }
+
+            if (!isLoadMore) {
+                if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
+                appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
+                toggleDownloadButtons(false);
+            } else isFetchingMore = true;
+
+            const order = document.getElementById('filterOrder').value;
+
+            try {
+                let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=${order}&key=${appState.apiKey}`;
+                if (nextSearchPageToken) url += `&pageToken=${nextSearchPageToken}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                document.getElementById('apiErrorBadge').classList.add('hidden');
+                document.getElementById('modalApiBadgeError').classList.add('hidden');
+
+                nextSearchPageToken = data.nextPageToken || '';
+                let newTracks = data.items.map(item => ({
+                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
+                }));
+
+                appState.tracks = appState.tracks.concat(newTracks);
+                renderTracklist();
+            } catch (error) {
+                showVisualApiError();
+                if (placeholderText && !isLoadMore) {
+                    placeholderText.innerHTML = `
+                        <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-center max-w-xs mx-auto">
+                            <i class="fa-solid fa-triangle-exclamation text-red-500 text-lg mb-2"></i>
+                            <p class="text-xs font-bold text-red-400">Errore API di YouTube</p>
+                            <p class="text-[10px] mt-1 custom-text-muted">La tua chiave API potrebbe essere non valida o scaduta.</p>
+                        </div>
+                    `;
+                }
+            } finally { if (isLoadMore) isFetchingMore = false; }
+        }
+
+        function renderTracklist() {
+            const trackListDiv = document.getElementById('trackList');
+            if (!trackListDiv) return; trackListDiv.innerHTML = '';
+            
+            if (appState.tracks.length === 0) {
+                trackListDiv.innerHTML = '<p class="text-xs p-2 italic text-center custom-text-muted">Nessun risultato.</p>';
+                return;
+            }
+
+            document.getElementById('trackCount').innerText = `${appState.tracks.length} brani`;
+
+            appState.tracks.forEach((track, index) => {
+                const trackRow = document.createElement('div');
+                trackRow.id = `track-row-${index}`;
+                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border border-white/10' : ''}`;
+               
+                trackRow.innerHTML = `
+                    <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
+                    <img src="${track.thumbnail}" style="object-fit: cover; aspect-ratio: 1 / 1;" class="w-11 h-11 rounded-full mx-2.5 shadow-md shrink-0">
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${track.title}</p>
+                        <p class="text-[10px] truncate mt-0.5 custom-text-muted font-medium">${track.channel}</p>
+                    </div>
+                `;
+                trackRow.addEventListener('click', () => {
+                    loadTrack(index);
+                });
+                trackListDiv.appendChild(trackRow);
+            });
+        }
+
+        function loadTrack(index) {
+            if (index < 0 || index >= appState.tracks.length) return;
+            
+            if (appState.currentIndex !== -1) {
+                const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
+                if (oldRow) {
+                    oldRow.classList.remove('bg-white/10', 'border', 'border-white/10');
+                    const oldText = oldRow.querySelector('p.text-xs');
+                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-white'); }
+                }
+            }
+
+            appState.currentIndex = index;
+            const track = appState.tracks[index];
+
+            const titleEl = document.getElementById('playerTrackTitle');
+            const channelEl = document.getElementById('playerTrackChannel');
+            if (titleEl) titleEl.innerText = track.title;
+            if (channelEl) channelEl.innerText = track.channel;
+            
+            if (globalAmbientBg) globalAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
+            if (sheetAmbientBg) sheetAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
+            
+            const artworkImg = document.getElementById('sheetArtworkImg');
+            if (artworkImg) {
+                artworkImg.src = track.thumbnail;
+            }
+
+            if (miniPlayer) {
+                miniPlayer.classList.add('visible');
+            }
+            document.getElementById('miniPlayerImg').src = track.thumbnail;
+            document.getElementById('miniPlayerTitle').innerText = track.title;
+            document.getElementById('miniPlayerChannel').innerText = track.channel;
+
+            const newRow = document.getElementById(`track-row-${index}`);
+            if (newRow) {
+                newRow.classList.add('bg-white/10', 'border', 'border-white/10');
+                const newText = newRow.querySelector('p.text-xs');
+                if (newText) { newText.classList.remove('text-white'); newText.classList.add('custom-text-accent', 'font-black'); }
+                newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            if (player?.loadVideoById) player.loadVideoById(track.id);
+            checkAndApplyMarquee();
+            updateMediaSessionMetadata(track);
+            toggleDownloadButtons(true);
+        }
+
+        function updateMediaSessionMetadata(track) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title, artist: track.channel, album: 'YouTubette Beats',
+                    artwork: [{ src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }]
+                });
+            }
+        }
+
+        function updateMediaSessionState(isPlaying) {
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+        }
+
+        function setupMediaSessionHandlers() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', togglePlay);
+                navigator.mediaSession.setActionHandler('pause', togglePlay);
+                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+            }
+        }
+
+        function togglePlay() {
+            if (!player || appState.currentIndex === -1) return;
+            if (appState.isPlaying) player.pauseVideo(); else player.playVideo();
+        }
+
+        function nextTrack() {
+            if (appState.tracks.length === 0) return;
+            let nextIdx = appState.currentIndex + 1;
+            if (nextIdx >= appState.tracks.length) {
+                if (nextSearchPageToken) {
+                    performSearch(true).then(() => { if (appState.tracks[nextIdx]) loadTrack(nextIdx); });
+                } else loadTrack(0);
+            } else {
+                loadTrack(nextIdx);
+            }
+        }
+
+        function prevTrack() {
+            if (appState.tracks.length === 0) return;
+            let prevIdx = appState.currentIndex - 1;
+            if (prevIdx < 0) prevIdx = appState.tracks.length - 1;
+            loadTrack(prevIdx);
+        }
+
+        function startProgressLoop() {
+            setInterval(() => {
+                if (player?.getCurrentTime && appState.isPlaying) {
+                    const currentTime = player.getCurrentTime(), duration = player.getDuration();
+                    
+                    if (duration > 0 && !isScrubbing) {
+                        const progressPercent = (currentTime / duration) * 100;
+                        progressBar.style.width = `${progressPercent}%`;
+                        miniProgressBar.style.width = `${progressPercent}%`;
+                        document.getElementById('currentTime').innerText = formatTime(currentTime);
+                        document.getElementById('miniCurrentTime').innerText = formatTime(currentTime);
+                    }
+
+                    if (duration > 0) {
+                        const formattedDuration = formatTime(duration);
+                        if (document.getElementById('durationTime').innerText !== formattedDuration) {
+                            document.getElementById('durationTime').innerText = formattedDuration;
+                            document.getElementById('miniDurationTime').innerText = formattedDuration;
+                        }
+                    }
+                }
+            }, 500);
+        }
+
+        function updateDuration() {
+            if (player?.getDuration) {
+                const totalDuration = player.getDuration();
+                if (totalDuration > 0) {
+                    document.getElementById('durationTime').innerText = formatTime(totalDuration);
+                    document.getElementById('miniDurationTime').innerText = formatTime(totalDuration);
+                }
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function showVisualApiError() {
+            document.getElementById('apiErrorBadge').classList.remove('hidden');
+            document.getElementById('modalApiBadgeError').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
