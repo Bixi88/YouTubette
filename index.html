@@ -107,6 +107,7 @@
             transition: none;
         }
 
+        /* --- SEARCH CONTAINER & FILTER BUTTON DYNAMICS --- */
         .search-container {
             position: relative;
             display: flex;
@@ -126,11 +127,16 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .search-container.active #searchInput {
-            width: 100%;
+            width: calc(100% - 48px); /* Lascia spazio esatto per l'icona dei filtri a sinistra */
             opacity: 1;
             pointer-events: auto;
             padding-left: 1rem;
             padding-right: 2.5rem;
+        }
+        .search-container.active #filterToggleBtn {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
         }
 
         .marquee-wrapper {
@@ -158,12 +164,6 @@
             user-drag: none;
         }
 
-        /* --- ZOOM ARTWORK CONTRO LE BANDE NERE DI YOUTUBE --- */
-        .crop-yt-thumb {
-            transform: scale(1.35); /* Zoom del 35% per tagliare le bande orizzontali del formato 4:3 */
-            will-change: transform;
-        }
-
         .custom-bg-main { background-color: var(--bg-main); }
         .custom-bg-card { background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         .custom-bg-input { background-color: var(--bg-input); }
@@ -172,6 +172,7 @@
         .custom-border-accent { border-color: var(--accent); }
         .custom-text-muted { color: var(--text-muted); }
 
+        /* --- CUSTOM SELECT ESTETICI PER IL MENU IMPOSTAZIONI --- */
         .custom-select-wrapper {
             position: relative;
             user-select: none;
@@ -193,7 +194,7 @@
             border: 1px solid rgba(255, 255, 255, 0.15) !important;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.8);
             display: none;
-            background: #121212 !important; /* Totalmente coprente per evitare trasparenze fastidiose */
+            background: #121212 !important;
         }
         .custom-options.show {
             display: block;
@@ -209,6 +210,15 @@
         .custom-option.selected {
             background: rgba(255, 255, 255, 0.15) !important;
             font-weight: bold;
+        }
+
+        /* --- STILI FILTRI CUSTOM DI RICERCA --- */
+        .filter-option {
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .filter-option.selected {
+            background: var(--accent) !important;
+            color: #000000 !important;
         }
 
         /* --- STILI MODALITÀ AMOLED --- */
@@ -227,9 +237,14 @@
         body.amoled-active .custom-bg-card,
         body.amoled-active #filterMenu {
             background: #000000 !important;
-            border: 1px solid #262626 !important; /* Bordi sottili dei tile */
+            border: 1px solid #262626 !important;
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
+        }
+        body.amoled-active #filterDateOptions,
+        body.amoled-active #filterDurationOptions {
+            background: #000000 !important;
+            border-color: #262626 !important;
         }
         body.amoled-active #nowPlayingSheet {
             background-color: #000000 !important;
@@ -251,6 +266,11 @@
         </div>
         
         <div class="search-container" id="searchContainer">
+            <!-- Icona filtri YouTube: visibile e attiva solo ad allungamento avvenuto -->
+            <button id="filterToggleBtn" class="opacity-0 pointer-events-none scale-90 transition-all duration-300 text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 mr-2" title="Filtri">
+                <i class="fa-solid fa-sliders text-sm"></i>
+            </button>
+
             <input type="text" id="searchInput" placeholder="Cerca canzoni..." 
                 class="text-xs py-2 rounded-full focus:outline-none focus:border-[var(--accent)] text-white">
             
@@ -264,20 +284,48 @@
         </button>
     </header>
 
-    <div id="filterMenu" class="hidden absolute top-16 left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-800/40">
-        <p class="text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtri di Ricerca</p>
-        <div class="grid grid-cols-1 gap-2.5">
-            <div>
-                <label class="block text-[10px] mb-1 custom-text-muted">Ordina per</label>
-                <select id="filterOrder" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-                    <option value="relevance">Rilevanza</option>
-                    <option value="date" selected>Data di caricamento</option>
-                    <option value="viewCount">Visualizzazioni</option>
-                </select>
+    <!-- Pannello Filtri YouTube (Nativo, ad effetto specchiato opaco e non di sistema) -->
+    <div id="filterMenu" class="hidden absolute top-16 left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 custom-bg-card border-white/10 transition-all duration-300">
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Colonna Data di Caricamento -->
+            <div class="relative">
+                <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Data di Caricamento</label>
+                <div class="filter-select-wrapper relative" id="filterDateWrapper">
+                    <div id="filterDateTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
+                        <span id="filterDateValue">Qualsiasi data</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
+                    </div>
+                    <div id="filterDateOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi data</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="hour">Ultima ora</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="today">Oggi</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="week">Questa settimana</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="month">Questo mese</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="year">Quest'anno</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colonna Durata -->
+            <div class="relative">
+                <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Durata Brano</label>
+                <div class="filter-select-wrapper relative" id="filterDurationWrapper">
+                    <div id="filterDurationTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
+                        <span id="filterDurationValue">Qualsiasi durata</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
+                    </div>
+                    <div id="filterDurationOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi durata</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="short">Breve (< 4 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="medium">Media (4 - 20 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (> 20 min)</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Sezione Principale -->
     <main class="flex-1 flex flex-col overflow-hidden z-10 relative">
         <section class="flex-1 p-3 flex flex-col rounded-3xl overflow-hidden h-full custom-bg-card border border-white/5">
             <div class="flex items-center justify-between px-2 pb-3 border-b border-white/5 shrink-0">
@@ -294,12 +342,13 @@
         <div id="ytPlayerContainer" class="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none"></div>
     </main>
 
+    <!-- Mini Player -->
     <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-24 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] cursor-pointer" style="touch-action: none;">
         
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
             <div class="flex items-center flex-1 min-w-0 mr-3 h-12 overflow-hidden" id="miniPlayerDetails">
                 <div class="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
-                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover crop-yt-thumb">
+                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover">
                 </div>
                 
                 <div class="ml-2.5 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
@@ -331,6 +380,7 @@
         </div>
     </div>
 
+    <!-- Now Playing Sheet -->
     <div id="nowPlayingSheet" class="flex flex-col select-none">
         <div id="sheetAmbientBg" class="absolute inset-0 z-0 opacity-60 transition-all duration-1000 bg-cover bg-center scale-105 blur-md"></div>
         <div class="absolute inset-0 z-1 bg-gradient-to-b from-black/25 via-black/50 to-[var(--bg-main)]"></div>
@@ -351,15 +401,17 @@
                 </div>
             </div>
 
+            <!-- Artwork Rotondo -->
             <div class="flex-1 flex items-center justify-center my-auto relative">
                 <div class="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center">
                     <div class="absolute inset-0 rounded-full blur-2xl opacity-20 transition-all duration-500 bg-[var(--accent)]"></div>
                     <div class="w-full h-full rounded-full overflow-hidden border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-10 flex items-center justify-center">
-                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover crop-yt-thumb">
+                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover">
                     </div>
                 </div>
             </div>
 
+            <!-- Area Controlli Inferiore -->
             <div class="w-full max-w-sm mx-auto shrink-0 pointer-events-auto">
                 <div class="w-full text-center mb-5">
                     <div id="swipeTitleContainer" class="w-full py-1 cursor-grab active:cursor-grabbing select-none" style="touch-action: none;">
@@ -403,6 +455,7 @@
         </div>
     </div>
 
+    <!-- Modal Impostazioni -->
     <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md">
         <div class="border w-full max-w-md rounded-3xl p-6 shadow-2xl relative custom-bg-card border-white/5">
             <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
@@ -429,6 +482,7 @@
                 </div>
             </div>
 
+            <!-- INTERRUTTORE MODALITÀ AMOLED -->
             <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-white">Modalità AMOLED</label>
@@ -472,7 +526,9 @@
             isAmoled: localStorage.getItem('youtubette_amoled') === 'true',
             tracks: [],
             currentIndex: -1,
-            isPlaying: false
+            isPlaying: false,
+            filterDate: 'any',
+            filterDuration: 'any'
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
         let isScrubbing = false; 
@@ -492,6 +548,8 @@
         const searchInput = document.getElementById('searchInput');
         const searchTriggerBtn = document.getElementById('searchTriggerBtn');
         const searchIcon = document.getElementById('searchIcon');
+        const filterToggleBtn = document.getElementById('filterToggleBtn');
+        const filterMenu = document.getElementById('filterMenu');
         const headerTitle = document.getElementById('headerTitle');
 
         const swipeTitle = document.getElementById('swipeTitleContainer');
@@ -557,10 +615,33 @@
             }
         }
 
+        // --- GESTIONE COPERTINE: CARICAMENTO A CASCATA (MAX-RES 16:9 -> FALLBACK MQ 16:9) ---
+        function displayArtwork(imgElement, videoId) {
+            if (!imgElement || !videoId) return;
+
+            const maxres = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+            const mq = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+
+            const tempImg = new Image();
+            tempImg.onload = function () {
+                // YouTube carica un placeholder grigio di 120px se non esiste la versione maxresdefault
+                if (this.naturalWidth === 120) {
+                    imgElement.src = mq;
+                } else {
+                    imgElement.src = maxres;
+                }
+            };
+            tempImg.onerror = function () {
+                imgElement.src = mq;
+            };
+            tempImg.src = maxres;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme(appState.currentTheme);
             applyAmoledState(appState.isAmoled);
             setupCustomSelect();
+            setupFilterDropdowns();
 
             document.body.classList.remove('hidden');
             window.history.replaceState({ page: 'main' }, 'Main');
@@ -572,7 +653,6 @@
                     nowPlayingSheet.style.transform = '';
                     handled = true;
                 }
-                const filterMenu = document.getElementById('filterMenu');
                 if (filterMenu && !filterMenu.classList.contains('hidden')) {
                     filterMenu.classList.add('hidden');
                     handled = true;
@@ -587,6 +667,7 @@
                 }
             });
 
+            // LOGICA BARRA DI RICERCA ED ESPANSIONE FILTRO YT
             searchTriggerBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!searchContainer.classList.contains('active')) {
@@ -611,7 +692,7 @@
             });
 
             document.addEventListener('click', (e) => {
-                if (!searchContainer.contains(e.target)) {
+                if (!searchContainer.contains(e.target) && !filterMenu.contains(e.target)) {
                     closeSearch();
                 }
             });
@@ -620,7 +701,14 @@
                 searchContainer.classList.remove('active');
                 headerTitle.classList.remove('opacity-0');
                 searchIcon.className = "fa-solid fa-magnifying-glass text-sm";
+                filterMenu.classList.add('hidden');
             }
+
+            // Click sul pulsante Filtri YouTube
+            filterToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                filterMenu.classList.toggle('hidden');
+            });
 
             trackList.addEventListener('scroll', () => {
                 if (trackList.scrollHeight - trackList.scrollTop - trackList.clientHeight < 100) {
@@ -630,9 +718,7 @@
                 }
             });
 
-            // GESTIONE DEL CLICK SUL MINI PLAYER (RISOLTO DEFINITIVAMENTE)
             miniPlayer.addEventListener('click', (e) => {
-                // Se clicchi sui controlli o sulla progress bar, non apre la scheda
                 if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) {
                     return;
                 }
@@ -684,7 +770,6 @@
             });
             document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
 
-            // Inizializza l'interruttore AMOLED nel DOM
             const amoledCheckbox = document.getElementById('amoledToggle');
             if (amoledCheckbox) {
                 amoledCheckbox.checked = appState.isAmoled;
@@ -700,7 +785,6 @@
         });
 
         function openNowPlayingSheet() {
-            // Rimuoviamo qualsiasi transform in linea residuo per evitare scatti
             nowPlayingSheet.style.transition = '';
             nowPlayingSheet.style.transform = '';
             nowPlayingSheet.classList.add('expanded');
@@ -746,14 +830,64 @@
             });
         }
 
-        // SWIPE FLUIDO SENZA ATTESE (RISOLTO)
+        // SETUP CONTROLLI FILTRI INTERNI (Custom Dropdowns)
+        function setupFilterDropdowns() {
+            const dateTrigger = document.getElementById('filterDateTrigger');
+            const dateOptions = document.getElementById('filterDateOptions');
+            const dateValue = document.getElementById('filterDateValue');
+
+            const durationTrigger = document.getElementById('filterDurationTrigger');
+            const durationOptions = document.getElementById('filterDurationOptions');
+            const durationValue = document.getElementById('filterDurationValue');
+
+            dateTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                durationOptions.classList.add('hidden');
+                dateOptions.classList.toggle('hidden');
+            });
+
+            durationTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dateOptions.classList.add('hidden');
+                durationOptions.classList.toggle('hidden');
+            });
+
+            document.querySelectorAll('#filterDateOptions .filter-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('#filterDateOptions .filter-option').forEach(el => el.classList.remove('selected', 'font-bold'));
+                    opt.classList.add('selected', 'font-bold');
+                    dateValue.textContent = opt.textContent;
+                    appState.filterDate = opt.dataset.value;
+                    dateOptions.classList.add('hidden');
+                    performSearch(false); // Ricerca istantanea al cambio del filtro
+                });
+            });
+
+            document.querySelectorAll('#filterDurationOptions .filter-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('#filterDurationOptions .filter-option').forEach(el => el.classList.remove('selected', 'font-bold'));
+                    opt.classList.add('selected', 'font-bold');
+                    durationValue.textContent = opt.textContent;
+                    appState.filterDuration = opt.dataset.value;
+                    durationOptions.classList.add('hidden');
+                    performSearch(false); // Ricerca istantanea al cambio del filtro
+                });
+            });
+
+            document.addEventListener('click', () => {
+                dateOptions.classList.add('hidden');
+                durationOptions.classList.add('hidden');
+            });
+        }
+
         function setupSheetCloseSwipe() {
             let startY = 0, currentY = 0, isDragging = false;
 
             const onStart = (y) => {
                 isDragging = true;
                 startY = y;
-                // AZZERIAMO LA TRANSIZIONE IMMEDIATAMENTE al tocco per permettere lo swipe istantaneo
                 nowPlayingSheet.style.transition = 'none';
             };
 
@@ -761,7 +895,6 @@
                 if (!isDragging) return;
                 currentY = y - startY;
                 if (currentY > 0) {
-                    // Trasliamo con requestAnimationFrame per garantire performance ottimali a 60/120Hz
                     window.requestAnimationFrame(() => {
                         if (isDragging) {
                             nowPlayingSheet.style.transform = `translate3d(0, calc(-100% + ${currentY}px), 0)`;
@@ -774,7 +907,6 @@
                 if (!isDragging) return;
                 isDragging = false;
                 
-                // Ripristina la transizione fluida solo per lo scatto di chiusura o rientro
                 nowPlayingSheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
                 
                 if (currentY > 100) {
@@ -960,7 +1092,6 @@
             if (appState.currentIndex !== -1) renderTracklist();
         }
 
-        // APPLICAZIONE STATO AMOLED
         function applyAmoledState(isAmoled) {
             if (isAmoled) {
                 document.body.classList.add('amoled-active');
@@ -1097,6 +1228,30 @@
             }
         }
 
+        // Calcolo dinamico timestamp RFC 3339 per il parametro "publishedAfter" dell'API
+        function getPublishedAfterDate(filterValue) {
+            if (filterValue === 'any') return null;
+            const now = new Date();
+            switch (filterValue) {
+                case 'hour':
+                    now.setHours(now.getHours() - 1);
+                    break;
+                case 'today':
+                    now.setDate(now.getDate() - 1);
+                    break;
+                case 'week':
+                    now.setDate(now.getDate() - 7);
+                    break;
+                case 'month':
+                    now.setMonth(now.getMonth() - 1);
+                    break;
+                case 'year':
+                    now.setFullYear(now.getFullYear() - 1);
+                    break;
+            }
+            return now.toISOString();
+        }
+
         async function performSearch(isLoadMore = false) {
             const query = searchInput.value.trim();
             const placeholderText = document.getElementById('placeholderText');
@@ -1116,10 +1271,18 @@
                 toggleDownloadButtons(false);
             } else isFetchingMore = true;
 
-            const order = document.getElementById('filterOrder').value;
-
             try {
-                let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=${order}&key=${appState.apiKey}`;
+                let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
+                
+                // Integrazione dei Filtri YouTube Custom
+                if (appState.filterDuration !== 'any') {
+                    url += `&videoDuration=${appState.filterDuration}`;
+                }
+                const publishedAfter = getPublishedAfterDate(appState.filterDate);
+                if (publishedAfter) {
+                    url += `&publishedAfter=${encodeURIComponent(publishedAfter)}`;
+                }
+
                 if (nextSearchPageToken) url += `&pageToken=${nextSearchPageToken}`;
 
                 const response = await fetch(url);
@@ -1134,7 +1297,10 @@
 
                 nextSearchPageToken = data.nextPageToken || '';
                 let newTracks = data.items.map(item => ({
-                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
+                    id: item.id.videoId, 
+                    title: item.snippet.title, 
+                    channel: item.snippet.channelTitle, 
+                    thumbnail: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
                 }));
 
                 appState.tracks = appState.tracks.concat(newTracks);
@@ -1169,11 +1335,10 @@
                 trackRow.id = `track-row-${index}`;
                 trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border border-white/10' : ''}`;
                
-                // MODIFICATO: Inserito wrapper div con overflow-hidden e classe crop-yt-thumb sull'immagine anche nella riga della lista
                 trackRow.innerHTML = `
                     <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
                     <div class="w-11 h-11 rounded-full overflow-hidden mx-2.5 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
-                        <img src="${track.thumbnail}" class="w-full h-full object-cover crop-yt-thumb">
+                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover">
                     </div>
                     <div class="flex-1 overflow-hidden">
                         <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${track.title}</p>
@@ -1184,6 +1349,12 @@
                     loadTrack(index);
                 });
                 trackListDiv.appendChild(trackRow);
+
+                // Applica l'artwork nitido non appena l'elemento viene renderizzato
+                setTimeout(() => {
+                    const img = document.getElementById(`track-img-${index}`);
+                    displayArtwork(img, track.id);
+                }, 0);
             });
         }
 
@@ -1210,15 +1381,13 @@
             if (globalAmbientBg) globalAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
             if (sheetAmbientBg) sheetAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
             
-            const artworkImg = document.getElementById('sheetArtworkImg');
-            if (artworkImg) {
-                artworkImg.src = track.thumbnail;
-            }
+            // Assegnazione nitida dell'artwork (senza zoom e sfocature)
+            displayArtwork(document.getElementById('sheetArtworkImg'), track.id);
+            displayArtwork(document.getElementById('miniPlayerImg'), track.id);
 
             if (miniPlayer) {
                 miniPlayer.classList.add('visible');
             }
-            document.getElementById('miniPlayerImg').src = track.thumbnail;
             document.getElementById('miniPlayerTitle').innerText = track.title;
             document.getElementById('miniPlayerChannel').innerText = track.channel;
 
