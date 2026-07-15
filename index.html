@@ -17,8 +17,8 @@
     <style>
         :root {
             --bg-main: #0a0a0a;
-            --bg-card: #121212;
-            --bg-input: #1a1a1a;
+            --bg-card: rgba(18, 18, 18, 0.4);
+            --bg-input: rgba(26, 26, 26, 0.6);
             --accent: #1DB954;
             --text-main: #ffffff;
             --text-muted: #a3a3a3;
@@ -35,18 +35,32 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: var(--bg-card); }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
 
-        /* Effetto glassmorphism per elementi fluttuanti */
-        .glass-panel {
-            background: rgba(22, 22, 22, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        /* Sfondo sfocato dinamico Globale (su tutta l'app) */
+        .ambient-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.35;
+            filter: blur(80px);
+            transform: scale(1.2);
+            pointer-events: none;
+            transition: background-image 1.2s ease;
+            background-position: center;
+            background-size: cover;
         }
 
-        /* Bottom Sheet (Schermata di riproduzione espandibile) */
+        /* Pannelli trasparenti stile iOS */
+        .glass-panel {
+            background: rgba(18, 18, 18, 0.55);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* Bottom Sheet */
         #nowPlayingSheet {
             position: fixed;
             top: 100%;
@@ -56,24 +70,37 @@
             z-index: 100;
             transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform;
-            background-color: var(--bg-main);
+            background-color: transparent;
         }
         #nowPlayingSheet.expanded {
             transform: translateY(-100%);
         }
 
-        /* Sfondo sfocato dinamico */
-        .ambient-bg {
-            position: absolute;
-            inset: 0;
-            z-index: 0;
-            opacity: 0.45;
-            filter: blur(60px);
-            transform: scale(1.2);
+        /* Animazione della barra di ricerca espandibile */
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1;
+            margin-left: 1rem;
+        }
+        #searchInput {
+            width: 0px;
+            opacity: 0;
             pointer-events: none;
-            transition: background-image 0.8s ease;
-            background-position: center;
-            background-size: cover;
+            transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, padding 0.3s ease;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .search-container.active #searchInput {
+            width: 100%;
+            opacity: 1;
+            pointer-events: auto;
+            padding-left: 1rem;
+            padding-right: 2.5rem;
         }
 
         /* Marquee setup */
@@ -97,14 +124,13 @@
             100% { transform: translate3d(-50%, 0, 0); }
         }
 
-        /* Disabilita i comportamenti di drag nativi sulle immagini */
         img {
             -webkit-user-drag: none;
             user-drag: none;
         }
 
         .custom-bg-main { background-color: var(--bg-main); }
-        .custom-bg-card { background-color: var(--bg-card); }
+        .custom-bg-card { background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         .custom-bg-input { background-color: var(--bg-input); }
         .custom-text-accent { color: var(--accent); }
         .custom-bg-accent { background-color: var(--accent); }
@@ -112,109 +138,75 @@
         .custom-text-muted { color: var(--text-muted); }
     </style>
 </head>
-<body class="font-sans flex flex-col justify-between hidden p-3 box-border h-full custom-bg-main">
+<body class="font-sans flex flex-col justify-between hidden p-4 box-border h-full custom-bg-main relative">
 
-    <header class="h-14 px-4 flex items-center justify-between rounded-2xl mb-2 shrink-0 z-40 custom-bg-card shadow-lg">
-        <div class="flex items-center space-x-2 text-lg font-bold tracking-tight custom-text-accent">
-            <i class="fa-solid fa-circle-play text-xl"></i>
-            <span class="font-black tracking-wider text-[var(--text-main)] text-sm">YOUTUBETTE</span>
+    <div id="globalAmbientBg" class="ambient-bg"></div>
+
+    <header class="h-16 px-2 flex items-center justify-between shrink-0 z-40 relative">
+        <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all" title="Impostazioni">
+            <i class="fa-solid fa-sliders text-base"></i>
+        </button>
+
+        <div id="headerTitle" class="absolute left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300">
+            <span class="font-black tracking-widest text-white text-xs uppercase">YOUTUBETTE</span>
         </div>
         
-        <div class="shrink-0 flex items-center space-x-2">
-            <button id="pwaInstallBtn" class="hidden text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform custom-bg-accent">
-                <i class="fa-solid fa-download mr-1"></i> Installa
-            </button>
-            <button id="apiConfigBtn" class="text-gray-400 hover:text-[var(--text-main)] w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--bg-input)] active:scale-90 transition-all" title="Impostazioni">
-                <i class="fa-solid fa-sliders text-base"></i>
+        <div class="search-container" id="searchContainer">
+            <input type="text" id="searchInput" placeholder="Cerca canzoni o artisti..." 
+                class="text-xs py-2 rounded-full focus:outline-none focus:border-[var(--accent)] text-white">
+            
+            <button id="searchTriggerBtn" class="absolute right-0 w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-white active:scale-90 transition-all" title="Cerca">
+                <i class="fa-solid fa-magnifying-glass text-sm" id="searchIcon"></i>
             </button>
         </div>
+
+        <button id="pwaInstallBtn" class="hidden absolute top-20 right-4 text-black font-bold text-[10px] px-3 py-1 rounded-full active:scale-95 transition-transform custom-bg-accent z-50">
+            <i class="fa-solid fa-download mr-1"></i> Installa
+        </button>
     </header>
 
-    <div class="px-1 mb-3 shrink-0">
-        <div class="relative flex items-center w-full">
-            <i class="fa-solid fa-magnifying-glass absolute left-4 text-gray-400 text-sm"></i>
-            <input type="text" id="searchInput" placeholder="Cerca canzoni, artisti o playlist..." 
-                class="w-full text-sm pl-11 pr-24 py-3.5 rounded-2xl border border-transparent focus:outline-none focus:border-[var(--text-muted)] transition-all custom-bg-card text-[var(--text-main)] shadow-md">
-            
-            <div class="absolute right-2 flex items-center space-x-1">
-                <button id="filterToggleBtn" class="text-gray-400 hover:text-[var(--text-main)] p-2 text-sm" title="Filtri">
-                    <i class="fa-solid fa-filter"></i>
-                </button>
-                <button id="searchBtn" class="font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition-transform custom-bg-accent text-black shadow-sm">
-                    Cerca
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="filterMenu" class="hidden absolute top-32 left-4 right-4 md:left-auto md:right-12 md:w-80 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-800">
+    <div id="filterMenu" class="hidden absolute top-16 left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-800/40">
         <p class="text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtri di Ricerca</p>
         <div class="grid grid-cols-1 gap-2.5">
             <div>
                 <label class="block text-[10px] mb-1 custom-text-muted">Ordina per</label>
-                <select id="filterOrder" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                <select id="filterOrder" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
                     <option value="relevance">Rilevanza</option>
                     <option value="date" selected>Data di caricamento</option>
                     <option value="viewCount">Visualizzazioni</option>
-                    <option value="rating">Valutazione</option>
                 </select>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-[10px] mb-1 custom-text-muted">Durata</label>
-                    <select id="filterDuration" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
-                        <option value="any" selected>Qualsiasi</option>
-                        <option value="short">Breve (< 4 min)</option>
-                        <option value="medium">Media (4-20 min)</option>
-                        <option value="long">Lunga (> 20 min)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[10px] mb-1 custom-text-muted">Caricato in</label>
-                    <select id="filterPublishedAfter" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
-                        <option value="any" selected>Sempre</option>
-                        <option value="hour">Ultima ora</option>
-                        <option value="day">Oggi</option>
-                        <option value="week">Questa settimana</option>
-                        <option value="month">Questo mese</option>
-                        <option value="year">Quest'anno</option>
-                    </select>
-                </div>
             </div>
         </div>
     </div>
 
-    <main class="flex-1 flex flex-col overflow-hidden mb-24">
-        <section class="flex-1 p-3 flex flex-col rounded-2xl overflow-hidden h-full shadow-lg custom-bg-card border border-neutral-900/30">
-            <div class="flex items-center justify-between px-2 pb-2 border-b border-neutral-800/40 shrink-0">
-                <span class="text-xs font-bold uppercase tracking-wider custom-text-muted">Coda di riproduzione</span>
-                <span id="trackCount" class="text-[10px] font-bold px-2 py-0.5 rounded-full custom-bg-input custom-text-muted">0 brani</span>
+    <main class="flex-1 flex flex-col overflow-hidden mb-24 z-10 relative">
+        <section class="flex-1 p-3 flex flex-col rounded-3xl overflow-hidden h-full custom-bg-card border border-white/5">
+            <div class="flex items-center justify-between px-2 pb-3 border-b border-white/5 shrink-0">
+                <span class="text-[10px] font-bold uppercase tracking-widest custom-text-muted">Brani trovati</span>
+                <span id="trackCount" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/5 custom-text-muted">0 brani</span>
             </div>
-            <div class="relative flex-1 overflow-hidden mt-2">
+            <div class="relative flex-1 overflow-hidden mt-3">
                 <div id="trackList" class="space-y-1 pb-16 h-full overflow-y-auto pr-1">
-                    <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Fai una ricerca per caricare i brani.</p>
+                    <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
                 </div>
             </div>
         </section>
 
-        <section id="videoSection" class="hidden absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none">
-            <div id="ytPlayerContainer" class="w-full h-full"></div>
-        </section>
+        <div id="ytPlayerContainer" class="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none"></div>
     </main>
 
     <div id="miniPlayer" class="hidden fixed bottom-4 left-4 right-4 h-20 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] transition-all duration-300">
-        
         <div class="flex items-center justify-between w-full text-[9px] font-mono custom-text-muted mb-1 px-1">
             <span id="miniCurrentTime">0:00</span>
             <div id="miniProgressBarContainer" class="flex-1 mx-3 h-3 flex items-center relative cursor-pointer">
-                <div class="w-full h-[3px] bg-neutral-700/40 rounded-full"></div>
+                <div class="w-full h-[3px] bg-white/10 rounded-full"></div>
                 <div id="miniProgressBar" class="absolute top-1/2 -translate-y-1/2 left-0 h-[3px] w-0 custom-bg-accent rounded-full transition-all duration-100"></div>
             </div>
             <span id="miniDurationTime">0:00</span>
         </div>
 
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0">
-            <div class="flex items-center flex-1 min-w-0 mr-3" id="miniPlayerDetails">
+            <div class="flex items-center flex-1 min-w-0 mr-3 cursor-pointer" id="miniPlayerDetails">
                 <img id="miniPlayerImg" src="" class="w-10 h-10 object-cover rounded-xl shadow-md shrink-0 bg-neutral-800">
                 <div class="ml-2.5 min-w-0 flex-1">
                     <p id="miniPlayerTitle" class="text-xs font-bold truncate text-[var(--text-main)]"></p>
@@ -224,7 +216,7 @@
 
             <div class="flex items-center space-x-0.5 shrink-0" id="miniPlayerControls">
                 <button id="miniPrevBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-sm active:scale-90 transition-transform"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="miniPlayPauseBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-md bg-[var(--text-main)] text-[var(--bg-main)] active:scale-90 transition-transform">
+                <button id="miniPlayPauseBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black active:scale-90 transition-transform">
                     <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
                 </button>
                 <button id="miniNextBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-sm active:scale-90 transition-transform"><i class="fa-solid fa-forward-step"></i></button>
@@ -232,11 +224,9 @@
         </div>
     </div>
 
-    <div id="nowPlayingSheet" class="flex flex-col px-6 pb-8 pt-4 select-none">
-        <div id="ambientBg" class="ambient-bg"></div>
-
+    <div id="nowPlayingSheet" class="flex flex-col px-6 pb-8 pt-4 select-none glass-panel">
         <div id="sheetHeaderDrag" class="w-full flex flex-col items-center py-2 shrink-0 z-10 cursor-pointer">
-            <div class="w-12 h-1 bg-neutral-600/50 rounded-full mb-4"></div>
+            <div class="w-12 h-1 bg-white/20 rounded-full mb-4"></div>
             <div class="flex items-center justify-between w-full px-1">
                 <button id="closeSheetBtn" class="text-neutral-400 hover:text-white p-2 text-lg active:scale-90 transition-transform">
                     <i class="fa-solid fa-chevron-down"></i>
@@ -249,8 +239,8 @@
         </div>
 
         <div class="flex-1 flex flex-col items-center justify-center my-auto z-10 relative">
-            <div id="largeArtSwipeContainer" class="w-64 h-64 xs:w-72 xs:h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] border border-neutral-800/40 relative aspect-square mb-8 transition-transform duration-500 cursor-grab active:cursor-grabbing" style="touch-action: none;">
-                <img id="largeTrackArt" class="w-full h-full object-cover pointer-events-none" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=512&h=512&fit=crop&auto=format">
+            <div id="largeArtSwipeContainer" class="w-64 h-64 xs:w-72 xs:h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] border border-white/5 relative aspect-square mb-8 transition-transform duration-500 cursor-grab active:cursor-grabbing" style="touch-action: none;">
+                <img id="largeTrackArt" class="w-full h-full object-cover pointer-events-none" src="">
                 <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 custom-bg-card hidden">
                     <i class="fa-solid fa-music text-4xl mb-2"></i>
                 </div>
@@ -275,7 +265,7 @@
             </div>
             
             <div class="h-5 rounded-full relative cursor-pointer py-1.5 mb-6 group" id="progressBarContainer">
-                <div class="w-full h-1.5 rounded-full absolute top-1.5 left-0 bg-neutral-800 transition-all group-hover:h-2"></div>
+                <div class="w-full h-1.5 rounded-full absolute top-1.5 left-0 bg-white/10 transition-all group-hover:h-2"></div>
                 <div class="h-1.5 rounded-full w-0 absolute top-1.5 left-0 transition-all duration-100 custom-bg-accent group-hover:h-2" id="progressBar"></div>
                 
                 <div id="progressTooltip" class="hidden absolute bottom-full mb-2 text-black font-bold text-[10px] px-2 py-1 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 z-50 custom-bg-accent">
@@ -285,13 +275,13 @@
 
             <div class="flex items-center justify-between px-6 mb-8">
                 <button id="prevBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform text-xl shadow-2xl bg-[var(--text-main)] text-[var(--bg-main)]">
+                <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform text-xl shadow-2xl bg-white text-black">
                     <i class="fa-solid fa-play ml-1" id="playIcon"></i>
                 </button>
                 <button id="nextBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-forward-step"></i></button>
             </div>
 
-            <div class="hidden md:flex items-center space-x-3 justify-center custom-text-muted px-4 py-2 bg-neutral-900/30 rounded-2xl mb-2">
+            <div class="hidden md:flex items-center space-x-3 justify-center custom-text-muted px-4 py-2 bg-white/5 rounded-2xl mb-2">
                 <i class="fa-solid fa-volume-high text-xs"></i>
                 <input type="range" id="volumeSlider" min="0" max="100" value="100" 
                     class="w-full h-1 rounded-full appearance-none cursor-pointer accent-[var(--text-main)] bg-neutral-700">
@@ -299,34 +289,26 @@
         </div>
     </div>
 
-    <div id="apiModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-        <div class="border w-full max-w-md rounded-2xl p-6 shadow-2xl relative custom-bg-card border-neutral-800">
+    <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+        <div class="border w-full max-w-md rounded-3xl p-6 shadow-2xl relative custom-bg-card border-white/5">
             <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
-                <i class="fa-solid fa-gear mr-2.5 custom-text-accent"></i> Impostazioni
+                <i class="fa-solid fa-sliders mr-2.5 custom-text-accent"></i> Impostazioni
             </h3>
             
             <div class="mb-4">
                 <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">YouTube API Key</label>
                 <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
-                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
             </div>
 
             <div class="mb-4">
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia (Palette)</label>
-                <select id="modalThemeSelect" class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
+                <select id="modalThemeSelect" class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
                 </select>
             </div>
 
-            <div class="mb-6 flex items-center justify-between border-t border-neutral-800/50 pt-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">Visualizza Video</label>
-                    <span class="text-[10px] custom-text-muted">Mantieni abilitato l'Iframe video standard</span>
-                </div>
-                <input type="checkbox" id="modalShowVideoInput" class="w-4 h-4 rounded appearance-none checked:bg-[var(--accent)] bg-[var(--bg-input)] border border-neutral-700 checked:border-transparent cursor-pointer relative flex items-center justify-center before:content-['✓'] before:text-black before:text-xs before:font-bold before:hidden checked:before:block">
-            </div>
-
-            <div class="flex items-center justify-end space-x-3">
-                <button id="modalCancelBtn" class="hover:text-[var(--text-main)] font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
+            <div class="flex items-center justify-end space-x-3 mt-6">
+                <button id="modalCancelBtn" class="hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
                 <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
             </div>
         </div>
@@ -334,28 +316,21 @@
 
     <script>
         const themes = {
-            spotifyGreen: { name: "Spotify Green (Dark / Green)", bgMain: "#0a0a0a", bgCard: "#121212", bgInput: "#1c1c1c", accent: "#1DB954", textMain: "#ffffff", textMuted: "#a3a3a3", isLight: 0 },
-            amoledWhite:  { name: "Pure AMOLED (Black / White)", bgMain: "#000000", bgCard: "#000000", bgInput: "#121212", accent: "#ffffff", textMain: "#ffffff", textMuted: "#888888", isLight: 0 },
-            cyberPurple:  { name: "Cyber Purple (Dark / Neon Purple)", bgMain: "#07040a", bgCard: "#0f0916", bgInput: "#191124", accent: "#bf5af2", textMain: "#ffffff", textMuted: "#9893a5", isLight: 0 },
-            deepBlue:     { name: "Oceanic Depth (Dark / Electric Blue)", bgMain: "#03070d", bgCard: "#08101c", bgInput: "#101e33", accent: "#0a84ff", textMain: "#ffffff", textMuted: "#8e9bb4", isLight: 0 },
-            lavaRed:      { name: "Lava Crimson (Dark / Material Red)", bgMain: "#0a0404", bgCard: "#120909", bgInput: "#1e1111", accent: "#ff453a", textMain: "#ffffff", textMuted: "#aa9999", isLight: 0 },
-            amberGold:    { name: "Amber Gold (Dark / Orange Amber)", bgMain: "#080603", bgCard: "#120e09", bgInput: "#1e1710", accent: "#ff9f0a", textMain: "#ffffff", textMuted: "#aba499", isLight: 0 },
-            synthWave:    { name: "Synth Magenta (Dark / Hot Pink)", bgMain: "#08040b", bgCard: "#110918", bgInput: "#1d1127", accent: "#ff375f", textMain: "#ffffff", textMuted: "#b29fb7", isLight: 0 },
-            materialTeal: { name: "Material Teal (Dark / Teal Green)", bgMain: "#030807", bgCard: "#091311", bgInput: "#11221f", accent: "#64ffda", textMain: "#ffffff", textMuted: "#91a3a0", isLight: 0 },
-            slateGray:    { name: "Minimal Slate (Dark / Silver Gray)", bgMain: "#121212", bgCard: "#1c1c1e", bgInput: "#2c2c2e", accent: "#e5e5ea", textMain: "#ffffff", textMuted: "#aeaeae", isLight: 0 },
-            cleanLight:   { name: "Clean Light (White / Royal Blue)", bgMain: "#f2f2f7", bgCard: "#ffffff", bgInput: "#e5e5ea", accent: "#0052cc", textMain: "#1c1c1e", textMuted: "#8e8e93", isLight: 1 }
+            spotifyGreen: { name: "Spotify Green (Dark / Green)", bgMain: "#090909", bgCard: "rgba(18, 18, 18, 0.45)", bgInput: "rgba(28, 28, 28, 0.6)", accent: "#1DB954", textMain: "#ffffff", textMuted: "#a3a3a3", isLight: 0 },
+            amoledWhite:  { name: "Pure AMOLED (Black / White)", bgMain: "#000000", bgCard: "rgba(0, 0, 0, 0.5)", bgInput: "rgba(18, 18, 18, 0.6)", accent: "#ffffff", textMain: "#ffffff", textMuted: "#888888", isLight: 0 },
+            cyberPurple:  { name: "Cyber Purple (Dark / Neon Purple)", bgMain: "#07040a", bgCard: "rgba(15, 9, 22, 0.45)", bgInput: "rgba(25, 17, 36, 0.6)", accent: "#bf5af2", textMain: "#ffffff", textMuted: "#9893a5", isLight: 0 },
+            deepBlue:     { name: "Oceanic Depth (Dark / Electric Blue)", bgMain: "#03070d", bgCard: "rgba(8, 16, 28, 0.45)", bgInput: "rgba(16, 30, 51, 0.6)", accent: "#0a84ff", textMain: "#ffffff", textMuted: "#8e9bb4", isLight: 0 },
+            lavaRed:      { name: "Lava Crimson (Dark / Material Red)", bgMain: "#0a0404", bgCard: "rgba(18, 9, 9, 0.45)", bgInput: "rgba(30, 17, 17, 0.6)", accent: "#ff453a", textMain: "#ffffff", textMuted: "#aa9999", isLight: 0 }
         };
 
         let appState = {
             apiKey: localStorage.getItem('youtubette_api_key') || '',
             currentTheme: localStorage.getItem('youtubette_theme') || 'spotifyGreen',
-            showVideo: localStorage.getItem('youtubette_show_video') !== 'false',
             tracks: [],
             currentIndex: -1,
             isPlaying: false
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
-
         let isScrubbing = false; 
         let scrubPercentage = 0;
         
@@ -367,7 +342,14 @@
         const closeSheetBtn = document.getElementById('closeSheetBtn');
         const largeTrackArt = document.getElementById('largeTrackArt');
         const largeArtSwipeContainer = document.getElementById('largeArtSwipeContainer');
-        const ambientBg = document.getElementById('ambientBg');
+        const globalAmbientBg = document.getElementById('globalAmbientBg');
+
+        // Ricerca
+        const searchContainer = document.getElementById('searchContainer');
+        const searchInput = document.getElementById('searchInput');
+        const searchTriggerBtn = document.getElementById('searchTriggerBtn');
+        const searchIcon = document.getElementById('searchIcon');
+        const headerTitle = document.getElementById('headerTitle');
 
         const swipeTitle = document.getElementById('swipeTitleContainer');
         const marqueeContent = document.getElementById('marqueeContent');
@@ -386,13 +368,6 @@
                 navigator.serviceWorker.register('./sw.js').then((reg) => {
                     setInterval(() => reg.update(), 60 * 60 * 1000);
                 }).catch(err => console.log(err));
-
-                let refreshing = false;
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (refreshing) return;
-                    refreshing = true;
-                    window.location.reload();
-                });
             });
         }
 
@@ -401,12 +376,13 @@
             if (document.getElementById('pwaInstallBtn')) document.getElementById('pwaInstallBtn').classList.remove('hidden');
         });
 
+        // Inizializzazione YouTube Iframe API
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
 
         let player;
-        function onYouTubeIframeAPIReady() {
+        window.onYouTubeIframeAPIReady = function() {
             player = new YT.Player('ytPlayerContainer', {
                 height: '100%', width: '100%', videoId: '',
                 playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'modestbranding': 1, 'rel': 0 },
@@ -445,20 +421,48 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme(appState.currentTheme);
-            applyVideoVisibility();
             populateThemeSelect();
 
             document.body.classList.remove('hidden');
             
-            document.getElementById('searchBtn').addEventListener('click', () => performSearch(false));
-            document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(false); });
-            
-            document.getElementById('filterToggleBtn').addEventListener('click', (e) => {
+            // Gestore Animazione Ricerca Espandibile
+            searchTriggerBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.getElementById('filterMenu').classList.toggle('hidden');
+                if (!searchContainer.classList.contains('active')) {
+                    // Apri barra
+                    searchContainer.classList.add('active');
+                    headerTitle.classList.add('opacity-0');
+                    searchIcon.className = "fa-solid fa-arrow-right text-sm";
+                    searchInput.focus();
+                } else {
+                    // Chiudi ed effettua ricerca
+                    if (searchInput.value.trim() !== "") {
+                        performSearch(false);
+                    } else {
+                        closeSearch();
+                    }
+                }
             });
-            document.addEventListener('click', () => document.getElementById('filterMenu').classList.add('hidden'));
-            document.getElementById('filterMenu').addEventListener('click', (e) => e.stopPropagation());
+
+            searchInput.addEventListener('keypress', (e) => { 
+                if (e.key === 'Enter') {
+                    performSearch(false);
+                    searchInput.blur();
+                } 
+            });
+
+            // Chiudi la ricerca cliccando fuori
+            document.addEventListener('click', (e) => {
+                if (!searchContainer.contains(e.target)) {
+                    closeSearch();
+                }
+            });
+
+            function closeSearch() {
+                searchContainer.classList.remove('active');
+                headerTitle.classList.remove('opacity-0');
+                searchIcon.className = "fa-solid fa-magnifying-glass text-sm";
+            }
 
             // Apertura/Chiusura Bottom Sheet "Now Playing"
             document.getElementById('miniPlayerDetails').addEventListener('click', () => {
@@ -490,17 +494,14 @@
             document.getElementById('sheetDownloadBtn').addEventListener('click', redirectToDownload);
             document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
             
-            // Scrubbing sulla barra principale (Grande)
+            // Scrubbing
             progressBarContainer.addEventListener('mousedown', startScrub);
             progressBarContainer.addEventListener('touchstart', startScrub, { passive: false });
-
-            // Scrubbing sulla barra secondaria (Mini-Player)
             miniProgressBarContainer.addEventListener('mousedown', startMiniScrub);
             miniProgressBarContainer.addEventListener('touchstart', startMiniScrub, { passive: false });
 
             window.addEventListener('mousemove', moveScrubGeneral);
             window.addEventListener('touchmove', moveScrubGeneral, { passive: false });
-
             window.addEventListener('mouseup', endScrubGeneral);
             window.addEventListener('touchend', endScrubGeneral);
 
@@ -508,14 +509,12 @@
             document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
             document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
 
-            // Setup dei vari gestori di SWIPE
             setupSwipeHandlers();
             checkAndApplyMarquee();
         });
 
-        // ================= GESTIONE DEGLI SWIPE (Mini-Player, Titoli, Cover e Down-Swipe per Chiusura) =================
+        // ================= GESTIONE DEGLI SWIPE =================
         function setupSwipeHandlers() {
-            // 1. SWIPE sul Mini Player (Destra/Sinistra per Traccia Prec/Succ)
             let miniStartX = 0, miniCurrentX = 0;
             miniPlayerContent.addEventListener('touchstart', (e) => {
                 miniStartX = e.touches[0].clientX;
@@ -523,11 +522,10 @@
             
             miniPlayerContent.addEventListener('touchend', (e) => {
                 miniCurrentX = e.changedTouches[0].clientX - miniStartX;
-                if (miniCurrentX > 80) prevTrack();      // Swipe a Destra -> Traccia Precedente
-                else if (miniCurrentX < -80) nextTrack(); // Swipe a Sinistra -> Traccia Successiva
+                if (miniCurrentX > 80) prevTrack();
+                else if (miniCurrentX < -80) nextTrack();
             }, { passive: true });
 
-            // 2. SWIPE sul Titolo Grande (Destra/Sinistra)
             let titleStartX = 0, titleCurrentX = 0, isDraggingTitle = false;
             const startTitleDrag = (x) => {
                 isDraggingTitle = true;
@@ -563,7 +561,6 @@
             window.addEventListener('mousemove', (e) => moveTitleDrag(e.clientX));
             window.addEventListener('mouseup', endTitleDrag);
 
-            // 3. SWIPE sulla Copertina dell'Album Grande (Destra/Sinistra per Cambiare)
             let artStartX = 0, artCurrentX = 0, isDraggingArt = false;
             const startArtDrag = (x) => {
                 isDraggingArt = true;
@@ -579,11 +576,8 @@
                 if (!isDraggingArt) return;
                 isDraggingArt = false;
                 largeArtSwipeContainer.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                if (artCurrentX > 80) {
-                    prevTrack();
-                } else if (artCurrentX < -80) {
-                    nextTrack();
-                }
+                if (artCurrentX > 80) prevTrack();
+                else if (artCurrentX < -80) nextTrack();
                 largeArtSwipeContainer.style.transform = appState.isPlaying ? 'scale(1.02)' : 'scale(1)';
                 artCurrentX = 0;
             };
@@ -595,10 +589,8 @@
             window.addEventListener('mousemove', (e) => moveArtDrag(e.clientX));
             window.addEventListener('mouseup', endArtDrag);
 
-            // 4. SWIPE verso il basso su qualsiasi punto del Bottom Sheet per chiuderlo
             let sheetStartY = 0, sheetCurrentY = 0, isDraggingSheet = false;
             const onSheetTouchStart = (e) => {
-                // Non chiudiamo se l'utente sta effettuando uno scrub della timeline
                 if (e.target.closest('#progressBarContainer') || e.target.closest('#largeArtSwipeContainer') || e.target.closest('#swipeTitleContainer')) return;
                 sheetStartY = e.touches[0].clientY;
                 isDraggingSheet = true;
@@ -627,8 +619,8 @@
             nowPlayingSheet.addEventListener('touchend', onSheetTouchEnd, { passive: true });
         }
 
-        // ================= GESTIONE DELLO SCRUBBING (Timeline Grande e Mini) =================
-        let activeScrubType = null; // 'large' o 'mini'
+        // ================= GESTIONE DELLO SCRUBBING =================
+        let activeScrubType = null;
 
         function startScrub(e) {
             if (!player?.getDuration || appState.currentIndex === -1) return;
@@ -667,7 +659,6 @@
             const duration = player.getDuration() || 0;
             const targetTime = duration * scrubPercentage;
 
-            // Aggiorna istantaneamente sia il progresso visivo che le etichette
             progressBar.style.width = `${scrubPercentage * 100}%`;
             miniProgressBar.style.width = `${scrubPercentage * 100}%`;
             
@@ -694,7 +685,7 @@
             activeScrubType = null;
         }
 
-        // ================= STRUTTURA LOGICA APP PRINCIPALE =================
+        // ================= FUNZIONI UTILI =================
 
         function populateThemeSelect() {
             const select = document.getElementById('modalThemeSelect');
@@ -723,54 +714,17 @@
 
             document.getElementById('metaThemeColor')?.setAttribute('content', theme.bgMain);
             appState.currentTheme = themeKey;
-
-            const searchBtn = document.getElementById('searchBtn');
-            const saveBtn = document.getElementById('modalSaveBtn');
-            
-            if (theme.isLight) {
-                searchBtn?.classList.remove('text-black');
-                searchBtn?.classList.add('text-white');
-                saveBtn?.classList.remove('text-black');
-                saveBtn?.classList.add('text-white');
-            } else {
-                searchBtn?.classList.remove('text-white');
-                searchBtn?.classList.add('text-black');
-                saveBtn?.classList.remove('text-white');
-                saveBtn?.classList.add('text-black');
-            }
-
-            const containers = document.querySelectorAll('header, main section');
-            containers.forEach(el => {
-                if (themeKey === 'amoledWhite') {
-                    el.style.border = "1px solid #1a1a1a";
-                } else {
-                    el.style.border = "none";
-                }
-            });
             
             if (appState.currentIndex !== -1) renderTracklist();
-        }
-
-        function applyVideoVisibility() {
-            const videoSection = document.getElementById('videoSection');
-            if (!videoSection) return;
-            
-            if (appState.showVideo) {
-                videoSection.className = "flex h-40 md:h-48 relative rounded-2xl overflow-hidden shadow-lg custom-bg-card mb-2";
-            } else {
-                videoSection.className = "hidden absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none";
-            }
         }
 
         function openApiModal() {
             const modal = document.getElementById('apiModal');
             const input = document.getElementById('modalApiKeyInput');
             const select = document.getElementById('modalThemeSelect');
-            const videoCheckbox = document.getElementById('modalShowVideoInput');
             if (modal && input) {
                 input.value = appState.apiKey;
                 if (select) select.value = appState.currentTheme;
-                if (videoCheckbox) videoCheckbox.checked = appState.showVideo;
                 modal.classList.remove('hidden');
             }
         }
@@ -783,36 +737,17 @@
         function saveSettingsFromModal() {
             const key = document.getElementById('modalApiKeyInput').value.trim();
             const selectedTheme = document.getElementById('modalThemeSelect').value;
-            const showVideo = document.getElementById('modalShowVideoInput').checked;
             
             appState.apiKey = key;
             localStorage.setItem('youtubette_api_key', key);
-            
             localStorage.setItem('youtubette_theme', selectedTheme);
             applyTheme(selectedTheme);
 
-            appState.showVideo = showVideo;
-            localStorage.setItem('youtubette_show_video', showVideo);
-            applyVideoVisibility();
-            
             const saveBtn = document.getElementById('modalSaveBtn');
-            const originalText = saveBtn.innerHTML;
-            
             saveBtn.innerHTML = "Salvato! ✓";
-            saveBtn.style.backgroundColor = "var(--text-main)";
-            saveBtn.style.color = "var(--bg-main)";
             
             setTimeout(() => {
-                saveBtn.innerHTML = originalText;
-                saveBtn.style.backgroundColor = "";
-                saveBtn.style.color = "";
-                if (themes[selectedTheme].isLight) {
-                    saveBtn.classList.add('text-white');
-                    saveBtn.classList.remove('text-black');
-                } else {
-                    saveBtn.classList.add('text-black');
-                    saveBtn.classList.remove('text-white');
-                }
+                saveBtn.innerHTML = "Salva";
                 closeApiModal();
             }, 800);
         }
@@ -826,20 +761,12 @@
             
             try {
                 await navigator.clipboard.writeText(youtubeUrl);
-                showToast("Link copiato! Incollalo sul sito.");
-                
+                showToast("Link copiato!");
                 setTimeout(() => {
-                    const downloadServiceUrl = `https://kleger.pl/`;
-                    const newWindow = window.open(downloadServiceUrl, '_blank');
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                        window.location.href = downloadServiceUrl;
-                    }
+                    window.open(`https://kleger.pl/`, '_blank');
                 }, 800);
-
             } catch (err) {
-                console.error('Errore: ', err);
-                const downloadServiceUrl = `https://kleger.pl/`;
-                window.open(downloadServiceUrl, '_blank');
+                window.open(`https://kleger.pl/`, '_blank');
             }
         }
 
@@ -849,8 +776,7 @@
 
             const toast = document.createElement('div');
             toast.id = 'youtubette-toast';
-            
-            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-[150] transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-[var(--text-main)]';
+            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-[150] transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-white';
             toast.innerHTML = `<i class="fa-solid fa-circle-check mr-2 custom-text-accent"></i> ${message}`;
             
             document.body.appendChild(toast);
@@ -870,17 +796,16 @@
         function toggleDownloadButtons(enabled) {
             const sheetDbtn = document.getElementById('sheetDownloadBtn');
             if (!sheetDbtn) return;
-
             if (enabled) {
                 sheetDbtn.disabled = false;
                 sheetDbtn.removeAttribute('disabled');
                 sheetDbtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-neutral-400');
-                sheetDbtn.classList.add('opacity-100', 'text-neutral-300', 'cursor-pointer', 'hover:text-[var(--accent)]');
+                sheetDbtn.classList.add('opacity-100', 'text-neutral-300', 'cursor-pointer');
             } else {
                 sheetDbtn.disabled = true;
                 sheetDbtn.setAttribute('disabled', 'true');
                 sheetDbtn.classList.add('opacity-30', 'cursor-not-allowed', 'text-neutral-400');
-                sheetDbtn.classList.remove('opacity-100', 'text-neutral-300', 'cursor-pointer');
+                sheetDbtn.classList.remove('opacity-100', 'text-neutral-300');
             }
         }
 
@@ -910,11 +835,9 @@
             
             marqueeContent.classList.remove('animate-marquee');
             const wrapper = swipeTitle.querySelector('.marquee-wrapper');
-            
-            let cleanText = `<span id="playerTrackTitle" class="text-base md:text-lg font-black text-[var(--text-main)]">${titleText}</span>`;
+            let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-black text-white">${titleText}</span>`;
             
             marqueeContent.innerHTML = cleanText;
-
             if (wrapper && marqueeContent.scrollWidth > wrapper.clientWidth) {
                 marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
                 marqueeContent.classList.add('animate-marquee');
@@ -922,7 +845,7 @@
         }
 
         async function performSearch(isLoadMore = false) {
-            const query = document.getElementById('searchInput').value.trim();
+            const query = searchInput.value.trim();
             if (!query || (isLoadMore && isFetchingMore)) return;
             if (!appState.apiKey) { openApiModal(); return; }
 
@@ -934,22 +857,9 @@
             } else isFetchingMore = true;
 
             const order = document.getElementById('filterOrder').value;
-            const duration = document.getElementById('filterDuration').value;
-            const publishedAfterSelect = document.getElementById('filterPublishedAfter').value;
 
             try {
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&order=${order}&key=${appState.apiKey}`;
-                if (duration !== 'any') url += `&videoDuration=${duration}`;
-                if (publishedAfterSelect !== 'any') {
-                    const now = new Date();
-                    if (publishedAfterSelect === 'hour') now.setHours(now.getHours() - 1);
-                    else if (publishedAfterSelect === 'day') now.setDate(now.getDate() - 1);
-                    else if (publishedAfterSelect === 'week') now.setDate(now.getDate() - 7);
-                    else if (publishedAfterSelect === 'month') now.setMonth(now.getMonth() - 1);
-                    else if (publishedAfterSelect === 'year') now.setFullYear(now.getFullYear() - 1);
-                    url += `&publishedAfter=${now.toISOString()}`;
-                }
-
                 if (nextSearchPageToken) url += `&pageToken=${nextSearchPageToken}`;
 
                 const response = await fetch(url);
@@ -960,13 +870,6 @@
                 let newTracks = data.items.map(item => ({
                     id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
                 }));
-
-                if (order !== 'date') {
-                    for (let i = newTracks.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [newTracks[i], newTracks[j]] = [newTracks[j], newTracks[i]];
-                    }
-                }
 
                 appState.tracks = appState.tracks.concat(newTracks);
                 renderTracklist();
@@ -981,26 +884,22 @@
             if (!trackListDiv) return; trackListDiv.innerHTML = '';
             
             if (appState.tracks.length === 0) {
-                trackListDiv.innerHTML = '<p class="text-sm p-2 italic text-center custom-text-muted">Nessun risultato.</p>';
+                trackListDiv.innerHTML = '<p class="text-xs p-2 italic text-center custom-text-muted">Nessun risultato.</p>';
                 return;
             }
 
             document.getElementById('trackCount').innerText = `${appState.tracks.length} brani`;
 
-            const currentThemeData = themes[appState.currentTheme];
-            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/80' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900 border border-neutral-800' : 'bg-neutral-900/60');
-            const rowHoverClass = currentThemeData?.isLight ? 'md:hover:bg-neutral-200 active:bg-neutral-200' : 'md:hover:bg-neutral-900 active:bg-neutral-900';
-
             appState.tracks.forEach((track, index) => {
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
-                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all ${rowHoverClass} ${appState.currentIndex === index ? rowSelectedBgClass : ''}`;
+                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border border-white/10' : ''}`;
                
                 trackRow.innerHTML = `
                     <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
                     <img src="${track.thumbnail}" class="w-11 h-11 object-cover rounded-xl mx-2.5 shadow-md shrink-0">
                     <div class="flex-1 overflow-hidden">
-                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-[var(--text-main)]'}">${track.title}</p>
+                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${track.title}</p>
                         <p class="text-[10px] truncate mt-0.5 custom-text-muted font-medium">${track.channel}</p>
                     </div>
                 `;
@@ -1015,15 +914,12 @@
         function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
             
-            const currentThemeData = themes[appState.currentTheme];
-            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/80' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900' : 'bg-neutral-900/60');
-
             if (appState.currentIndex !== -1) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
-                    oldRow.classList.remove(rowSelectedBgClass, 'bg-neutral-900/60', 'bg-neutral-300/80', 'bg-neutral-900', 'border', 'border-neutral-800');
+                    oldRow.classList.remove('bg-white/10', 'border', 'border-white/10');
                     const oldText = oldRow.querySelector('p.text-xs');
-                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-[var(--text-main)]'); }
+                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-white'); }
                 }
             }
 
@@ -1037,7 +933,9 @@
             if (channelEl) channelEl.innerText = track.channel;
             
             if (largeTrackArt) largeTrackArt.src = track.thumbnail;
-            if (ambientBg) ambientBg.style.backgroundImage = `url(${track.thumbnail})`;
+            
+            // Imposta lo sfondo sfocato GLOBALE (Dietro la tracklist e nel player)
+            if (globalAmbientBg) globalAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
 
             // Aggiorna Interfaccia Mini-Player
             miniPlayer.classList.remove('hidden');
@@ -1047,11 +945,9 @@
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
-                newRow.classList.add(rowSelectedBgClass);
-                if (appState.currentTheme === 'amoledWhite') newRow.classList.add('border', 'border-neutral-800');
+                newRow.classList.add('bg-white/10', 'border', 'border-white/10');
                 const newText = newRow.querySelector('p.text-xs');
-                if (newText) { newText.classList.remove('text-[var(--text-main)]'); newText.classList.add('custom-text-accent', 'font-black'); }
-                
+                if (newText) { newText.classList.remove('text-white'); newText.classList.add('custom-text-accent', 'font-black'); }
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
