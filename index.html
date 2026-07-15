@@ -34,9 +34,21 @@
             color: var(--text-main);
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+        
+        /* Scrollbar ultra minimalista */
+        ::-webkit-scrollbar { 
+            width: 3px; 
+        }
+        ::-webkit-scrollbar-track { 
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb { 
+            background: rgba(255, 255, 255, 0.08); 
+            border-radius: 99px; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2); 
+        }
 
         /* Sfondo sfocato dinamico Globale (su tutta l'app) */
         .ambient-bg {
@@ -54,9 +66,9 @@
 
         /* Pannelli trasparenti stile iOS */
         .glass-panel {
-            background: rgba(18, 18, 18, 0.55);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
@@ -129,6 +141,35 @@
             user-drag: none;
         }
 
+        /* Floating Mini Player personalizzato con transizione fluida */
+        #miniPlayer {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            height: 80px;
+            border-radius: 20px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+            user-select: none;
+            transform: translateY(120px);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        }
+        #miniPlayer.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #miniPlayer:active {
+            transform: scale(0.98);
+        }
+
         .custom-bg-main { background-color: var(--bg-main); }
         .custom-bg-card { background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         .custom-bg-input { background-color: var(--bg-input); }
@@ -179,14 +220,14 @@
         </div>
     </div>
 
-    <main class="flex-1 flex flex-col overflow-hidden mb-24 z-10 relative">
+    <main class="flex-1 flex flex-col overflow-hidden mb-0 z-10 relative">
         <section class="flex-1 p-3 flex flex-col rounded-3xl overflow-hidden h-full custom-bg-card border border-white/5">
             <div class="flex items-center justify-between px-2 pb-3 border-b border-white/5 shrink-0">
                 <span class="text-[10px] font-bold uppercase tracking-widest custom-text-muted">Brani trovati</span>
                 <span id="trackCount" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/5 custom-text-muted">0 brani</span>
             </div>
             <div class="relative flex-1 overflow-hidden mt-3">
-                <div id="trackList" class="space-y-1 pb-16 h-full overflow-y-auto pr-1">
+                <div id="trackList" class="space-y-1 pb-28 h-full overflow-y-auto pr-1">
                     <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
                 </div>
             </div>
@@ -195,7 +236,7 @@
         <div id="ytPlayerContainer" class="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none"></div>
     </main>
 
-    <div id="miniPlayer" class="hidden fixed bottom-4 left-4 right-4 h-20 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] transition-all duration-300">
+    <div id="miniPlayer" class="glass-panel">
         <div class="flex items-center justify-between w-full text-[9px] font-mono custom-text-muted mb-1 px-1">
             <span id="miniCurrentTime">0:00</span>
             <div id="miniProgressBarContainer" class="flex-1 mx-3 h-3 flex items-center relative cursor-pointer">
@@ -419,6 +460,26 @@
             }
         }
 
+        // Funzioni helper per gestire il Now Playing Sheet con Android Back Button integration
+        function openNowPlaying() {
+            nowPlayingSheet.classList.add('expanded');
+            history.pushState({ sheetOpen: true }, '');
+        }
+
+        function closeNowPlaying(preventBackPop = false) {
+            nowPlayingSheet.classList.remove('expanded');
+            if (!preventBackPop && history.state && history.state.sheetOpen) {
+                history.back();
+            }
+        }
+
+        // Gestione evento indietro del browser / Android
+        window.addEventListener('popstate', (e) => {
+            if (nowPlayingSheet.classList.contains('expanded')) {
+                closeNowPlaying(true);
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme(appState.currentTheme);
             populateThemeSelect();
@@ -464,12 +525,12 @@
                 searchIcon.className = "fa-solid fa-magnifying-glass text-sm";
             }
 
-            // Apertura/Chiusura Bottom Sheet "Now Playing"
+            // Apertura/Chiusura Bottom Sheet "Now Playing" con gestione stato
             document.getElementById('miniPlayerDetails').addEventListener('click', () => {
-                nowPlayingSheet.classList.add('expanded');
+                openNowPlaying();
             });
             closeSheetBtn.addEventListener('click', () => {
-                nowPlayingSheet.classList.remove('expanded');
+                closeNowPlaying();
             });
 
             // Gestori dei pulsanti di riproduzione
@@ -570,7 +631,8 @@
             const moveArtDrag = (x) => {
                 if (!isDraggingArt) return;
                 artCurrentX = x - artStartX;
-                largeArtSwipeContainer.style.transform = `translate3d(${artCurrentX}px, 0, 0) scale(1.02) rotate(${artCurrentX * 0.02}deg)`;
+                // Modificato: animazione dritta rimossa la rotazione ('rotate')
+                largeArtSwipeContainer.style.transform = `translate3d(${artCurrentX}px, 0, 0) scale(1.02)`;
             };
             const endArtDrag = () => {
                 if (!isDraggingArt) return;
@@ -608,7 +670,7 @@
                 isDraggingSheet = false;
                 nowPlayingSheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
                 if (sheetCurrentY > 120) {
-                    nowPlayingSheet.classList.remove('expanded');
+                    closeNowPlaying();
                 }
                 nowPlayingSheet.style.transform = '';
                 sheetCurrentY = 0;
@@ -938,7 +1000,8 @@
             if (globalAmbientBg) globalAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
 
             // Aggiorna Interfaccia Mini-Player
-            miniPlayer.classList.remove('hidden');
+            // Modificato: non usiamo più 'hidden' ma la classe .active per transizione fluida
+            miniPlayer.classList.add('active');
             document.getElementById('miniPlayerImg').src = track.thumbnail;
             document.getElementById('miniPlayerTitle').innerText = track.title;
             document.getElementById('miniPlayerChannel').innerText = track.channel;
