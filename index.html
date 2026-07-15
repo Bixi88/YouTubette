@@ -16,9 +16,9 @@
     
     <style>
         :root {
-            --bg-main: #0b0b0b;
-            --bg-card: #161616;
-            --bg-input: #242424;
+            --bg-main: #0a0a0a;
+            --bg-card: #121212;
+            --bg-input: #1a1a1a;
             --accent: #1DB954;
             --text-main: #ffffff;
             --text-muted: #a3a3a3;
@@ -36,38 +36,53 @@
         }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: var(--bg-card); }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        .scroll-mask-container {
-            position: relative;
-            flex: 1;
-            overflow: hidden;
+        /* Effetto glassmorphism per elementi fluttuanti */
+        .glass-panel {
+            background: rgba(22, 22, 22, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Bottom Sheet (Schermata di riproduzione espandibile) */
+        #nowPlayingSheet {
+            position: fixed;
+            top: 100%;
+            left: 0;
+            right: 0;
             height: 100%;
+            z-index: 100;
+            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+            background-color: var(--bg-main);
         }
-        .scroll-mask-container::before,
-        .scroll-mask-container::after {
-            content: "";
-            position: absolute;
-            left: 0; right: 0;
-            height: 24px;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .scroll-mask-container::before {
-            top: 0;
-            background: linear-gradient(to bottom, var(--bg-card) 0%, transparent 100%);
-        }
-        .scroll-mask-container::after {
-            bottom: 0;
-            background: linear-gradient(to top, var(--bg-card) 0%, transparent 100%);
+        #nowPlayingSheet.expanded {
+            transform: translateY(-100%);
         }
 
+        /* Sfondo sfocato dinamico */
+        .ambient-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.45;
+            filter: blur(60px);
+            transform: scale(1.2);
+            pointer-events: none;
+            transition: background-image 0.8s ease;
+            background-position: center;
+            background-size: cover;
+        }
+
+        /* Marquee setup */
         .marquee-wrapper {
             position: relative;
             width: 100%;
             overflow: hidden;
-            mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
-            -webkit-mask-image: linear-gradient(to right, transparent, #fff 8%, #fff 92%, transparent);
+            mask-image: linear-gradient(to right, transparent, #fff 6%, #fff 94%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, #fff 6%, #fff 94%, transparent);
         }
         .marquee-content {
             display: inline-block;
@@ -82,17 +97,10 @@
             100% { transform: translate3d(-50%, 0, 0); }
         }
 
-        #swipeTitleContainer {
-            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
-            will-change: transform, opacity;
-            touch-action: pan-y;
-        }
-        #swipeTitleContainer.dragging {
-            transition: none !important;
-        }
-        
-        #progressBar.scrubbing {
-            transition: none !important;
+        /* Disabilita i comportamenti di drag nativi sulle immagini */
+        img {
+            -webkit-user-drag: none;
+            user-drag: none;
         }
 
         .custom-bg-main { background-color: var(--bg-main); }
@@ -104,210 +112,238 @@
         .custom-text-muted { color: var(--text-muted); }
     </style>
 </head>
-<body class="font-sans flex flex-col justify-between hidden p-2 sm:p-3 box-border h-full custom-bg-main">
+<body class="font-sans flex flex-col justify-between hidden p-3 box-border h-full custom-bg-main">
 
-    <header class="h-16 px-4 flex items-center justify-between rounded-2xl mb-2 shrink-0 z-50 shadow-md custom-bg-card">
-        <div class="flex items-center space-x-1.5 text-xl font-bold tracking-tight shrink-0 custom-text-accent">
-            <i class="fa-solid fa-radio"></i>
-            <span class="hidden sm:inline font-bold ml-1 text-[var(--text-main)]">YouTubette</span>
+    <header class="h-14 px-4 flex items-center justify-between rounded-2xl mb-2 shrink-0 z-40 custom-bg-card shadow-lg">
+        <div class="flex items-center space-x-2 text-lg font-bold tracking-tight custom-text-accent">
+            <i class="fa-solid fa-circle-play text-xl"></i>
+            <span class="font-black tracking-wider text-[var(--text-main)] text-sm">YOUTUBETTE</span>
         </div>
         
-        <div class="flex-1 max-w-md mx-4 relative">
-            <div class="relative flex items-center w-full">
-                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-gray-400 text-sm"></i>
-                <input type="text" id="searchInput" placeholder="Cerca un beat..." 
-                    class="w-full text-sm pl-10 pr-24 py-2 rounded-full border border-transparent focus:outline-none focus:border-[var(--text-main)] transition-all custom-bg-input text-[var(--text-main)]">
-                
-                <div class="absolute right-1.5 flex items-center space-x-1">
-                    <button id="filterToggleBtn" class="text-gray-400 hover:text-[var(--text-main)] p-1.5 text-sm" title="Filtri avanzati">
-                        <i class="fa-solid fa-sliders"></i>
-                    </button>
-                    <button id="searchBtn" class="font-semibold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform custom-bg-accent text-black">
-                        Cerca
-                    </button>
-                </div>
-            </div>
-
-            <div id="filterMenu" class="hidden absolute top-full left-0 right-0 mt-2 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-700/30">
-                <p class="text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtri di Ricerca</p>
-                <div class="grid grid-cols-3 gap-2">
-                    <div>
-                        <label class="block text-[10px] mb-1 custom-text-muted">Ordina per</label>
-                        <select id="filterOrder" class="w-full text-xs p-2 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
-                            <option value="relevance">Rilevanza</option>
-                            <option value="date" selected>Data</option>
-                            <option value="viewCount">Visualizzazioni</option>
-                            <option value="rating">Valutazione</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] mb-1 custom-text-muted">Durata</label>
-                        <select id="filterDuration" class="w-full text-xs p-2 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
-                            <option value="any" selected>Qualsiasi</option>
-                            <option value="short">Breve (&lt; 4 min)</option>
-                            <option value="medium">Media (4-20 min)</option>
-                            <option value="long">Lunga (&gt; 20 min)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] mb-1 custom-text-muted">Caricato in</label>
-                        <select id="filterPublishedAfter" class="w-full text-xs p-2 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
-                            <option value="any" selected>Sempre</option>
-                            <option value="hour">Ultima ora</option>
-                            <option value="day">Oggi</option>
-                            <option value="week">Questa settimana</option>
-                            <option value="month">Questo mese</option>
-                            <option value="year">Quest'anno</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="shrink-0 flex items-center space-x-1">
+        <div class="shrink-0 flex items-center space-x-2">
             <button id="pwaInstallBtn" class="hidden text-black font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform custom-bg-accent">
                 <i class="fa-solid fa-download mr-1"></i> Installa
             </button>
-            <button id="apiConfigBtn" class="text-gray-400 hover:text-[var(--text-main)] p-2 rounded-full transition-colors w-9 h-9 flex items-center justify-center hover:bg-[var(--bg-input)]" title="Impostazioni">
-                <i class="fa-solid fa-gear text-lg"></i>
+            <button id="apiConfigBtn" class="text-gray-400 hover:text-[var(--text-main)] w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--bg-input)] active:scale-90 transition-all" title="Impostazioni">
+                <i class="fa-solid fa-sliders text-base"></i>
             </button>
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col-reverse md:flex-row overflow-hidden gap-2 sm:gap-3 mb-2">
-        <section class="flex-1 md:w-[66%] p-4 pt-2 flex flex-col rounded-2xl overflow-hidden h-full shadow-md custom-bg-card">
-            <div class="scroll-mask-container">
-                <div id="trackList" class="space-y-1 pb-6 pt-2 h-full overflow-y-auto">
-                    <p id="placeholderText" class="text-xs p-4 italic text-center mt-6 custom-text-muted">Fai una ricerca per caricare i brani.</p>
+    <div class="px-1 mb-3 shrink-0">
+        <div class="relative flex items-center w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 text-gray-400 text-sm"></i>
+            <input type="text" id="searchInput" placeholder="Cerca canzoni, artisti o playlist..." 
+                class="w-full text-sm pl-11 pr-24 py-3.5 rounded-2xl border border-transparent focus:outline-none focus:border-[var(--text-muted)] transition-all custom-bg-card text-[var(--text-main)] shadow-md">
+            
+            <div class="absolute right-2 flex items-center space-x-1">
+                <button id="filterToggleBtn" class="text-gray-400 hover:text-[var(--text-main)] p-2 text-sm" title="Filtri">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+                <button id="searchBtn" class="font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition-transform custom-bg-accent text-black shadow-sm">
+                    Cerca
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="filterMenu" class="hidden absolute top-32 left-4 right-4 md:left-auto md:right-12 md:w-80 border rounded-2xl p-4 shadow-2xl z-50 space-y-3 custom-bg-card border-neutral-800">
+        <p class="text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtri di Ricerca</p>
+        <div class="grid grid-cols-1 gap-2.5">
+            <div>
+                <label class="block text-[10px] mb-1 custom-text-muted">Ordina per</label>
+                <select id="filterOrder" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                    <option value="relevance">Rilevanza</option>
+                    <option value="date" selected>Data di caricamento</option>
+                    <option value="viewCount">Visualizzazioni</option>
+                    <option value="rating">Valutazione</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[10px] mb-1 custom-text-muted">Durata</label>
+                    <select id="filterDuration" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                        <option value="any" selected>Qualsiasi</option>
+                        <option value="short">Breve (< 4 min)</option>
+                        <option value="medium">Media (4-20 min)</option>
+                        <option value="long">Lunga (> 20 min)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] mb-1 custom-text-muted">Caricato in</label>
+                    <select id="filterPublishedAfter" class="w-full text-xs p-2.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                        <option value="any" selected>Sempre</option>
+                        <option value="hour">Ultima ora</option>
+                        <option value="day">Oggi</option>
+                        <option value="week">Questa settimana</option>
+                        <option value="month">Questo mese</option>
+                        <option value="year">Quest'anno</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 flex flex-col overflow-hidden mb-24">
+        <section class="flex-1 p-3 flex flex-col rounded-2xl overflow-hidden h-full shadow-lg custom-bg-card border border-neutral-900/30">
+            <div class="flex items-center justify-between px-2 pb-2 border-b border-neutral-800/40 shrink-0">
+                <span class="text-xs font-bold uppercase tracking-wider custom-text-muted">Coda di riproduzione</span>
+                <span id="trackCount" class="text-[10px] font-bold px-2 py-0.5 rounded-full custom-bg-input custom-text-muted">0 brani</span>
+            </div>
+            <div class="relative flex-1 overflow-hidden mt-2">
+                <div id="trackList" class="space-y-1 pb-16 h-full overflow-y-auto pr-1">
+                    <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Fai una ricerca per caricare i brani.</p>
                 </div>
             </div>
         </section>
 
-        <section id="videoSection" class="flex flex-col h-36 md:h-full md:w-[34%] relative shrink-0 md:shrink rounded-2xl overflow-hidden shadow-md custom-bg-card">
-            <div class="w-full flex-1 bg-black flex items-center justify-center overflow-hidden relative">
-                <div id="ytPlayerContainer" class="w-full h-full absolute inset-0"></div>
-                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none z-10 custom-bg-card">
-                    <i class="fa-solid fa-music text-2xl md:text-3xl mb-1"></i>
-                    <p class="text-xs font-medium px-4 text-center" id="currentDisplayTitle"></p>
-                </div>
-            </div>
+        <section id="videoSection" class="hidden absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none">
+            <div id="ytPlayerContainer" class="w-full h-full"></div>
         </section>
     </main>
 
-    <footer id="footerControls" class="rounded-2xl px-4 pt-1.5 pb-3 flex flex-col items-center shrink-0 z-40 select-none relative shadow-lg custom-bg-card">
+    <div id="miniPlayer" class="hidden fixed bottom-4 left-4 right-4 h-20 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] transition-all duration-300">
         
-        <div id="swipeTitleContainer" class="w-full text-center py-1 mb-1 cursor-grab active:cursor-grabbing bg-transparent select-none">
-            <div class="marquee-wrapper mx-auto max-w-xl pointer-events-none">
-                <div id="marqueeContent" class="marquee-content">
-                    <span id="playerTrackTitle" class="text-sm md:text-base font-bold text-[var(--text-main)]">YouTubette</span>
-                    <span id="playerTrackChannel" class="text-xs ml-3 font-normal custom-text-muted"></span>
+        <div class="flex items-center justify-between w-full text-[9px] font-mono custom-text-muted mb-1 px-1">
+            <span id="miniCurrentTime">0:00</span>
+            <div id="miniProgressBarContainer" class="flex-1 mx-3 h-3 flex items-center relative cursor-pointer">
+                <div class="w-full h-[3px] bg-neutral-700/40 rounded-full"></div>
+                <div id="miniProgressBar" class="absolute top-1/2 -translate-y-1/2 left-0 h-[3px] w-0 custom-bg-accent rounded-full transition-all duration-100"></div>
+            </div>
+            <span id="miniDurationTime">0:00</span>
+        </div>
+
+        <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0">
+            <div class="flex items-center flex-1 min-w-0 mr-3" id="miniPlayerDetails">
+                <img id="miniPlayerImg" src="" class="w-10 h-10 object-cover rounded-xl shadow-md shrink-0 bg-neutral-800">
+                <div class="ml-2.5 min-w-0 flex-1">
+                    <p id="miniPlayerTitle" class="text-xs font-bold truncate text-[var(--text-main)]"></p>
+                    <p id="miniPlayerChannel" class="text-[10px] truncate custom-text-muted"></p>
                 </div>
+            </div>
+
+            <div class="flex items-center space-x-0.5 shrink-0" id="miniPlayerControls">
+                <button id="miniPrevBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-sm active:scale-90 transition-transform"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="miniPlayPauseBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-md bg-[var(--text-main)] text-[var(--bg-main)] active:scale-90 transition-transform">
+                    <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
+                </button>
+                <button id="miniNextBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-sm active:scale-90 transition-transform"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="nowPlayingSheet" class="flex flex-col px-6 pb-8 pt-4 select-none">
+        <div id="ambientBg" class="ambient-bg"></div>
+
+        <div id="sheetHeaderDrag" class="w-full flex flex-col items-center py-2 shrink-0 z-10 cursor-pointer">
+            <div class="w-12 h-1 bg-neutral-600/50 rounded-full mb-4"></div>
+            <div class="flex items-center justify-between w-full px-1">
+                <button id="closeSheetBtn" class="text-neutral-400 hover:text-white p-2 text-lg active:scale-90 transition-transform">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <span class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">In Riproduzione</span>
+                <button id="sheetDownloadBtn" class="text-neutral-400 hover:text-[var(--accent)] p-2 text-base opacity-30 cursor-not-allowed" disabled>
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
             </div>
         </div>
 
-        <div class="w-full flex items-center space-x-3 text-xs mb-2 max-w-2xl relative custom-text-muted">
-            <span id="currentTime" class="w-9 text-left select-none">0:00</span>
+        <div class="flex-1 flex flex-col items-center justify-center my-auto z-10 relative">
+            <div id="largeArtSwipeContainer" class="w-64 h-64 xs:w-72 xs:h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] border border-neutral-800/40 relative aspect-square mb-8 transition-transform duration-500 cursor-grab active:cursor-grabbing" style="touch-action: none;">
+                <img id="largeTrackArt" class="w-full h-full object-cover pointer-events-none" src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=512&h=512&fit=crop&auto=format">
+                <div id="coverFallback" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 custom-bg-card hidden">
+                    <i class="fa-solid fa-music text-4xl mb-2"></i>
+                </div>
+            </div>
+
+            <div class="w-full max-w-sm text-center mb-6">
+                <div id="swipeTitleContainer" class="w-full py-1 cursor-grab active:cursor-grabbing select-none" style="touch-action: none;">
+                    <div class="marquee-wrapper mx-auto max-w-xs">
+                        <div id="marqueeContent" class="marquee-content">
+                            <span id="playerTrackTitle" class="text-lg md:text-xl font-extrabold text-[var(--text-main)]">Nessun Brano</span>
+                        </div>
+                    </div>
+                </div>
+                <p id="playerTrackChannel" class="text-xs mt-1 font-semibold custom-text-muted"></p>
+            </div>
+        </div>
+
+        <div class="w-full max-w-sm mx-auto z-10 shrink-0">
+            <div class="flex items-center justify-between text-[11px] mb-2 custom-text-muted font-mono px-1">
+                <span id="currentTime">0:00</span>
+                <span id="durationTime">0:00</span>
+            </div>
             
-            <div class="flex-1 h-4 rounded-full relative cursor-pointer py-1 bg-neutral-700/40" id="progressBarContainer">
-                <div class="w-full h-2 rounded-full absolute top-1 left-0 custom-bg-input"></div>
-                <div class="h-2 rounded-full w-0 absolute top-1 left-0 transition-all duration-100 custom-bg-accent" id="progressBar"></div>
+            <div class="h-5 rounded-full relative cursor-pointer py-1.5 mb-6 group" id="progressBarContainer">
+                <div class="w-full h-1.5 rounded-full absolute top-1.5 left-0 bg-neutral-800 transition-all group-hover:h-2"></div>
+                <div class="h-1.5 rounded-full w-0 absolute top-1.5 left-0 transition-all duration-100 custom-bg-accent group-hover:h-2" id="progressBar"></div>
                 
-                <div id="progressTooltip" class="hidden absolute bottom-full mb-2 text-black font-bold text-[11px] px-2 py-0.5 rounded shadow-md pointer-events-none transform -translate-x-1/2 z-50 custom-bg-accent">
+                <div id="progressTooltip" class="hidden absolute bottom-full mb-2 text-black font-bold text-[10px] px-2 py-1 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 z-50 custom-bg-accent">
                     0:00
                 </div>
             </div>
-            
-            <span id="durationTime" class="w-9 text-right select-none">0:00</span>
-        </div>
 
-        <!-- CONTROLLI MOBILE -->
-        <div class="grid grid-cols-3 w-full items-center md:hidden h-10">
-            <div></div> 
-            <div class="flex items-center justify-center space-x-6 h-full">
-                <button id="mobilePrevBtn" class="text-gray-400 active:text-[var(--text-main)] text-lg p-1.5 flex items-center justify-center"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="mobilePlayPauseBtn" class="w-10 h-10 min-h-10 max-h-10 min-w-10 max-w-10 rounded-full flex items-center justify-center active:scale-95 text-base shadow-lg shrink-0 bg-[var(--text-main)] text-[var(--bg-main)]">
-                    <i class="fa-solid fa-play" id="mobilePlayIcon"></i>
+            <div class="flex items-center justify-between px-6 mb-8">
+                <button id="prevBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform text-xl shadow-2xl bg-[var(--text-main)] text-[var(--bg-main)]">
+                    <i class="fa-solid fa-play ml-1" id="playIcon"></i>
                 </button>
-                <button id="mobileNextBtn" class="text-gray-400 active:text-[var(--text-main)] text-lg p-1.5 flex items-center justify-center"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="nextBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-forward-step"></i></button>
             </div>
-            <div class="flex justify-end items-center h-full">
-                <button id="mobileDownloadBtn" class="text-gray-500 active:text-[var(--accent)] text-lg p-1.5 mr-2 opacity-30 transition-all flex items-center justify-center" title="Scarica MP3" disabled>
-                    <i class="fa-solid fa-arrow-down"></i>
-                </button>
-            </div>
-        </div>
 
-        <!-- CONTROLLI DESKTOP -->
-        <div class="hidden md:flex items-center justify-between w-full max-w-3xl px-4">
-            <div class="flex items-center space-x-2 w-1/4 justify-start custom-text-muted">
-                <i class="fa-solid fa-volume-high text-sm"></i>
+            <div class="hidden md:flex items-center space-x-3 justify-center custom-text-muted px-4 py-2 bg-neutral-900/30 rounded-2xl mb-2">
+                <i class="fa-solid fa-volume-high text-xs"></i>
                 <input type="range" id="volumeSlider" min="0" max="100" value="100" 
-                    class="w-24 h-1 rounded-full appearance-none cursor-pointer accent-[var(--text-main)] bg-neutral-600">
-            </div>
-            
-            <div class="flex items-center justify-center space-x-8 w-2/4">
-                <button id="prevBtn" class="text-gray-400 hover:text-[var(--text-main)] transition-colors text-xl p-1.5"><i class="fa-solid fa-backward-step"></i></button>
-                <button id="playPauseBtn" class="w-11 h-11 rounded-full flex items-center justify-center hover:scale-105 transition-transform text-base pl-0.5 shadow-md bg-[var(--text-main)] text-[var(--bg-main)]">
-                    <i class="fa-solid fa-play" id="playIcon"></i>
-                </button>
-                <button id="nextBtn" class="text-gray-400 hover:text-[var(--text-main)] transition-colors text-xl p-1.5"><i class="fa-solid fa-forward-step"></i></button>
-            </div>
-            
-            <div class="flex items-center w-1/4 justify-end">
-                <button id="downloadBtn" class="text-gray-500 hover:text-[var(--text-main)] transition-all text-lg p-1.5 opacity-30 cursor-not-allowed" title="Scarica MP3" disabled>
-                    <i class="fa-solid fa-arrow-down"></i>
-                </button>
+                    class="w-full h-1 rounded-full appearance-none cursor-pointer accent-[var(--text-main)] bg-neutral-700">
             </div>
         </div>
-    </footer>
+    </div>
 
-    <!-- MODAL IMPOSTAZIONI -->
-    <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div id="apiModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
         <div class="border w-full max-w-md rounded-2xl p-6 shadow-2xl relative custom-bg-card border-neutral-800">
-            <h3 class="text-lg font-bold mb-5 flex items-center text-[var(--text-main)]">
-                <i class="fa-solid fa-sliders mr-2 custom-text-accent"></i> Impostazioni
+            <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
+                <i class="fa-solid fa-gear mr-2.5 custom-text-accent"></i> Impostazioni
             </h3>
             
             <div class="mb-4">
                 <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">YouTube API Key</label>
-                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la chiave API..." 
-                    class="w-full text-sm px-4 py-3 rounded-full border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
+                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
             </div>
 
             <div class="mb-4">
                 <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia (Palette)</label>
-                <select id="modalThemeSelect" class="w-full text-sm px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
+                <select id="modalThemeSelect" class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-[var(--text-main)]">
                 </select>
             </div>
 
             <div class="mb-6 flex items-center justify-between border-t border-neutral-800/50 pt-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">Visualizza Video</label>
-                    <span class="text-[10px] custom-text-muted">Nascondi il riquadro video per espandere la playlist</span>
+                    <span class="text-[10px] custom-text-muted">Mantieni abilitato l'Iframe video standard</span>
                 </div>
                 <input type="checkbox" id="modalShowVideoInput" class="w-4 h-4 rounded appearance-none checked:bg-[var(--accent)] bg-[var(--bg-input)] border border-neutral-700 checked:border-transparent cursor-pointer relative flex items-center justify-center before:content-['✓'] before:text-black before:text-xs before:font-bold before:hidden checked:before:block">
             </div>
 
             <div class="flex items-center justify-end space-x-3">
                 <button id="modalCancelBtn" class="hover:text-[var(--text-main)] font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
-                <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-full active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
+                <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
             </div>
         </div>
     </div>
 
     <script>
         const themes = {
-            spotifyGreen: { name: "Spotify Green (Dark / Green)", bgMain: "#0b0b0b", bgCard: "#161616", bgInput: "#242424", accent: "#1DB954", textMain: "#ffffff", textMuted: "#a3a3a3", isLight: 0 },
-            amoledWhite:  { name: "Pure AMOLED (Black / White)", bgMain: "#000000", bgCard: "#000000", bgInput: "#000000", accent: "#ffffff", textMain: "#ffffff", textMuted: "#888888", isLight: 0 },
-            cyberPurple:  { name: "Cyber Purple (Dark / Neon Purple)", bgMain: "#0c0714", bgCard: "#150e22", bgInput: "#231834", accent: "#bf5af2", textMain: "#ffffff", textMuted: "#9893a5", isLight: 0 },
-            deepBlue:     { name: "Oceanic Depth (Dark / Electric Blue)", bgMain: "#050b14", bgCard: "#0d1527", bgInput: "#19253f", accent: "#0a84ff", textMain: "#ffffff", textMuted: "#8e9bb4", isLight: 0 },
-            lavaRed:      { name: "Lava Crimson (Dark / Material Red)", bgMain: "#0f0707", bgCard: "#1a0f0f", bgInput: "#2b1b1b", accent: "#ff453a", textMain: "#ffffff", textMuted: "#aa9999", isLight: 0 },
-            amberGold:    { name: "Amber Gold (Dark / Orange Amber)", bgMain: "#0d0a05", bgCard: "#19140c", bgInput: "#282015", accent: "#ff9f0a", textMain: "#ffffff", textMuted: "#aba499", isLight: 0 },
-            synthWave:    { name: "Synth Magenta (Dark / Hot Pink)", bgMain: "#0b050f", bgCard: "#170c1e", bgInput: "#271633", accent: "#ff375f", textMain: "#ffffff", textMuted: "#b29fb7", isLight: 0 },
-            materialTeal: { name: "Material Teal (Dark / Teal Green)", bgMain: "#040a09", bgCard: "#0c1715", bgInput: "#182825", accent: "#64ffda", textMain: "#ffffff", textMuted: "#91a3a0", isLight: 0 },
-            slateGray:    { name: "Minimal Slate (Dark / Silver Gray)", bgMain: "#121212", bgCard: "#1e1e1e", bgInput: "#2d2d2d", accent: "#e5e5ea", textMain: "#ffffff", textMuted: "#aeaeae", isLight: 0 },
-            midnightBlue: { name: "Midnight Blue (Dark / Indigo Accent)", bgMain: "#02040a", bgCard: "#090d16", bgInput: "#131a2c", accent: "#5e5ce6", textMain: "#ffffff", textMuted: "#828b9c", isLight: 0 },
-            cleanLight:   { name: "Clean Light (White / Royal Blue)", bgMain: "#ffffff", bgCard: "#eef2f6", bgInput: "#dce4ec", accent: "#0052cc", textMain: "#1c1c1e", textMuted: "#636366", isLight: 1 }
+            spotifyGreen: { name: "Spotify Green (Dark / Green)", bgMain: "#0a0a0a", bgCard: "#121212", bgInput: "#1c1c1c", accent: "#1DB954", textMain: "#ffffff", textMuted: "#a3a3a3", isLight: 0 },
+            amoledWhite:  { name: "Pure AMOLED (Black / White)", bgMain: "#000000", bgCard: "#000000", bgInput: "#121212", accent: "#ffffff", textMain: "#ffffff", textMuted: "#888888", isLight: 0 },
+            cyberPurple:  { name: "Cyber Purple (Dark / Neon Purple)", bgMain: "#07040a", bgCard: "#0f0916", bgInput: "#191124", accent: "#bf5af2", textMain: "#ffffff", textMuted: "#9893a5", isLight: 0 },
+            deepBlue:     { name: "Oceanic Depth (Dark / Electric Blue)", bgMain: "#03070d", bgCard: "#08101c", bgInput: "#101e33", accent: "#0a84ff", textMain: "#ffffff", textMuted: "#8e9bb4", isLight: 0 },
+            lavaRed:      { name: "Lava Crimson (Dark / Material Red)", bgMain: "#0a0404", bgCard: "#120909", bgInput: "#1e1111", accent: "#ff453a", textMain: "#ffffff", textMuted: "#aa9999", isLight: 0 },
+            amberGold:    { name: "Amber Gold (Dark / Orange Amber)", bgMain: "#080603", bgCard: "#120e09", bgInput: "#1e1710", accent: "#ff9f0a", textMain: "#ffffff", textMuted: "#aba499", isLight: 0 },
+            synthWave:    { name: "Synth Magenta (Dark / Hot Pink)", bgMain: "#08040b", bgCard: "#110918", bgInput: "#1d1127", accent: "#ff375f", textMain: "#ffffff", textMuted: "#b29fb7", isLight: 0 },
+            materialTeal: { name: "Material Teal (Dark / Teal Green)", bgMain: "#030807", bgCard: "#091311", bgInput: "#11221f", accent: "#64ffda", textMain: "#ffffff", textMuted: "#91a3a0", isLight: 0 },
+            slateGray:    { name: "Minimal Slate (Dark / Silver Gray)", bgMain: "#121212", bgCard: "#1c1c1e", bgInput: "#2c2c2e", accent: "#e5e5ea", textMain: "#ffffff", textMuted: "#aeaeae", isLight: 0 },
+            cleanLight:   { name: "Clean Light (White / Royal Blue)", bgMain: "#f2f2f7", bgCard: "#ffffff", bgInput: "#e5e5ea", accent: "#0052cc", textMain: "#1c1c1e", textMuted: "#8e8e93", isLight: 1 }
         };
 
         let appState = {
@@ -320,28 +356,37 @@
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
 
-        let startX = 0, currentX = 0, isDragging = false;
         let isScrubbing = false; 
         let scrubPercentage = 0;
         
+        // Elementi DOM
+        const nowPlayingSheet = document.getElementById('nowPlayingSheet');
+        const miniPlayer = document.getElementById('miniPlayer');
+        const miniPlayerContent = document.getElementById('miniPlayerContent');
+        const sheetHeaderDrag = document.getElementById('sheetHeaderDrag');
+        const closeSheetBtn = document.getElementById('closeSheetBtn');
+        const largeTrackArt = document.getElementById('largeTrackArt');
+        const largeArtSwipeContainer = document.getElementById('largeArtSwipeContainer');
+        const ambientBg = document.getElementById('ambientBg');
+
         const swipeTitle = document.getElementById('swipeTitleContainer');
         const marqueeContent = document.getElementById('marqueeContent');
+        
+        // Progressi (Grande + Mini)
         const progressBarContainer = document.getElementById('progressBarContainer');
         const progressBar = document.getElementById('progressBar');
         const progressTooltip = document.getElementById('progressTooltip');
+        
+        const miniProgressBarContainer = document.getElementById('miniProgressBarContainer');
+        const miniProgressBar = document.getElementById('miniProgressBar');
 
+        // Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then((reg) => {
-                    // Controlla periodicamente se c'è un nuovo sw.js sul server.
-                    // Il nuovo sw.js chiama già self.skipWaiting()/clients.claim() da solo,
-                    // quindi l'aggiornamento è automatico: non serve interazione dell'utente.
-                    // localStorage (palette, API key) NON viene mai toccato da questo processo.
-                    setInterval(() => reg.update(), 60 * 60 * 1000); // ogni ora
+                    setInterval(() => reg.update(), 60 * 60 * 1000);
                 }).catch(err => console.log(err));
 
-                // Quando il nuovo service worker prende il controllo, ricarica la pagina
-                // una sola volta per mostrare subito la versione aggiornata.
                 let refreshing = false;
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                     if (refreshing) return;
@@ -376,17 +421,21 @@
         }
 
         function onPlayerStateChange(event) {
-            const playIcon = document.getElementById('playIcon'), mobilePlayIcon = document.getElementById('mobilePlayIcon');
+            const playIcon = document.getElementById('playIcon');
+            const miniPlayIcon = document.getElementById('miniPlayIcon');
+            const artContainer = document.getElementById('largeArtSwipeContainer');
+            
             if (event.data == YT.PlayerState.PLAYING) {
                 appState.isPlaying = true;
                 if(playIcon) playIcon.className = "fa-solid fa-pause";
-                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-pause";
-                document.getElementById('coverFallback').style.display = "none";
+                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-pause";
+                if(artContainer) artContainer.style.transform = "scale(1.02)";
                 updateDuration(); updateMediaSessionState(true);
             } else {
                 appState.isPlaying = false;
-                if(playIcon) playIcon.className = "fa-solid fa-play";
-                if(mobilePlayIcon) mobilePlayIcon.className = "fa-solid fa-play";
+                if(playIcon) playIcon.className = "fa-solid fa-play ml-1";
+                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-play ml-0.5";
+                if(artContainer) artContainer.style.transform = "scale(1)";
                 updateMediaSessionState(false);
                 if (event.data == YT.PlayerState.ENDED) {
                     nextTrack();
@@ -411,42 +460,241 @@
             document.addEventListener('click', () => document.getElementById('filterMenu').classList.add('hidden'));
             document.getElementById('filterMenu').addEventListener('click', (e) => e.stopPropagation());
 
+            // Apertura/Chiusura Bottom Sheet "Now Playing"
+            document.getElementById('miniPlayerDetails').addEventListener('click', () => {
+                nowPlayingSheet.classList.add('expanded');
+            });
+            closeSheetBtn.addEventListener('click', () => {
+                nowPlayingSheet.classList.remove('expanded');
+            });
+
+            // Gestori dei pulsanti di riproduzione
             document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+            document.getElementById('miniPlayPauseBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePlay();
+            });
+
             document.getElementById('prevBtn').addEventListener('click', prevTrack);
+            document.getElementById('miniPrevBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                prevTrack();
+            });
+
             document.getElementById('nextBtn').addEventListener('click', nextTrack);
+            document.getElementById('miniNextBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                nextTrack();
+            });
 
-            document.getElementById('mobilePlayPauseBtn').addEventListener('click', togglePlay);
-            document.getElementById('mobilePrevBtn').addEventListener('click', prevTrack);
-            document.getElementById('mobileNextBtn').addEventListener('click', nextTrack);
-
-            document.getElementById('downloadBtn').addEventListener('click', redirectToDownload);
-            document.getElementById('mobileDownloadBtn').addEventListener('click', redirectToDownload);
-            
+            document.getElementById('sheetDownloadBtn').addEventListener('click', redirectToDownload);
             document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
             
+            // Scrubbing sulla barra principale (Grande)
             progressBarContainer.addEventListener('mousedown', startScrub);
             progressBarContainer.addEventListener('touchstart', startScrub, { passive: false });
 
-            window.addEventListener('mousemove', moveScrub);
-            window.addEventListener('touchmove', moveScrub, { passive: false });
+            // Scrubbing sulla barra secondaria (Mini-Player)
+            miniProgressBarContainer.addEventListener('mousedown', startMiniScrub);
+            miniProgressBarContainer.addEventListener('touchstart', startMiniScrub, { passive: false });
 
-            window.addEventListener('mouseup', endScrub);
-            window.addEventListener('touchend', endScrub);
+            window.addEventListener('mousemove', moveScrubGeneral);
+            window.addEventListener('touchmove', moveScrubGeneral, { passive: false });
+
+            window.addEventListener('mouseup', endScrubGeneral);
+            window.addEventListener('touchend', endScrubGeneral);
 
             document.getElementById('apiConfigBtn').addEventListener('click', openApiModal);
             document.getElementById('modalCancelBtn').addEventListener('click', closeApiModal);
             document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
 
-            swipeTitle.addEventListener('touchstart', dragStart, { passive: true });
-            swipeTitle.addEventListener('touchmove', dragMove, { passive: false });
-            swipeTitle.addEventListener('touchend', dragEnd, { passive: true });
-
-            swipeTitle.addEventListener('mousedown', dragStart);
-            window.addEventListener('mousemove', dragMove);
-            window.addEventListener('mouseup', dragEnd);
-            
+            // Setup dei vari gestori di SWIPE
+            setupSwipeHandlers();
             checkAndApplyMarquee();
         });
+
+        // ================= GESTIONE DEGLI SWIPE (Mini-Player, Titoli, Cover e Down-Swipe per Chiusura) =================
+        function setupSwipeHandlers() {
+            // 1. SWIPE sul Mini Player (Destra/Sinistra per Traccia Prec/Succ)
+            let miniStartX = 0, miniCurrentX = 0;
+            miniPlayerContent.addEventListener('touchstart', (e) => {
+                miniStartX = e.touches[0].clientX;
+            }, { passive: true });
+            
+            miniPlayerContent.addEventListener('touchend', (e) => {
+                miniCurrentX = e.changedTouches[0].clientX - miniStartX;
+                if (miniCurrentX > 80) prevTrack();      // Swipe a Destra -> Traccia Precedente
+                else if (miniCurrentX < -80) nextTrack(); // Swipe a Sinistra -> Traccia Successiva
+            }, { passive: true });
+
+            // 2. SWIPE sul Titolo Grande (Destra/Sinistra)
+            let titleStartX = 0, titleCurrentX = 0, isDraggingTitle = false;
+            const startTitleDrag = (x) => {
+                isDraggingTitle = true;
+                titleStartX = x;
+                swipeTitle.classList.add('dragging');
+                marqueeContent.classList.remove('animate-marquee');
+            };
+            const moveTitleDrag = (x) => {
+                if (!isDraggingTitle) return;
+                titleCurrentX = x - titleStartX;
+                const opacity = Math.max(0.2, 1 - Math.abs(titleCurrentX) / 350);
+                swipeTitle.style.transform = `translate3d(${titleCurrentX}px, 0, 0)`;
+                swipeTitle.style.opacity = opacity;
+            };
+            const endTitleDrag = () => {
+                if (!isDraggingTitle) return;
+                isDraggingTitle = false;
+                swipeTitle.classList.remove('dragging');
+                if (titleCurrentX > 75) animateOutAndChange('right');
+                else if (titleCurrentX < -75) animateOutAndChange('left');
+                else {
+                    swipeTitle.style.transform = 'translate3d(0, 0, 0)';
+                    swipeTitle.style.opacity = '1';
+                    checkAndApplyMarquee();
+                }
+                titleCurrentX = 0;
+            };
+
+            swipeTitle.addEventListener('touchstart', (e) => startTitleDrag(e.touches[0].clientX), { passive: true });
+            swipeTitle.addEventListener('touchmove', (e) => { if(isDraggingTitle) { e.preventDefault(); moveTitleDrag(e.touches[0].clientX); } }, { passive: false });
+            swipeTitle.addEventListener('touchend', endTitleDrag, { passive: true });
+            swipeTitle.addEventListener('mousedown', (e) => startTitleDrag(e.clientX));
+            window.addEventListener('mousemove', (e) => moveTitleDrag(e.clientX));
+            window.addEventListener('mouseup', endTitleDrag);
+
+            // 3. SWIPE sulla Copertina dell'Album Grande (Destra/Sinistra per Cambiare)
+            let artStartX = 0, artCurrentX = 0, isDraggingArt = false;
+            const startArtDrag = (x) => {
+                isDraggingArt = true;
+                artStartX = x;
+                largeArtSwipeContainer.style.transition = 'none';
+            };
+            const moveArtDrag = (x) => {
+                if (!isDraggingArt) return;
+                artCurrentX = x - artStartX;
+                largeArtSwipeContainer.style.transform = `translate3d(${artCurrentX}px, 0, 0) scale(1.02) rotate(${artCurrentX * 0.02}deg)`;
+            };
+            const endArtDrag = () => {
+                if (!isDraggingArt) return;
+                isDraggingArt = false;
+                largeArtSwipeContainer.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                if (artCurrentX > 80) {
+                    prevTrack();
+                } else if (artCurrentX < -80) {
+                    nextTrack();
+                }
+                largeArtSwipeContainer.style.transform = appState.isPlaying ? 'scale(1.02)' : 'scale(1)';
+                artCurrentX = 0;
+            };
+
+            largeArtSwipeContainer.addEventListener('touchstart', (e) => startArtDrag(e.touches[0].clientX), { passive: true });
+            largeArtSwipeContainer.addEventListener('touchmove', (e) => { if(isDraggingArt) { e.preventDefault(); moveArtDrag(e.touches[0].clientX); } }, { passive: false });
+            largeArtSwipeContainer.addEventListener('touchend', endArtDrag, { passive: true });
+            largeArtSwipeContainer.addEventListener('mousedown', (e) => startArtDrag(e.clientX));
+            window.addEventListener('mousemove', (e) => moveArtDrag(e.clientX));
+            window.addEventListener('mouseup', endArtDrag);
+
+            // 4. SWIPE verso il basso su qualsiasi punto del Bottom Sheet per chiuderlo
+            let sheetStartY = 0, sheetCurrentY = 0, isDraggingSheet = false;
+            const onSheetTouchStart = (e) => {
+                // Non chiudiamo se l'utente sta effettuando uno scrub della timeline
+                if (e.target.closest('#progressBarContainer') || e.target.closest('#largeArtSwipeContainer') || e.target.closest('#swipeTitleContainer')) return;
+                sheetStartY = e.touches[0].clientY;
+                isDraggingSheet = true;
+                nowPlayingSheet.style.transition = 'none';
+            };
+            const onSheetTouchMove = (e) => {
+                if (!isDraggingSheet) return;
+                sheetCurrentY = e.touches[0].clientY - sheetStartY;
+                if (sheetCurrentY > 0) {
+                    nowPlayingSheet.style.transform = `translateY(calc(-100% + ${sheetCurrentY}px))`;
+                }
+            };
+            const onSheetTouchEnd = () => {
+                if (!isDraggingSheet) return;
+                isDraggingSheet = false;
+                nowPlayingSheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                if (sheetCurrentY > 120) {
+                    nowPlayingSheet.classList.remove('expanded');
+                }
+                nowPlayingSheet.style.transform = '';
+                sheetCurrentY = 0;
+            };
+
+            nowPlayingSheet.addEventListener('touchstart', onSheetTouchStart, { passive: true });
+            nowPlayingSheet.addEventListener('touchmove', onSheetTouchMove, { passive: true });
+            nowPlayingSheet.addEventListener('touchend', onSheetTouchEnd, { passive: true });
+        }
+
+        // ================= GESTIONE DELLO SCRUBBING (Timeline Grande e Mini) =================
+        let activeScrubType = null; // 'large' o 'mini'
+
+        function startScrub(e) {
+            if (!player?.getDuration || appState.currentIndex === -1) return;
+            isScrubbing = true;
+            activeScrubType = 'large';
+            progressBar.classList.add('scrubbing');
+            updateScrubPositionGeneral(e);
+        }
+
+        function startMiniScrub(e) {
+            if (!player?.getDuration || appState.currentIndex === -1) return;
+            isScrubbing = true;
+            activeScrubType = 'mini';
+            updateScrubPositionGeneral(e);
+        }
+
+        function moveScrubGeneral(e) {
+            if (!isScrubbing) return;
+            if (e.cancelable) e.preventDefault();
+            updateScrubPositionGeneral(e);
+        }
+
+        function updateScrubPositionGeneral(e) {
+            const container = activeScrubType === 'large' ? progressBarContainer : miniProgressBarContainer;
+            const rect = container.getBoundingClientRect();
+            
+            let clientX = 0;
+            if (e.touches && e.touches.length > 0) clientX = e.touches[0].clientX;
+            else if (e.changedTouches && e.changedTouches.length > 0) clientX = e.changedTouches[0].clientX;
+            else clientX = e.clientX;
+
+            let offsetX = clientX - rect.left;
+            offsetX = Math.max(0, Math.min(offsetX, rect.width));
+            scrubPercentage = offsetX / rect.width;
+
+            const duration = player.getDuration() || 0;
+            const targetTime = duration * scrubPercentage;
+
+            // Aggiorna istantaneamente sia il progresso visivo che le etichette
+            progressBar.style.width = `${scrubPercentage * 100}%`;
+            miniProgressBar.style.width = `${scrubPercentage * 100}%`;
+            
+            document.getElementById('currentTime').innerText = formatTime(targetTime);
+            document.getElementById('miniCurrentTime').innerText = formatTime(targetTime);
+
+            if (activeScrubType === 'large') {
+                let relativeLeft = clientX - rect.left;
+                relativeLeft = Math.max(0, Math.min(relativeLeft, rect.width));
+                progressTooltip.innerText = formatTime(targetTime);
+                progressTooltip.style.left = `${relativeLeft}px`;
+                progressTooltip.classList.remove('hidden');
+            }
+        }
+
+        function endScrubGeneral() {
+            if (!isScrubbing) return;
+            isScrubbing = false;
+            progressBar.classList.remove('scrubbing');
+            progressTooltip.classList.add('hidden');
+
+            const duration = player.getDuration() || 0;
+            player.seekTo(duration * scrubPercentage, true);
+            activeScrubType = null;
+        }
+
+        // ================= STRUTTURA LOGICA APP PRINCIPALE =================
 
         function populateThemeSelect() {
             const select = document.getElementById('modalThemeSelect');
@@ -491,10 +739,10 @@
                 saveBtn?.classList.add('text-black');
             }
 
-            const containers = document.querySelectorAll('header, main section, footer');
+            const containers = document.querySelectorAll('header, main section');
             containers.forEach(el => {
                 if (themeKey === 'amoledWhite') {
-                    el.style.border = "1px solid #222222";
+                    el.style.border = "1px solid #1a1a1a";
                 } else {
                     el.style.border = "none";
                 }
@@ -508,9 +756,9 @@
             if (!videoSection) return;
             
             if (appState.showVideo) {
-                videoSection.classList.remove('hidden');
+                videoSection.className = "flex h-40 md:h-48 relative rounded-2xl overflow-hidden shadow-lg custom-bg-card mb-2";
             } else {
-                videoSection.classList.add('hidden');
+                videoSection.className = "hidden absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none";
             }
         }
 
@@ -589,7 +837,7 @@
                 }, 800);
 
             } catch (err) {
-                console.error('Errore durante la copia: ', err);
+                console.error('Errore: ', err);
                 const downloadServiceUrl = `https://kleger.pl/`;
                 window.open(downloadServiceUrl, '_blank');
             }
@@ -602,7 +850,7 @@
             const toast = document.createElement('div');
             toast.id = 'youtubette-toast';
             
-            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-50 transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-[var(--text-main)]';
+            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-[150] transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-[var(--text-main)]';
             toast.innerHTML = `<i class="fa-solid fa-circle-check mr-2 custom-text-accent"></i> ${message}`;
             
             document.body.appendChild(toast);
@@ -620,116 +868,20 @@
         }
 
         function toggleDownloadButtons(enabled) {
-            const dBtn = document.getElementById('downloadBtn');
-            const mDBtn = document.getElementById('mobileDownloadBtn');
-            
-            if (!dBtn || !mDBtn) return;
+            const sheetDbtn = document.getElementById('sheetDownloadBtn');
+            if (!sheetDbtn) return;
 
             if (enabled) {
-                dBtn.disabled = false;
-                dBtn.removeAttribute('disabled');
-                dBtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-gray-500');
-                dBtn.classList.add('opacity-100', 'text-gray-400', 'cursor-pointer');
-                
-                mDBtn.disabled = false;
-                mDBtn.removeAttribute('disabled');
-                mDBtn.classList.remove('opacity-30', 'text-gray-500');
-                mDBtn.classList.add('opacity-100', 'cursor-pointer');
-                mDBtn.style.color = "var(--accent)";
+                sheetDbtn.disabled = false;
+                sheetDbtn.removeAttribute('disabled');
+                sheetDbtn.classList.remove('opacity-30', 'cursor-not-allowed', 'text-neutral-400');
+                sheetDbtn.classList.add('opacity-100', 'text-neutral-300', 'cursor-pointer', 'hover:text-[var(--accent)]');
             } else {
-                dBtn.disabled = true;
-                dBtn.setAttribute('disabled', 'true');
-                dBtn.classList.add('opacity-30', 'cursor-not-allowed', 'text-gray-500');
-                dBtn.classList.remove('opacity-100', 'text-gray-400', 'cursor-pointer');
-                
-                mDBtn.disabled = true;
-                mDBtn.setAttribute('disabled', 'true');
-                mDBtn.classList.add('opacity-30', 'text-gray-500');
-                mDBtn.classList.remove('opacity-100', 'cursor-pointer');
-                mDBtn.style.color = "";
+                sheetDbtn.disabled = true;
+                sheetDbtn.setAttribute('disabled', 'true');
+                sheetDbtn.classList.add('opacity-30', 'cursor-not-allowed', 'text-neutral-400');
+                sheetDbtn.classList.remove('opacity-100', 'text-neutral-300', 'cursor-pointer');
             }
-        }
-
-        function getClientX(e) {
-            if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
-            if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
-            return e.clientX;
-        }
-
-        function updateScrubPosition(e) {
-            const rect = progressBarContainer.getBoundingClientRect();
-            const clientX = getClientX(e);
-            let offsetX = clientX - rect.left;
-            offsetX = Math.max(0, Math.min(offsetX, rect.width));
-            scrubPercentage = offsetX / rect.width;
-
-            const duration = player.getDuration() || 0;
-            const targetTime = duration * scrubPercentage;
-
-            progressBar.style.width = `${scrubPercentage * 100}%`;
-            document.getElementById('currentTime').innerText = formatTime(targetTime);
-
-            let relativeLeft = clientX - rect.left;
-            relativeLeft = Math.max(0, Math.min(relativeLeft, rect.width));
-            progressTooltip.innerText = formatTime(targetTime);
-            progressTooltip.style.left = `${relativeLeft}px`;
-            progressTooltip.classList.remove('hidden');
-        }
-
-        function startScrub(e) {
-            if (!player?.getDuration || appState.currentIndex === -1) return;
-            isScrubbing = true;
-            progressBar.classList.add('scrubbing');
-            updateScrubPosition(e);
-        }
-
-        function moveScrub(e) {
-            if (!isScrubbing) return;
-            if (e.cancelable) e.preventDefault();
-            updateScrubPosition(e);
-        }
-
-        function endScrub(e) {
-            if (!isScrubbing) return;
-            isScrubbing = false;
-            progressBar.classList.remove('scrubbing');
-            progressTooltip.classList.add('hidden');
-
-            const duration = player.getDuration() || 0;
-            player.seekTo(duration * scrubPercentage, true);
-        }
-
-        function dragStart(e) {
-            isDragging = true;
-            startX = e.touches ? e.touches[0].clientX : e.clientX;
-            swipeTitle.classList.add('dragging');
-            marqueeContent.classList.remove('animate-marquee');
-        }
-
-        function dragMove(e) {
-            if (!isDragging) return;
-            currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
-            const opacity = Math.max(0.2, 1 - Math.abs(currentX) / 350);
-            swipeTitle.style.transform = `translate3d(${currentX}px, 0, 0)`;
-            swipeTitle.style.opacity = opacity;
-        }
-
-        function dragEnd() {
-            if (!isDragging) return;
-            isDragging = false;
-            swipeTitle.classList.remove('dragging');
-
-            const threshold = 75;
-            if (currentX > threshold) {
-                animateOutAndChange('right');
-            } else if (currentX < -threshold) {
-                animateOutAndChange('left');
-            } else {
-                swipeTitle.style.transform = 'translate3d(0, 0, 0)';
-                swipeTitle.style.opacity = '1';
-                checkAndApplyMarquee();
-            }
-            currentX = 0;
         }
 
         function animateOutAndChange(direction) {
@@ -754,18 +906,12 @@
 
         function checkAndApplyMarquee() {
             const titleEl = document.getElementById('playerTrackTitle');
-            const channelEl = document.getElementById('playerTrackChannel');
-            
             const titleText = titleEl ? titleEl.innerText : 'YouTubette';
-            const channelText = channelEl ? channelEl.innerText : '';
             
             marqueeContent.classList.remove('animate-marquee');
             const wrapper = swipeTitle.querySelector('.marquee-wrapper');
             
-            let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-bold text-[var(--text-main)]">${titleText}</span>`;
-            if (channelText) {
-                cleanText += `<span id="playerTrackChannel" class="text-xs ml-3 font-normal custom-text-muted">${channelText}</span>`;
-            }
+            let cleanText = `<span id="playerTrackTitle" class="text-base md:text-lg font-black text-[var(--text-main)]">${titleText}</span>`;
             
             marqueeContent.innerHTML = cleanText;
 
@@ -812,7 +958,7 @@
 
                 nextSearchPageToken = data.nextPageToken || '';
                 let newTracks = data.items.map(item => ({
-                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.default.url
+                    id: item.id.videoId, title: item.snippet.title, channel: item.snippet.channelTitle, thumbnail: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
                 }));
 
                 if (order !== 'date') {
@@ -839,21 +985,23 @@
                 return;
             }
 
+            document.getElementById('trackCount').innerText = `${appState.tracks.length} brani`;
+
             const currentThemeData = themes[appState.currentTheme];
-            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/70' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900 border border-neutral-800' : 'bg-neutral-800');
+            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/80' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900 border border-neutral-800' : 'bg-neutral-900/60');
             const rowHoverClass = currentThemeData?.isLight ? 'md:hover:bg-neutral-200 active:bg-neutral-200' : 'md:hover:bg-neutral-900 active:bg-neutral-900';
 
             appState.tracks.forEach((track, index) => {
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
-                trackRow.className = `flex items-center p-2 rounded-xl cursor-pointer transition-all ${rowHoverClass} ${appState.currentIndex === index ? rowSelectedBgClass : ''}`;
+                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all ${rowHoverClass} ${appState.currentIndex === index ? rowSelectedBgClass : ''}`;
                
                 trackRow.innerHTML = `
-                    <div class="w-6 text-center text-xs custom-text-muted">${index + 1}</div>
-                    <img src="${track.thumbnail}" class="w-9 h-9 object-cover rounded-lg mx-2.5 shadow-sm">
+                    <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
+                    <img src="${track.thumbnail}" class="w-11 h-11 object-cover rounded-xl mx-2.5 shadow-md shrink-0">
                     <div class="flex-1 overflow-hidden">
-                        <p class="text-xs font-medium truncate ${appState.currentIndex === index ? 'custom-text-accent font-semibold' : 'text-[var(--text-main)]'}">${track.title}</p>
-                        <p class="text-[10px] truncate mt-0.5 custom-text-muted">${track.channel}</p>
+                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-[var(--text-main)]'}">${track.title}</p>
+                        <p class="text-[10px] truncate mt-0.5 custom-text-muted font-medium">${track.channel}</p>
                     </div>
                 `;
                 trackRow.addEventListener('click', () => {
@@ -868,31 +1016,41 @@
             if (index < 0 || index >= appState.tracks.length) return;
             
             const currentThemeData = themes[appState.currentTheme];
-            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/70' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900' : 'bg-neutral-800');
+            const rowSelectedBgClass = currentThemeData?.isLight ? 'bg-neutral-300/80' : (appState.currentTheme === 'amoledWhite' ? 'bg-neutral-900' : 'bg-neutral-900/60');
 
             if (appState.currentIndex !== -1) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
-                    oldRow.classList.remove(rowSelectedBgClass, 'bg-neutral-800', 'bg-neutral-300/70', 'bg-neutral-900', 'border', 'border-neutral-800');
+                    oldRow.classList.remove(rowSelectedBgClass, 'bg-neutral-900/60', 'bg-neutral-300/80', 'bg-neutral-900', 'border', 'border-neutral-800');
                     const oldText = oldRow.querySelector('p.text-xs');
-                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-semibold'); oldText.classList.add('text-[var(--text-main)]'); }
+                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-[var(--text-main)]'); }
                 }
             }
 
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
+            // Aggiorna Interfaccia Bottom Sheet
             const titleEl = document.getElementById('playerTrackTitle');
             const channelEl = document.getElementById('playerTrackChannel');
             if (titleEl) titleEl.innerText = track.title;
             if (channelEl) channelEl.innerText = track.channel;
+            
+            if (largeTrackArt) largeTrackArt.src = track.thumbnail;
+            if (ambientBg) ambientBg.style.backgroundImage = `url(${track.thumbnail})`;
+
+            // Aggiorna Interfaccia Mini-Player
+            miniPlayer.classList.remove('hidden');
+            document.getElementById('miniPlayerImg').src = track.thumbnail;
+            document.getElementById('miniPlayerTitle').innerText = track.title;
+            document.getElementById('miniPlayerChannel').innerText = track.channel;
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
                 newRow.classList.add(rowSelectedBgClass);
                 if (appState.currentTheme === 'amoledWhite') newRow.classList.add('border', 'border-neutral-800');
                 const newText = newRow.querySelector('p.text-xs');
-                if (newText) { newText.classList.remove('text-[var(--text-main)]'); newText.classList.add('custom-text-accent', 'font-semibold'); }
+                if (newText) { newText.classList.remove('text-[var(--text-main)]'); newText.classList.add('custom-text-accent', 'font-black'); }
                 
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
@@ -955,15 +1113,22 @@
                 if (player?.getCurrentTime && appState.isPlaying && !isScrubbing) {
                     const currentTime = player.getCurrentTime(), duration = player.getDuration();
                     if (duration > 0) {
-                        progressBar.style.width = `${(currentTime / duration) * 100}%`;
+                        const progressPercent = (currentTime / duration) * 100;
+                        progressBar.style.width = `${progressPercent}%`;
+                        miniProgressBar.style.width = `${progressPercent}%`;
                         document.getElementById('currentTime').innerText = formatTime(currentTime);
+                        document.getElementById('miniCurrentTime').innerText = formatTime(currentTime);
                     }
                 }
             }, 500);
         }
 
         function updateDuration() {
-            if (player?.getDuration) document.getElementById('durationTime').innerText = formatTime(player.getDuration());
+            if (player?.getDuration) {
+                const totalDuration = player.getDuration();
+                document.getElementById('durationTime').innerText = formatTime(totalDuration);
+                document.getElementById('miniDurationTime').innerText = formatTime(totalDuration);
+            }
         }
 
         function formatTime(seconds) {
