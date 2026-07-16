@@ -106,7 +106,7 @@
             justify-content: center;
             flex: 1;
             min-width: 0;
-            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+            transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease-out;
             will-change: transform, opacity;
         }
         #miniTextContainer.dragging-active {
@@ -480,11 +480,9 @@
             </div>
 
             <div class="flex items-center space-x-1 shrink-0" id="miniPlayerControls">
-                <button id="miniPrevBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-base active:scale-90 transition-transform"><i class="fa-solid fa-backward-step"></i></button>
                 <button id="miniPlayPauseBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black active:scale-90 transition-transform">
                     <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
                 </button>
-                <button id="miniNextBtn" class="p-2 text-gray-400 active:text-[var(--text-main)] text-base active:scale-90 transition-transform"><i class="fa-solid fa-forward-step"></i></button>
             </div>
         </div>
 
@@ -915,16 +913,7 @@
             });
 
             document.getElementById('prevBtn').addEventListener('click', prevTrack);
-            document.getElementById('miniPrevBtn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                prevTrack();
-            });
-
             document.getElementById('nextBtn').addEventListener('click', nextTrack);
-            document.getElementById('miniNextBtn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                nextTrack();
-            });
 
             document.getElementById('sheetDownloadBtn').addEventListener('click', redirectToDownload);
             document.getElementById('volumeSlider')?.addEventListener('input', (e) => player?.setVolume(e.target.value));
@@ -1160,14 +1149,22 @@
                 miniStartY = y;
                 miniTextContainer.classList.add('dragging-active');
             };
+            // Il testo scorre solo per un breve tratto (mai fino a sovrapporre thumbnail o pulsante play)
+            // e la dissolvenza si completa esattamente quando raggiunge quel limite: niente più
+            // testo che sparisce troppo presto a sinistra o resta visibile fin troppo vicino al pulsante a destra.
+            const MINI_TEXT_MAX_OFFSET = 40; // px massimi di scorrimento del testo
+            const MINI_TEXT_FADE_DISTANCE = 55; // px di trascinamento dito dopo i quali il testo è invisibile
+
             const moveMiniDrag = (x, y) => {
                 if (!isDraggingMini) return;
                 miniCurrentX = x - miniStartX;
                 miniCurrentY = y - miniStartY;
 
                 if (Math.abs(miniCurrentX) > Math.abs(miniCurrentY)) {
-                    miniTextContainer.style.transform = `translate3d(${miniCurrentX}px, 0, 0)`;
-                    miniTextContainer.style.opacity = Math.max(0.1, 1 - Math.abs(miniCurrentX) / 200);
+                    const clampedX = Math.max(-MINI_TEXT_MAX_OFFSET, Math.min(MINI_TEXT_MAX_OFFSET, miniCurrentX));
+                    const fadeProgress = Math.min(1, Math.abs(miniCurrentX) / MINI_TEXT_FADE_DISTANCE);
+                    miniTextContainer.style.transform = `translate3d(${clampedX}px, 0, 0)`;
+                    miniTextContainer.style.opacity = Math.max(0, 1 - fadeProgress);
                 }
             };
             const endMiniDrag = () => {
