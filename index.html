@@ -57,7 +57,9 @@
             filter: blur(80px);
             transform: scale(1.2);
             pointer-events: none;
-            transition: background-image 1.2s ease;
+            /* background-image non è animabile via CSS: il crossfade vero è gestito
+               via JS transitionando l'opacity mentre si cambia l'immagine sotto. */
+            transition: opacity 0.35s ease;
             background-position: center;
             background-size: cover;
         }
@@ -682,6 +684,11 @@
         // GESTIONE REGISTRAZIONE ED AGGIORNAMENTO PROTETTO DEL SERVICE WORKER
         let newWorker;
         let refreshing = false;
+        // Vero quando l'ultima interazione sul miniplayer è stata un trascinamento (swipe)
+        // e non un semplice tap/click. Il mouse, a differenza del touch, genera comunque
+        // un evento 'click' dopo un mousedown+mousemove+mouseup sullo stesso elemento:
+        // questo flag serve a impedire che quel click "fantasma" apra la sheet.
+        let miniPlayerWasDragged = false;
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -771,6 +778,23 @@
         }
 
         // --- GESTIONE COPERTINE: CARICAMENTO A CASCATA ---
+        function setAmbientBackground(el, url) {
+            if (!el || !url) return;
+            if (el.dataset.currentBg === url) return; // stessa immagine, nessun crossfade necessario
+            el.dataset.currentBg = url;
+
+            const targetOpacity = getComputedStyle(el).opacity;
+            el.style.transition = 'opacity 0.35s ease';
+            el.style.opacity = '0';
+
+            setTimeout(() => {
+                el.style.backgroundImage = `url(${url})`;
+                requestAnimationFrame(() => {
+                    el.style.opacity = targetOpacity;
+                });
+            }, 350);
+        }
+
         function displayArtwork(imgElement, videoId) {
             if (!imgElement || !videoId) return;
 
@@ -897,6 +921,13 @@
 
             miniPlayer.addEventListener('click', (e) => {
                 if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) {
+                    return;
+                }
+                // Il mouse (a differenza del touch) genera comunque un evento 'click' dopo un
+                // mousedown+mousemove+mouseup sullo stesso elemento, anche se in mezzo è avvenuto
+                // uno swipe: se era un trascinamento, ignoriamo il click e non apriamo la sheet.
+                if (miniPlayerWasDragged) {
+                    miniPlayerWasDragged = false;
                     return;
                 }
                 openNowPlayingSheet();
@@ -1147,6 +1178,7 @@
                 isDraggingMini = true;
                 miniStartX = x;
                 miniStartY = y;
+                miniPlayerWasDragged = false;
                 miniTextContainer.classList.add('dragging-active');
             };
             // Il testo scorre solo per un breve tratto (mai fino a sovrapporre thumbnail o pulsante play)
@@ -1154,11 +1186,16 @@
             // testo che sparisce troppo presto a sinistra o resta visibile fin troppo vicino al pulsante a destra.
             const MINI_TEXT_MAX_OFFSET = 40; // px massimi di scorrimento del testo
             const MINI_TEXT_FADE_DISTANCE = 55; // px di trascinamento dito dopo i quali il testo è invisibile
+            const MINI_DRAG_CLICK_THRESHOLD = 6; // px oltre i quali è un vero trascinamento, non un tap
 
             const moveMiniDrag = (x, y) => {
                 if (!isDraggingMini) return;
                 miniCurrentX = x - miniStartX;
                 miniCurrentY = y - miniStartY;
+
+                if (Math.abs(miniCurrentX) > MINI_DRAG_CLICK_THRESHOLD || Math.abs(miniCurrentY) > MINI_DRAG_CLICK_THRESHOLD) {
+                    miniPlayerWasDragged = true;
+                }
 
                 if (Math.abs(miniCurrentX) > Math.abs(miniCurrentY)) {
                     const clampedX = Math.max(-MINI_TEXT_MAX_OFFSET, Math.min(MINI_TEXT_MAX_OFFSET, miniCurrentX));
@@ -1539,6 +1576,7 @@
                 document.getElementById('modalApiBadgeError').classList.add('hidden');
 
                 nextSearchPageToken = data.nextPageToken || '';
+                const previousCount = appState.tracks.length;
                 let newTracks = data.items.map(item => ({
                     id: item.id.videoId, 
                     title: decodeHtmlEntities(item.snippet.title), 
@@ -1547,7 +1585,7 @@
                 }));
 
                 appState.tracks = appState.tracks.concat(newTracks);
-                renderTracklist();
+                renderTracklist(isLoadMore ? previousCount : 0);
             } catch (error) {
                 showVisualApiError();
                 if (placeholderText && !isLoadMore) {
@@ -1567,10 +1605,19 @@
             return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        function renderTracklist() {
+        function renderTracklist(fromIndex = 0) {
             const trackListDiv = document.getElementById('trackList');
-            if (!trackListDiv) return; trackListDiv.innerHTML = '';
-            
+            if (!trackListDiv) return;
+
+            // Rebuild completo solo per una nuova ricerca (fromIndex 0).
+            // Quando si aggiungono altri risultati (caricamento pagina successiva)
+            // vengono aggiunte SOLO le righe nuove, senza toccare quelle già
+            // renderizzate: prima invece si azzerava e ricreava tutta la lista,
+            // causando il "flash" di tutti i tile (immagini comprese).
+            if (fromIndex === 0) {
+                trackListDiv.innerHTML = '';
+            }
+
             if (appState.tracks.length === 0) {
                 trackListDiv.innerHTML = '<p class="text-xs p-2 italic text-center custom-text-muted">Nessun risultato.</p>';
                 return;
@@ -1578,11 +1625,12 @@
 
             document.getElementById('trackCount').innerText = `${appState.tracks.length} brani`;
 
-            appState.tracks.forEach((track, index) => {
+            for (let index = fromIndex; index < appState.tracks.length; index++) {
+                const track = appState.tracks[index];
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
                 trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border border-white/10' : ''}`;
-               
+
                 trackRow.innerHTML = `
                     <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
                     <div class="w-11 h-11 rounded-full overflow-hidden mx-2.5 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
@@ -1602,7 +1650,7 @@
                     const img = document.getElementById(`track-img-${index}`);
                     displayArtwork(img, track.id);
                 }, 0);
-            });
+            }
         }
 
         function loadTrack(index) {
@@ -1631,8 +1679,8 @@
             if (titleEl) titleEl.innerText = track.title;
             if (channelEl) channelEl.innerText = track.channel;
             
-            if (globalAmbientBg) globalAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
-            if (sheetAmbientBg) sheetAmbientBg.style.backgroundImage = `url(${track.thumbnail})`;
+            if (globalAmbientBg) setAmbientBackground(globalAmbientBg, track.thumbnail);
+            if (sheetAmbientBg) setAmbientBackground(sheetAmbientBg, track.thumbnail);
             
             displayArtwork(document.getElementById('sheetArtworkImg'), track.id);
             displayArtwork(document.getElementById('miniPlayerImg'), track.id);
