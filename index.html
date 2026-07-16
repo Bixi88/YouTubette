@@ -1629,7 +1629,7 @@
                 const track = appState.tracks[index];
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
-                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border border-white/10' : ''}`;
+                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all border hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border-white/10' : 'border-transparent'}`;
 
                 trackRow.innerHTML = `
                     <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
@@ -1665,7 +1665,8 @@
             if (appState.currentIndex !== -1) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
-                    oldRow.classList.remove('bg-white/10', 'border', 'border-white/10');
+                    oldRow.classList.remove('bg-white/10', 'border-white/10');
+                    oldRow.classList.add('border-transparent');
                     const oldText = oldRow.querySelector('p.text-xs');
                     if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-white'); }
                 }
@@ -1693,7 +1694,8 @@
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
-                newRow.classList.add('bg-white/10', 'border', 'border-white/10');
+                newRow.classList.remove('border-transparent');
+                newRow.classList.add('bg-white/10', 'border-white/10');
                 const newText = newRow.querySelector('p.text-xs');
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('custom-text-accent', 'font-black'); }
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
