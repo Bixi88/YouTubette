@@ -464,7 +464,7 @@
     <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-24 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] cursor-pointer" style="touch-action: none;">
         
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
-            <div class="flex items-center flex-1 min-w-0 mr-3 h-12 overflow-hidden" id="miniPlayerDetails">
+            <div class="flex items-center flex-1 min-w-0 mr-5 h-12 overflow-hidden" id="miniPlayerDetails">
                 <div class="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
                     <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="mini thumbnail" draggable="false">
                 </div>
@@ -1391,6 +1391,13 @@
             }
         }
 
+        function decodeHtmlEntities(text) {
+            if (!text) return '';
+            const el = document.createElement('textarea');
+            el.innerHTML = text;
+            return el.value;
+        }
+
         function showToast(message) {
             const oldToast = document.getElementById('youtubette-toast');
             if (oldToast) oldToast.remove();
@@ -1457,7 +1464,7 @@
             
             marqueeContent.classList.remove('animate-marquee');
             const wrapper = swipeTitle.querySelector('.marquee-wrapper');
-            let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-black text-white">${titleText}</span>`;
+            let cleanText = `<span id="playerTrackTitle" class="text-sm md:text-base font-black text-white">${escapeHtml(titleText)}</span>`;
             
             marqueeContent.innerHTML = cleanText;
             if (wrapper && marqueeContent.scrollWidth > wrapper.clientWidth) {
@@ -1534,8 +1541,8 @@
                 nextSearchPageToken = data.nextPageToken || '';
                 let newTracks = data.items.map(item => ({
                     id: item.id.videoId, 
-                    title: item.snippet.title, 
-                    channel: item.snippet.channelTitle, 
+                    title: decodeHtmlEntities(item.snippet.title), 
+                    channel: decodeHtmlEntities(item.snippet.channelTitle), 
                     thumbnail: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
                 }));
 
@@ -1553,6 +1560,11 @@
                     `;
                 }
             } finally { if (isLoadMore) isFetchingMore = false; }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
         function renderTracklist() {
@@ -1577,8 +1589,8 @@
                         <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover" alt="track thumbnail">
                     </div>
                     <div class="flex-1 overflow-hidden">
-                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${track.title}</p>
-                        <p class="text-[10px] truncate mt-0.5 custom-text-muted font-medium">${track.channel}</p>
+                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${escapeHtml(track.title)}</p>
+                        <p class="text-[10px] truncate mt-0.5 custom-text-muted font-medium">${escapeHtml(track.channel)}</p>
                     </div>
                 `;
                 trackRow.addEventListener('click', () => {
