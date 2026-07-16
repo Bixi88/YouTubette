@@ -277,6 +277,83 @@
         body.amoled-active #nowPlayingSheet {
             background-color: #000000 !important;
         }
+
+        #miniPlayer, #miniPlayer *, #swipeTitleContainer, #swipeTitleContainer * {
+            -webkit-user-drag: none;
+            user-drag: none;
+        }
+
+        /* --- MENU IMPOSTAZIONI: overlay + sheet animati in stile Gemini --- */
+        #apiModal {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+        }
+        #apiModal.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: opacity 0.3s ease, visibility 0s linear 0s;
+        }
+        #apiModal .settings-sheet {
+            width: 100%;
+            max-width: 480px;
+            max-height: 88vh;
+            overflow-y: auto;
+            border-radius: 28px 28px 0 0;
+            padding: 14px 24px calc(22px + env(safe-area-inset-bottom, 0px));
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+        }
+        #apiModal.active .settings-sheet {
+            transform: translateY(0);
+        }
+        .settings-drag-handle {
+            width: 40px;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.25);
+            margin: 4px auto 14px;
+            cursor: grab;
+        }
+        @media (min-width: 768px) {
+            #apiModal {
+                align-items: center;
+                padding: 16px;
+            }
+            #apiModal .settings-sheet {
+                border-radius: 26px;
+                max-height: 85vh;
+                padding: 24px;
+                transform: translateY(18px) scale(0.96);
+                opacity: 0;
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            }
+            #apiModal.active .settings-sheet {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            .settings-drag-handle {
+                display: none;
+            }
+        }
+        body.amoled-active #apiModal .settings-sheet {
+            background: #000000 !important;
+            border: 1px solid #262626 !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
     </style>
 </head>
 <body class="font-sans flex flex-col justify-between hidden p-4 box-border h-full custom-bg-main relative">
@@ -287,7 +364,7 @@
         <div class="flex items-center gap-2 z-50">
             <!-- Pulsante Impostazioni (Menu con tre linette) -->
             <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Impostazioni">
-                <i class="fa-solid fa-bars text-base"></i>
+                <i class="fa-solid fa-equals text-base"></i>
                 <span id="apiErrorBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-black animate-pulse"></span>
             </button>
             
@@ -389,7 +466,7 @@
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
             <div class="flex items-center flex-1 min-w-0 mr-3 h-12 overflow-hidden" id="miniPlayerDetails">
                 <div class="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
-                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="mini thumbnail">
+                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="mini thumbnail" draggable="false">
                 </div>
                 
                 <div class="ml-2.5 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
@@ -497,10 +574,11 @@
     </div>
 
     <!-- Modal Impostazioni -->
-    <div id="apiModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-md">
-        <div class="border w-full max-w-md rounded-3xl p-6 shadow-2xl relative custom-bg-card border-white/5">
+    <div id="apiModal">
+        <div class="settings-sheet glass-panel shadow-2xl relative">
+            <div id="settingsDragHandle" class="settings-drag-handle"></div>
             <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
-                <i class="fa-solid fa-bars mr-2.5 custom-text-accent"></i> Impostazioni
+                <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
             </h3>
             
             <div class="mb-4">
@@ -736,8 +814,8 @@
                     handled = true;
                 }
                 const apiModal = document.getElementById('apiModal');
-                if (apiModal && !apiModal.classList.contains('hidden')) {
-                    apiModal.classList.add('hidden');
+                if (apiModal && apiModal.classList.contains('active')) {
+                    apiModal.classList.remove('active');
                     handled = true;
                 }
                 if (handled) {
@@ -746,9 +824,33 @@
             });
 
             // Trigger forza aggiornamento al click sul pulsante
-            document.getElementById('appUpdateBtn')?.addEventListener('click', () => {
+            document.getElementById('appUpdateBtn')?.addEventListener('click', async (e) => {
+                const btn = e.currentTarget;
+                if (btn.disabled) return;
+                btn.disabled = true;
+                btn.classList.add('opacity-60');
+                const icon = btn.querySelector('i');
+                if (icon) icon.classList.add('fa-spin');
+
+                // Pulisce SOLO la Cache Storage usata dal service worker (asset statici),
+                // così l'app "si accorge" della nuova versione. NON tocca localStorage,
+                // quindi API key, tema e preferenze salvate restano intatte.
+                try {
+                    if (window.caches) {
+                        const cacheKeys = await caches.keys();
+                        await Promise.all(cacheKeys.map(key => caches.delete(key)));
+                    }
+                } catch (err) {
+                    console.warn('Impossibile pulire la cache:', err);
+                }
+
                 if (newWorker) {
+                    // Attiva subito il nuovo service worker: il listener 'controllerchange'
+                    // ricaricherà automaticamente la pagina.
                     newWorker.postMessage('skipWaiting');
+                } else {
+                    // Fallback: nessun worker in attesa rilevato, forza comunque il reload.
+                    window.location.reload();
                 }
             });
 
@@ -858,6 +960,7 @@
 
             setupSwipeHandlers();
             setupSheetCloseSwipe();
+            setupSettingsSheetSwipe();
             checkAndApplyMarquee();
         });
 
@@ -958,6 +1061,49 @@
             });
         }
 
+        function setupSettingsSheetSwipe() {
+            const modal = document.getElementById('apiModal');
+            const sheet = modal ? modal.querySelector('.settings-sheet') : null;
+            const handle = document.getElementById('settingsDragHandle');
+            if (!modal || !sheet || !handle) return;
+
+            let startY = 0, currentY = 0, isDragging = false;
+
+            const onStart = (y) => {
+                isDragging = true;
+                startY = y;
+                sheet.style.transition = 'none';
+            };
+            const onMove = (y) => {
+                if (!isDragging) return;
+                currentY = y - startY;
+                if (currentY > 0) {
+                    window.requestAnimationFrame(() => {
+                        if (isDragging) sheet.style.transform = `translateY(${currentY}px)`;
+                    });
+                }
+            };
+            const onEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                sheet.style.transition = '';
+                sheet.style.transform = '';
+                if (currentY > 80) {
+                    closeApiModal();
+                    window.history.back();
+                }
+                currentY = 0;
+            };
+
+            handle.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
+            handle.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY), { passive: true });
+            handle.addEventListener('touchend', onEnd, { passive: true });
+
+            handle.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientY); });
+            window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientY); });
+            window.addEventListener('mouseup', onEnd);
+        }
+
         function setupSheetCloseSwipe() {
             let startY = 0, currentY = 0, isDragging = false;
 
@@ -1007,26 +1153,24 @@
             let miniCurrentX = 0, miniCurrentY = 0;
             let isDraggingMini = false;
 
-            miniPlayer.addEventListener('touchstart', (e) => {
-                if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) return;
+            const startMiniDrag = (x, y, target) => {
+                if (target.closest('#miniPlayerControls') || target.closest('#miniProgressBarArea')) return;
                 isDraggingMini = true;
-                miniStartX = e.touches[0].clientX;
-                miniStartY = e.touches[0].clientY;
+                miniStartX = x;
+                miniStartY = y;
                 miniTextContainer.classList.add('dragging-active');
-            }, { passive: true });
-
-            miniPlayer.addEventListener('touchmove', (e) => {
+            };
+            const moveMiniDrag = (x, y) => {
                 if (!isDraggingMini) return;
-                miniCurrentX = e.touches[0].clientX - miniStartX;
-                miniCurrentY = e.touches[0].clientY - miniStartY;
+                miniCurrentX = x - miniStartX;
+                miniCurrentY = y - miniStartY;
 
                 if (Math.abs(miniCurrentX) > Math.abs(miniCurrentY)) {
                     miniTextContainer.style.transform = `translate3d(${miniCurrentX}px, 0, 0)`;
                     miniTextContainer.style.opacity = Math.max(0.1, 1 - Math.abs(miniCurrentX) / 200);
                 }
-            }, { passive: true });
-            
-            miniPlayer.addEventListener('touchend', () => {
+            };
+            const endMiniDrag = () => {
                 if (!isDraggingMini) return;
                 isDraggingMini = false;
                 miniTextContainer.classList.remove('dragging-active');
@@ -1044,7 +1188,19 @@
                 miniTextContainer.style.opacity = '1';
                 miniCurrentX = 0;
                 miniCurrentY = 0;
-            }, { passive: true });
+            };
+
+            miniPlayer.addEventListener('touchstart', (e) => startMiniDrag(e.touches[0].clientX, e.touches[0].clientY, e.target), { passive: true });
+            miniPlayer.addEventListener('touchmove', (e) => moveMiniDrag(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+            miniPlayer.addEventListener('touchend', endMiniDrag, { passive: true });
+
+            miniPlayer.addEventListener('mousedown', (e) => {
+                if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) return;
+                e.preventDefault();
+                startMiniDrag(e.clientX, e.clientY, e.target);
+            });
+            window.addEventListener('mousemove', (e) => moveMiniDrag(e.clientX, e.clientY));
+            window.addEventListener('mouseup', endMiniDrag);
 
             let titleStartX = 0, titleCurrentX = 0, isDraggingTitle = false;
             const startTitleDrag = (x) => {
@@ -1077,7 +1233,11 @@
             swipeTitle.addEventListener('touchstart', (e) => startTitleDrag(e.touches[0].clientX), { passive: true });
             swipeTitle.addEventListener('touchmove', (e) => { if(isDraggingTitle) { e.preventDefault(); moveTitleDrag(e.touches[0].clientX); } }, { passive: false });
             swipeTitle.addEventListener('touchend', endTitleDrag, { passive: true });
-            swipeTitle.addEventListener('mousedown', (e) => startTitleDrag(e.clientX));
+            swipeTitle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startTitleDrag(e.clientX);
+            });
+            swipeTitle.addEventListener('dragstart', (e) => e.preventDefault());
             window.addEventListener('mousemove', (e) => moveTitleDrag(e.clientX));
             window.addEventListener('mouseup', endTitleDrag);
         }
@@ -1186,13 +1346,13 @@
             const input = document.getElementById('modalApiKeyInput');
             if (modal && input) {
                 input.value = appState.apiKey;
-                modal.classList.remove('hidden');
+                modal.classList.add('active');
             }
         }
 
         function closeApiModal() {
             const modal = document.getElementById('apiModal');
-            if (modal) modal.classList.add('hidden');
+            if (modal) modal.classList.remove('active');
         }
 
         function saveSettingsFromModal() {
