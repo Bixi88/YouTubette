@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.bixi88.twa",
+        "sha256_cert_fingerprints": ["51:64:9D:19:AF:65:FD:EF:DB:A6:72:21:45:B2:6B:77:A2:FC:5A:B0:22:A6:3E:B2:B6:26:8F:7A:7F:34:6D:35"]
+      }
+    }]
