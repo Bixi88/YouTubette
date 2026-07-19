@@ -335,14 +335,6 @@
         #apiModal.active .settings-sheet {
             transform: translateY(0);
         }
-        .settings-drag-handle {
-            width: 40px;
-            height: 4px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.25);
-            margin: 4px auto 14px;
-            cursor: grab;
-        }
         @media (min-width: 768px) {
             #apiModal {
                 align-items: center;
@@ -359,9 +351,6 @@
             #apiModal.active .settings-sheet {
                 transform: translateY(0) scale(1);
                 opacity: 1;
-            }
-            .settings-drag-handle {
-                display: none;
             }
         }
         body.amoled-active #apiModal .settings-sheet {
@@ -586,7 +575,6 @@
     <!-- Modal Impostazioni -->
     <div id="apiModal">
         <div class="settings-sheet glass-panel shadow-2xl relative">
-            <div id="settingsDragHandle" class="settings-drag-handle"></div>
             <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
                 <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
             </h3>
@@ -1146,20 +1134,35 @@
         function setupSettingsSheetSwipe() {
             const modal = document.getElementById('apiModal');
             const sheet = modal ? modal.querySelector('.settings-sheet') : null;
-            const handle = document.getElementById('settingsDragHandle');
-            if (!modal || !sheet || !handle) return;
+            if (!modal || !sheet) return;
 
-            let startY = 0, currentY = 0, isDragging = false;
+            let startY = 0, currentY = 0, isDragging = false, isClosingDrag = false;
 
-            const onStart = (y) => {
+            const onStart = (y, target) => {
+                // Non c'è più la maniglietta: si può trascinare da qualunque punto della sheet,
+                // ma iniziamo davvero a "chiudere per trascinamento" solo se si parte da in cima
+                // al contenuto (altrimenti si romperebbe lo scroll interno del popup).
+                if (target && target.closest('input, textarea, select, button')) return;
                 isDragging = true;
+                isClosingDrag = sheet.scrollTop <= 0;
                 startY = y;
-                sheet.style.transition = 'none';
+                if (isClosingDrag) sheet.style.transition = 'none';
             };
-            const onMove = (y) => {
+            const onMove = (y, e) => {
                 if (!isDragging) return;
                 currentY = y - startY;
+                if (!isClosingDrag) {
+                    // Se si scorre verso il basso ma si era partiti a metà contenuto,
+                    // attiviamo la chiusura solo nel momento in cui si raggiunge la cima.
+                    if (currentY > 0 && sheet.scrollTop <= 0) {
+                        isClosingDrag = true;
+                        sheet.style.transition = 'none';
+                    } else {
+                        return;
+                    }
+                }
                 if (currentY > 0) {
+                    if (e && e.cancelable) e.preventDefault();
                     window.requestAnimationFrame(() => {
                         if (isDragging) sheet.style.transform = `translateY(${currentY}px)`;
                     });
@@ -1168,20 +1171,26 @@
             const onEnd = () => {
                 if (!isDragging) return;
                 isDragging = false;
-                sheet.style.transition = '';
-                sheet.style.transform = '';
-                if (currentY > 80) {
-                    closeApiModal();
-                    window.history.back();
+                if (isClosingDrag) {
+                    sheet.style.transition = '';
+                    sheet.style.transform = '';
+                    if (currentY > 80) {
+                        closeApiModal();
+                        window.history.back();
+                    }
                 }
+                isClosingDrag = false;
                 currentY = 0;
             };
 
-            handle.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
-            handle.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY), { passive: true });
-            handle.addEventListener('touchend', onEnd, { passive: true });
+            sheet.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY, e.target), { passive: true });
+            sheet.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY, e), { passive: false });
+            sheet.addEventListener('touchend', onEnd, { passive: true });
 
-            handle.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientY); });
+            sheet.addEventListener('mousedown', (e) => {
+                if (e.target.closest('input, textarea, select, button')) return;
+                onStart(e.clientY, e.target);
+            });
             window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientY); });
             window.addEventListener('mouseup', onEnd);
         }
@@ -1247,12 +1256,18 @@
             const OPEN_DRAG_THRESHOLD = 0.22; // % di progresso oltre cui, al rilascio, lo sheet si apre del tutto
 
             let miniDragBasePercent = 0;
+            // Vero se durante QUESTO trascinamento la sheet è stata effettivamente spostata almeno
+            // una volta: usato al rilascio per decidere se "atterrarla", indipendentemente da come
+            // sono gli ultimi micro-movimenti del dito (che a volte, per un attimo, sono più
+            // orizzontali che verticali pur essendo parte dello stesso gesto verso l'alto).
+            let sheetWasMoved = false;
             const startMiniDrag = (x, y, target) => {
                 if (target.closest('#miniPlayerControls') || target.closest('#miniProgressBarArea')) return;
                 isDraggingMini = true;
                 miniStartX = x;
                 miniStartY = y;
                 miniPlayerWasDragged = false;
+                sheetWasMoved = false;
                 // Riparte sempre dalla posizione reale della sheet, non da "chiusa" per forza:
                 // così il gesto resta sotto controllo anche subito dopo un'altra animazione.
                 miniDragBasePercent = getSheetCurrentPercentY();
@@ -1284,6 +1299,7 @@
                     // esattamente come già succede in chiusura, invece di apparire di scatto.
                     // Parte sempre dalla posizione reale attuale (miniDragBasePercent), non da 0
                     // per forza, così resta continuo anche se si ritocca subito dopo un rilascio.
+                    sheetWasMoved = true;
                     const dragPercent = (Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE) * 100;
                     const nextPercent = Math.max(-100, miniDragBasePercent - dragPercent);
                     nowPlayingSheet.style.transition = 'none';
@@ -1311,16 +1327,21 @@
                 isDraggingMini = false;
                 miniTextContainer.classList.remove('dragging-active');
 
-                const wasVerticalDrag = miniCurrentY < 0 && Math.abs(miniCurrentX) < Math.abs(miniCurrentY);
-                if (wasVerticalDrag) {
-                    const progress = Math.min(1, Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE);
-                    settleSheetDrag(progress > OPEN_DRAG_THRESHOLD);
+                if (sheetWasMoved) {
+                    // Decide in base alla posizione REALE raggiunta (non al rapporto tra l'ultimo
+                    // micro-movimento orizzontale/verticale del dito, che può ingannare vicino al
+                    // rilascio): così la sheet viene sempre "atterrata" da dove si trova davvero,
+                    // aperta o richiusa, e non resta mai abbandonata a metà.
+                    const finalPercent = getSheetCurrentPercentY();
+                    settleSheetDrag(finalPercent <= -100 * OPEN_DRAG_THRESHOLD);
                 }
                 else if (miniCurrentX > 80) {
                     prevTrack();
                 } else if (miniCurrentX < -80) {
                     nextTrack();
                 }
+
+                sheetWasMoved = false;
 
                 miniTextContainer.style.transform = 'translate3d(0, 0, 0)';
                 miniTextContainer.style.opacity = '1';
