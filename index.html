@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>YouTubette - Player</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="192x192.png" type="image/png">
+    <link rel="apple-touch-icon" href="192x192.png">
     
     <!-- Meta Theme Color multipli per Firefox ed Android -->
     <meta name="theme-color" content="#0a0a0a" id="metaThemeColor">
@@ -80,7 +82,7 @@
             right: 0;
             height: 100%;
             z-index: 100;
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
             will-change: transform;
             background-color: var(--bg-main);
             overflow: hidden;
@@ -187,6 +189,23 @@
         @keyframes marqueeLoop {
             0% { transform: translate3d(0, 0, 0); }
             100% { transform: translate3d(-50%, 0, 0); }
+        }
+
+        /* Pulsante Play/Pausa: micro-interazione più tattile + morph dell'icona ad ogni cambio stato */
+        #playPauseBtn, #miniPlayPauseBtn {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #playPauseBtn:active, #miniPlayPauseBtn:active {
+            transform: scale(0.86);
+        }
+        @keyframes iconPop {
+            0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+            65%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .icon-pop {
+            display: inline-block;
+            animation: iconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         img {
@@ -412,14 +431,14 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Data di Caricamento</label>
                 <div class="filter-select-wrapper relative" id="filterDateWrapper">
                     <div id="filterDateTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
-                        <span id="filterDateValue">Qualsiasi data</span>
+                        <span id="filterDateValue">Questa settimana</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
                     </div>
                     <div id="filterDateOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi data</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi data</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="hour">Ultima ora</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="today">Oggi</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="week">Questa settimana</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="week">Questa settimana</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="month">Questo mese</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="year">Quest'anno</div>
                     </div>
@@ -431,12 +450,12 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Durata Brano</label>
                 <div class="filter-select-wrapper relative" id="filterDurationWrapper">
                     <div id="filterDurationTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
-                        <span id="filterDurationValue">Qualsiasi durata</span>
+                        <span id="filterDurationValue">Breve (&lt; 4 min)</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
                     </div>
                     <div id="filterDurationOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi durata</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="short">Breve (&lt; 4 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi durata</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="short">Breve (&lt; 4 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="medium">Media (4 - 20 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (&gt; 20 min)</div>
                     </div>
@@ -448,11 +467,8 @@
     <!-- Sezione Principale -->
     <main class="flex-1 flex flex-col overflow-hidden z-10 relative">
         <section class="flex-1 p-3 flex flex-col rounded-3xl overflow-hidden h-full custom-bg-card border border-white/5">
-            <div class="flex items-center justify-between px-2 pb-3 border-b border-white/5 shrink-0">
-                <span class="text-[10px] font-bold uppercase tracking-widest custom-text-muted">Brani trovati</span>
-                <span id="trackCount" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/5 custom-text-muted">0 brani</span>
-            </div>
-            <div class="relative flex-1 overflow-hidden mt-3">
+            <span id="trackCount" class="hidden">0 brani</span>
+            <div class="relative flex-1 overflow-hidden">
                 <div id="trackList" class="space-y-1 pb-28 h-full overflow-y-auto pr-0">
                     <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
                 </div>
@@ -646,8 +662,8 @@
             tracks: [],
             currentIndex: -1,
             isPlaying: false,
-            filterDate: 'any',
-            filterDuration: 'any'
+            filterDate: 'week',
+            filterDuration: 'short'
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
         let isScrubbing = false; 
@@ -767,19 +783,16 @@
             // quando l'utente mette effettivamente in pausa.
             if (event.data == YT.PlayerState.PLAYING) {
                 appState.isPlaying = true;
-                if(playIcon) playIcon.className = "fa-solid fa-pause";
-                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-pause";
+                setPlayIconState(true);
                 updateDuration(); 
                 updateMediaSessionState(true);
             } else if (event.data == YT.PlayerState.PAUSED) {
                 appState.isPlaying = false;
-                if(playIcon) playIcon.className = "fa-solid fa-play ml-1";
-                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-play ml-0.5";
+                setPlayIconState(false);
                 updateMediaSessionState(false);
             } else if (event.data == YT.PlayerState.ENDED) {
                 appState.isPlaying = false;
-                if(playIcon) playIcon.className = "fa-solid fa-play ml-1";
-                if(miniPlayIcon) miniPlayIcon.className = "fa-solid fa-play ml-0.5";
+                setPlayIconState(false);
                 updateMediaSessionState(false);
                 nextTrack();
             }
@@ -1181,6 +1194,11 @@
             let miniStartX = 0, miniStartY = 0;
             let miniCurrentX = 0, miniCurrentY = 0;
             let isDraggingMini = false;
+            // Distanza di trascinamento (in px) necessaria per rivelare lo sheet a schermo intero:
+            // in questo modo l'apertura segue il dito in modo continuo, come una vera bottom-sheet,
+            // invece di scattare di colpo al rilascio.
+            const OPEN_DRAG_DISTANCE = Math.min(window.innerHeight * 0.5, 420);
+            const OPEN_DRAG_THRESHOLD = 0.22; // % di progresso oltre cui, al rilascio, lo sheet si apre del tutto
 
             const startMiniDrag = (x, y, target) => {
                 if (target.closest('#miniPlayerControls') || target.closest('#miniProgressBarArea')) return;
@@ -1211,15 +1229,35 @@
                     const fadeProgress = Math.min(1, Math.abs(miniCurrentX) / MINI_TEXT_FADE_DISTANCE);
                     miniTextContainer.style.transform = `translate3d(${clampedX}px, 0, 0)`;
                     miniTextContainer.style.opacity = Math.max(0, 1 - fadeProgress);
+                } else if (miniCurrentY < 0) {
+                    // Trascinamento verso l'alto: lo sheet segue il dito in tempo reale,
+                    // esattamente come già succede in chiusura, invece di apparire di scatto.
+                    const progress = Math.min(1, Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE);
+                    nowPlayingSheet.style.transition = 'none';
+                    nowPlayingSheet.style.transform = `translate3d(0, -${progress * 100}%, 0)`;
                 }
+            };
+            const settleSheetDrag = (shouldOpen) => {
+                nowPlayingSheet.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
+                requestAnimationFrame(() => {
+                    if (shouldOpen) {
+                        nowPlayingSheet.classList.add('expanded');
+                        nowPlayingSheet.style.transform = '';
+                        window.history.pushState({ page: 'sheet' }, 'Sheet');
+                    } else {
+                        nowPlayingSheet.style.transform = '';
+                    }
+                });
             };
             const endMiniDrag = () => {
                 if (!isDraggingMini) return;
                 isDraggingMini = false;
                 miniTextContainer.classList.remove('dragging-active');
 
-                if (miniCurrentY < -50 && Math.abs(miniCurrentX) < Math.abs(miniCurrentY)) {
-                    openNowPlayingSheet();
+                const wasVerticalDrag = miniCurrentY < 0 && Math.abs(miniCurrentX) < Math.abs(miniCurrentY);
+                if (wasVerticalDrag) {
+                    const progress = Math.min(1, Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE);
+                    settleSheetDrag(progress > OPEN_DRAG_THRESHOLD);
                 }
                 else if (miniCurrentX > 80) {
                     prevTrack();
@@ -1641,13 +1679,12 @@
                 trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all border hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border-white/10' : 'border-transparent'}`;
 
                 trackRow.innerHTML = `
-                    <div class="w-6 text-center text-xs custom-text-muted font-bold">${index + 1}</div>
-                    <div class="w-11 h-11 rounded-full overflow-hidden mx-2.5 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
+                    <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
                         <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover" alt="track thumbnail">
                     </div>
                     <div class="flex-1 overflow-hidden">
-                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${escapeHtml(track.title)}</p>
-                        <p class="text-[10px] truncate mt-0.5 custom-text-muted font-medium">${escapeHtml(track.channel)}</p>
+                        <p class="text-sm font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${escapeHtml(track.title)}</p>
+                        <p class="text-xs truncate mt-1 custom-text-muted font-medium">${escapeHtml(track.channel)}</p>
                     </div>
                 `;
                 trackRow.addEventListener('click', () => {
@@ -1718,9 +1755,16 @@
 
         function updateMediaSessionMetadata(track) {
             if ('mediaSession' in navigator) {
+                // Più risoluzioni = artwork più nitido nei controlli di sistema (notifica, lock screen,
+                // pannello rapido Android): è lì che Android disegna quello che sembra un "widget", perché
+                // un vero home-screen widget non è realizzabile da una webapp/PWA, richiede codice nativo.
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title, artist: track.channel, album: 'YouTubette Beats',
-                    artwork: [{ src: track.thumbnail, sizes: '120x120', type: 'image/jpeg' }]
+                    title: track.title, artist: track.channel, album: 'YouTubette',
+                    artwork: [
+                        { src: `https://img.youtube.com/vi/${track.id}/mqdefault.jpg`, sizes: '320x180', type: 'image/jpeg' },
+                        { src: `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' },
+                        { src: `https://img.youtube.com/vi/${track.id}/sddefault.jpg`, sizes: '640x480', type: 'image/jpeg' }
+                    ]
                 });
             }
         }
@@ -1736,6 +1780,19 @@
                 navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
                 navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
             }
+        }
+
+        function setPlayIconState(isPlaying) {
+            const targets = [
+                { el: document.getElementById('playIcon'), playCls: 'fa-solid fa-play ml-1', pauseCls: 'fa-solid fa-pause' },
+                { el: document.getElementById('miniPlayIcon'), playCls: 'fa-solid fa-play ml-0.5', pauseCls: 'fa-solid fa-pause' }
+            ];
+            targets.forEach(({ el, playCls, pauseCls }) => {
+                if (!el) return;
+                el.classList.remove('icon-pop');
+                void el.offsetWidth; // forza il reflow: fa ripartire l'animazione ad ogni tap
+                el.className = `${isPlaying ? pauseCls : playCls} icon-pop`;
+            });
         }
 
         function togglePlay() {

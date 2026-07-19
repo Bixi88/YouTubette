@@ -4,7 +4,9 @@ const CACHE_NAME = 'youtubette-cache';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './192x192.png',
+  './512x512.png'
 ];
 
 // Domini che NON vanno mai serviti dalla cache (API dinamiche)
