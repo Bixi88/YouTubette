@@ -518,7 +518,6 @@
 
         <div class="relative z-20 flex flex-col h-full px-6 pb-8 pt-4 justify-between pointer-events-none">
             <div id="sheetHeaderDrag" class="w-full flex flex-col items-center py-2 shrink-0 cursor-pointer pointer-events-auto">
-                <div class="w-12 h-1 bg-white/30 rounded-full mb-4"></div>
                 <div class="flex items-center justify-between w-full px-1">
                     <button id="closeSheetBtn" class="text-neutral-300 hover:text-white p-2 text-lg active:scale-90 transition-transform">
                         <i class="fa-solid fa-chevron-down"></i>
@@ -701,6 +700,25 @@
         // questo flag serve a impedire che quel click "fantasma" apra la sheet.
         let miniPlayerWasDragged = false;
 
+        // Legge la posizione VERA e attuale della sheet (in % di translateY), qualunque sia lo
+        // stato in cui si trova in quel momento (chiusa, aperta, o a metà di un'altra animazione).
+        // Serve per far sì che ogni nuovo gesto riparta sempre da dove la sheet si trova davvero,
+        // invece di assumere che parta per forza da "chiusa" (0%) o "aperta" (-100%): questo è ciò
+        // che rende la transizione sempre continua e sempre interrompibile in qualsiasi istante.
+        function getSheetCurrentPercentY() {
+            const style = window.getComputedStyle(nowPlayingSheet);
+            const transform = style.transform;
+            if (!transform || transform === 'none') {
+                return nowPlayingSheet.classList.contains('expanded') ? -100 : 0;
+            }
+            const matrixMatch = transform.match(/matrix\(([^)]+)\)/);
+            if (!matrixMatch) return nowPlayingSheet.classList.contains('expanded') ? -100 : 0;
+            const values = matrixMatch[1].split(',').map(v => parseFloat(v.trim()));
+            const translateYpx = values[5] || 0;
+            const height = nowPlayingSheet.offsetHeight || window.innerHeight;
+            return (translateYpx / height) * 100;
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then((reg) => {
@@ -857,7 +875,7 @@
                     apiModal.classList.remove('active');
                     handled = true;
                 }
-                if (handled) {
+                if (handled && (!window.history.state || window.history.state.page !== 'main')) {
                     window.history.pushState({ page: 'main' }, 'Main');
                 }
             });
@@ -986,6 +1004,14 @@
             });
             document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
 
+            // Click fuori dal popup (sul backdrop) chiude il menu impostazioni
+            document.getElementById('apiModal').addEventListener('click', (e) => {
+                if (e.target.id === 'apiModal') {
+                    closeApiModal();
+                    window.history.back();
+                }
+            });
+
             const amoledCheckbox = document.getElementById('amoledToggle');
             if (amoledCheckbox) {
                 amoledCheckbox.checked = appState.isAmoled;
@@ -1002,16 +1028,35 @@
         });
 
         function openNowPlayingSheet() {
-            nowPlayingSheet.style.transition = '';
-            nowPlayingSheet.style.transform = '';
+            // Riparte sempre dalla posizione reale attuale (utile se arriva subito dopo un
+            // trascinamento interrotto a metà), animando da lì fino a completamente aperta.
+            const startPercent = getSheetCurrentPercentY();
+            nowPlayingSheet.style.transition = 'none';
+            nowPlayingSheet.style.transform = `translate3d(0, ${startPercent}%, 0)`;
+            // Forza il browser a registrare la posizione di partenza prima di animare.
+            void nowPlayingSheet.offsetHeight;
+            nowPlayingSheet.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
             nowPlayingSheet.classList.add('expanded');
-            window.history.pushState({ page: 'sheet' }, 'Sheet');
+            nowPlayingSheet.style.transform = '';
+            // La History API è gestita in modo indipendente dall'animazione: se lo stato "sheet"
+            // è già in cima allo stack non lo duplichiamo, per evitare che tap ravvicinati
+            // desincronizzino pushState/back e blocchino il gesto successivo.
+            if (!window.history.state || window.history.state.page !== 'sheet') {
+                window.history.pushState({ page: 'sheet' }, 'Sheet');
+            }
         }
 
         function closeNowPlayingSheet() {
+            const startPercent = getSheetCurrentPercentY();
+            nowPlayingSheet.style.transition = 'none';
+            nowPlayingSheet.style.transform = `translate3d(0, ${startPercent}%, 0)`;
+            void nowPlayingSheet.offsetHeight;
+            nowPlayingSheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
             nowPlayingSheet.classList.remove('expanded');
             nowPlayingSheet.style.transform = '';
-            window.history.back();
+            if (window.history.state && window.history.state.page === 'sheet') {
+                window.history.back();
+            }
         }
 
         function setupCustomSelect() {
@@ -1142,11 +1187,14 @@
         }
 
         function setupSheetCloseSwipe() {
-            let startY = 0, currentY = 0, isDragging = false;
+            let startY = 0, currentY = 0, isDragging = false, basePercent = -100;
 
             const onStart = (y) => {
                 isDragging = true;
                 startY = y;
+                // Parte sempre da dove la sheet si trova realmente in quel momento, anche se
+                // arriva a metà di un'animazione precedente non ancora terminata.
+                basePercent = getSheetCurrentPercentY();
                 nowPlayingSheet.style.transition = 'none';
             };
 
@@ -1154,9 +1202,12 @@
                 if (!isDragging) return;
                 currentY = y - startY;
                 if (currentY > 0) {
+                    const height = nowPlayingSheet.offsetHeight || window.innerHeight;
+                    const dragPercent = (currentY / height) * 100;
+                    const nextPercent = Math.min(0, basePercent + dragPercent);
                     window.requestAnimationFrame(() => {
                         if (isDragging) {
-                            nowPlayingSheet.style.transform = `translate3d(0, calc(-100% + ${currentY}px), 0)`;
+                            nowPlayingSheet.style.transform = `translate3d(0, ${nextPercent}%, 0)`;
                         }
                     });
                 }
@@ -1195,12 +1246,16 @@
             const OPEN_DRAG_DISTANCE = Math.min(window.innerHeight * 0.5, 420);
             const OPEN_DRAG_THRESHOLD = 0.22; // % di progresso oltre cui, al rilascio, lo sheet si apre del tutto
 
+            let miniDragBasePercent = 0;
             const startMiniDrag = (x, y, target) => {
                 if (target.closest('#miniPlayerControls') || target.closest('#miniProgressBarArea')) return;
                 isDraggingMini = true;
                 miniStartX = x;
                 miniStartY = y;
                 miniPlayerWasDragged = false;
+                // Riparte sempre dalla posizione reale della sheet, non da "chiusa" per forza:
+                // così il gesto resta sotto controllo anche subito dopo un'altra animazione.
+                miniDragBasePercent = getSheetCurrentPercentY();
                 miniTextContainer.classList.add('dragging-active');
             };
             // Il testo scorre solo per un breve tratto (mai fino a sovrapporre thumbnail o pulsante play)
@@ -1227,9 +1282,12 @@
                 } else if (miniCurrentY < 0) {
                     // Trascinamento verso l'alto: lo sheet segue il dito in tempo reale,
                     // esattamente come già succede in chiusura, invece di apparire di scatto.
-                    const progress = Math.min(1, Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE);
+                    // Parte sempre dalla posizione reale attuale (miniDragBasePercent), non da 0
+                    // per forza, così resta continuo anche se si ritocca subito dopo un rilascio.
+                    const dragPercent = (Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE) * 100;
+                    const nextPercent = Math.max(-100, miniDragBasePercent - dragPercent);
                     nowPlayingSheet.style.transition = 'none';
-                    nowPlayingSheet.style.transform = `translate3d(0, -${progress * 100}%, 0)`;
+                    nowPlayingSheet.style.transform = `translate3d(0, ${nextPercent}%, 0)`;
                 }
             };
             const settleSheetDrag = (shouldOpen) => {
