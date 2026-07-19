@@ -1291,16 +1291,20 @@
                 }
             };
             const settleSheetDrag = (shouldOpen) => {
+                // Eseguito in modo sincrono (niente requestAnimationFrame): se lo facessimo in modo
+                // asincrono, un nuovo tocco arrivato subito dopo potrebbe "vincere" la corsa e poi
+                // essere comunque sovrascritto da questo frame in ritardo, facendo scattare la sheet
+                // di colpo e dando l'impressione di dover aspettare la fine dell'animazione.
                 nowPlayingSheet.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
-                requestAnimationFrame(() => {
-                    if (shouldOpen) {
-                        nowPlayingSheet.classList.add('expanded');
-                        nowPlayingSheet.style.transform = '';
+                if (shouldOpen) {
+                    nowPlayingSheet.classList.add('expanded');
+                    nowPlayingSheet.style.transform = '';
+                    if (!window.history.state || window.history.state.page !== 'sheet') {
                         window.history.pushState({ page: 'sheet' }, 'Sheet');
-                    } else {
-                        nowPlayingSheet.style.transform = '';
                     }
-                });
+                } else {
+                    nowPlayingSheet.style.transform = '';
+                }
             };
             const endMiniDrag = () => {
                 if (!isDraggingMini) return;
