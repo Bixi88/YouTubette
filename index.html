@@ -191,15 +191,38 @@
             100% { transform: translate3d(-50%, 0, 0); }
         }
 
-        /* Pulsante Play/Pausa: morph dell'icona solo quando lo stato cambia davvero */
-        @keyframes iconPop {
-            0%   { transform: scale(0.72); opacity: 0.5; }
-            70%  { transform: scale(1.06); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .icon-pop {
+        /* Pulsante Play/Pausa: icona che si TRASFORMA davvero (triangolo <-> due barre)
+           tramite interpolazione di clip-path, non uno swap/dissolvenza di icone. */
+        .morph-icon {
+            position: relative;
             display: inline-block;
-            animation: iconPop 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            width: 24px;
+            height: 24px;
+            background: currentColor;
+            clip-path: polygon(
+                16.667% 16.667%, 79.167% 50%, 79.167% 50%, 79.167% 50%,
+                16.667% 83.333%, 16.667% 83.333%, 16.667% 83.333%, 16.667% 16.667%
+            );
+            transition: clip-path 0.32s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+        .morph-icon.is-playing {
+            clip-path: polygon(
+                16.667% 16.667%, 37.5% 16.667%, 37.5% 83.333%, 62.5% 83.333%,
+                62.5% 16.667%, 83.333% 16.667%, 83.333% 83.333%, 16.667% 83.333%
+            );
+        }
+        .morph-icon--sm {
+            width: 17px;
+            height: 17px;
+        }
+
+        /* L'hover-scale del bottone centrale deve scattare SOLO con un puntatore vero (mouse):
+           su touch (es. Firefox Android) evita che il browser applichi/rimuova :hover in modo
+           instabile durante scroll/redraw, che faceva "respirare" il bottone di continuo. */
+        @media (hover: hover) and (pointer: fine) {
+            #playPauseBtn:hover {
+                transform: scale(1.05);
+            }
         }
 
         img {
@@ -493,7 +516,7 @@
 
             <div class="flex items-center space-x-1 shrink-0" id="miniPlayerControls">
                 <button id="miniPlayPauseBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black active:scale-90 transition-transform">
-                    <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
+                    <span class="morph-icon morph-icon--sm" id="miniPlayIcon" aria-hidden="true"></span>
                 </button>
             </div>
         </div>
@@ -568,8 +591,8 @@
 
                 <div class="flex items-center justify-between px-6 mb-8">
                     <button id="prevBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-backward-step"></i></button>
-                    <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform text-xl shadow-2xl bg-white text-black">
-                        <i class="fa-solid fa-play ml-1" id="playIcon"></i>
+                    <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center active:scale-95 transition-transform text-xl shadow-2xl bg-white text-black">
+                        <span class="morph-icon" id="playIcon" aria-hidden="true"></span>
                     </button>
                     <button id="nextBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-forward-step"></i></button>
                 </div>
@@ -1783,15 +1806,10 @@
             if (lastKnownPlayingState === isPlaying) return; // stato invariato: nessuna animazione
             lastKnownPlayingState = isPlaying;
 
-            const targets = [
-                { el: document.getElementById('playIcon'), playCls: 'fa-solid fa-play ml-1', pauseCls: 'fa-solid fa-pause' },
-                { el: document.getElementById('miniPlayIcon'), playCls: 'fa-solid fa-play ml-0.5', pauseCls: 'fa-solid fa-pause' }
-            ];
-            targets.forEach(({ el, playCls, pauseCls }) => {
-                if (!el) return;
-                el.classList.remove('icon-pop');
-                void el.offsetWidth; // forza il reflow: fa ripartire l'animazione ad ogni cambio stato reale
-                el.className = `${isPlaying ? pauseCls : playCls} icon-pop`;
+            // Toggle della classe: il morph triangolo <-> due barre è animato via CSS (clip-path),
+            // qui ci limitiamo a impostare lo stato di destinazione.
+            [document.getElementById('playIcon'), document.getElementById('miniPlayIcon')].forEach(el => {
+                if (el) el.classList.toggle('is-playing', isPlaying);
             });
         }
 
