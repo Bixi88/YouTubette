@@ -191,21 +191,15 @@
             100% { transform: translate3d(-50%, 0, 0); }
         }
 
-        /* Pulsante Play/Pausa: micro-interazione più tattile + morph dell'icona ad ogni cambio stato */
-        #playPauseBtn, #miniPlayPauseBtn {
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        #playPauseBtn:active, #miniPlayPauseBtn:active {
-            transform: scale(0.86);
-        }
+        /* Pulsante Play/Pausa: morph dell'icona solo quando lo stato cambia davvero */
         @keyframes iconPop {
-            0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
-            65%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
-            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            0%   { transform: scale(0.72); opacity: 0.5; }
+            70%  { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
         .icon-pop {
             display: inline-block;
-            animation: iconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: iconPop 0.42s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         img {
@@ -479,7 +473,7 @@
     </main>
 
     <!-- Mini Player -->
-    <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-24 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none active:scale-[0.99] cursor-pointer" style="touch-action: none;">
+    <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-24 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none cursor-pointer" style="touch-action: none;">
         
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
             <div class="flex items-center flex-1 min-w-0 mr-5 h-12 overflow-hidden" id="miniPlayerDetails">
@@ -1782,7 +1776,13 @@
             }
         }
 
+        let lastKnownPlayingState = null; // evita di ri-animare l'icona quando YouTube ri-emette
+                                           // "PLAYING" dopo un semplice buffering da scrubbing/seek
+
         function setPlayIconState(isPlaying) {
+            if (lastKnownPlayingState === isPlaying) return; // stato invariato: nessuna animazione
+            lastKnownPlayingState = isPlaying;
+
             const targets = [
                 { el: document.getElementById('playIcon'), playCls: 'fa-solid fa-play ml-1', pauseCls: 'fa-solid fa-pause' },
                 { el: document.getElementById('miniPlayIcon'), playCls: 'fa-solid fa-play ml-0.5', pauseCls: 'fa-solid fa-pause' }
@@ -1790,7 +1790,7 @@
             targets.forEach(({ el, playCls, pauseCls }) => {
                 if (!el) return;
                 el.classList.remove('icon-pop');
-                void el.offsetWidth; // forza il reflow: fa ripartire l'animazione ad ogni tap
+                void el.offsetWidth; // forza il reflow: fa ripartire l'animazione ad ogni cambio stato reale
                 el.className = `${isPlaying ? pauseCls : playCls} icon-pop`;
             });
         }
