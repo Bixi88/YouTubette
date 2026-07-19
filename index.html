@@ -195,9 +195,8 @@
            (dimensione fissa identica su Windows e Android). Solo un piccolo "pop" quando lo
            stato cambia davvero, per dare un minimo di feedback. */
         @keyframes iconPop {
-            0%   { transform: scale(0.72); opacity: 0.5; }
-            70%  { transform: scale(1.06); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
+            0%   { opacity: 0.3; }
+            100% { opacity: 1; }
         }
         .icon-pop {
             display: inline-block;
@@ -494,7 +493,7 @@
             </div>
 
             <div class="flex items-center space-x-1 shrink-0" id="miniPlayerControls">
-                <button id="miniPlayPauseBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black active:scale-90 transition-transform">
+                <button id="miniPlayPauseBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black transition-transform">
                     <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
                 </button>
             </div>
@@ -570,7 +569,7 @@
 
                 <div class="flex items-center justify-between px-6 mb-8">
                     <button id="prevBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-backward-step"></i></button>
-                    <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center active:scale-95 transition-transform text-xl shadow-2xl bg-white text-black">
+                    <button id="playPauseBtn" class="w-16 h-16 rounded-full flex items-center justify-center text-xl shadow-2xl bg-white text-black">
                         <i class="fa-solid fa-play ml-1" id="playIcon"></i>
                     </button>
                     <button id="nextBtn" class="text-gray-400 active:text-[var(--text-main)] hover:text-[var(--text-main)] transition-colors text-xl p-2 active:scale-90"><i class="fa-solid fa-forward-step"></i></button>
