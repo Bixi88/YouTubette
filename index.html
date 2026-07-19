@@ -44,6 +44,13 @@
         * {
             scrollbar-width: none;
             -ms-overflow-style: none;
+            -webkit-tap-highlight-color: transparent;
+            tap-highlight-color: transparent;
+        }
+        button, a, [role="button"] {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            outline: none;
         }
         ::-webkit-scrollbar {
             display: none;
@@ -206,6 +213,17 @@
         img {
             -webkit-user-drag: none;
             user-drag: none;
+            /* Evita che il testo "alt" venga mostrato per una frazione di secondo
+               mentre l'immagine è ancora in caricamento (es. su connessioni lente) */
+            color: transparent;
+            font-size: 0;
+        }
+        .track-thumb-img {
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .track-thumb-img.loaded {
+            opacity: 1;
         }
 
         .custom-bg-main { background-color: var(--bg-main); }
@@ -468,7 +486,7 @@
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
             <div class="flex items-center flex-1 min-w-0 mr-5 h-12 overflow-hidden" id="miniPlayerDetails">
                 <div class="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
-                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="mini thumbnail" draggable="false">
+                    <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="" draggable="false">
                 </div>
                 
                 <div class="ml-2.5 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
@@ -523,7 +541,7 @@
                 <div class="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center">
                     <div class="absolute inset-0 rounded-full blur-2xl opacity-20 transition-all duration-500 bg-[var(--accent)]"></div>
                     <div class="w-full h-full rounded-full overflow-hidden border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-10 flex items-center justify-center">
-                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover" alt="artwork">
+                        <img id="sheetArtworkImg" src="" class="w-full h-full object-cover" alt="">
                     </div>
                 </div>
             </div>
@@ -1758,7 +1776,7 @@
 
                 trackRow.innerHTML = `
                     <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
-                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover" alt="track thumbnail">
+                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover track-thumb-img" alt="" onload="this.classList.add('loaded')">
                     </div>
                     <div class="flex-1 overflow-hidden">
                         <p class="text-sm font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${escapeHtml(track.title)}</p>
