@@ -85,11 +85,29 @@
         #homeView, #resultsView {
             width: 50%;
         }
-        #backToHomeBtn {
-            transition: opacity 0.25s ease, transform 0.25s ease, width 0.25s ease, margin 0.25s ease;
+        /* --- FADE-IN A CASCATA DEI BRANI (dall'alto verso il basso) --- */
+        @keyframes trackRowIn {
+            from { opacity: 0; transform: translateY(-14px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        #backToHomeBtn.hidden {
-            display: none;
+        .track-row-enter {
+            animation: trackRowIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        #backToHomeBtn {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #backToHomeBtn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #menuButtonsGroup {
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #menuButtonsGroup.shift-right {
+            transform: translateX(48px);
         }
 
         .ambient-bg {
@@ -380,7 +398,7 @@
         #apiModal .settings-sheet {
             width: 100%;
             max-width: 480px;
-            max-height: 88vh;
+            max-height: 50vh;
             overflow-y: auto;
             border-radius: 28px 28px 0 0;
             padding: 14px 24px calc(22px + env(safe-area-inset-bottom, 0px));
@@ -398,7 +416,7 @@
             }
             #apiModal .settings-sheet {
                 border-radius: 26px;
-                max-height: 85vh;
+                max-height: 60vh;
                 padding: 24px;
                 transform: translateY(18px) scale(0.96);
                 opacity: 0;
@@ -422,24 +440,26 @@
     <div id="globalAmbientBg" class="ambient-bg"></div>
 
     <header class="h-16 px-2 flex items-center justify-between shrink-0 z-40 relative">
-        <div class="flex items-center gap-2 z-50">
-            <!-- Pulsante Indietro (visibile solo nella vista Lista Canzoni) -->
-            <button id="backToHomeBtn" class="hidden text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all" title="Torna alle playlist">
+        <div class="flex items-center z-50 relative h-10" id="headerLeftGroup">
+            <!-- Pulsante Indietro (fade-in, posizione fissa; il gruppo menu scorre a destra per fargli spazio) -->
+            <button id="backToHomeBtn" class="absolute left-0 top-0 text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90" title="Torna alle playlist">
                 <i class="fa-solid fa-arrow-left text-base"></i>
             </button>
 
-            <!-- Pulsante Impostazioni (Menu con tre linette) -->
-            <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Impostazioni">
-                <i class="fa-solid fa-equals text-base"></i>
-                <span id="apiErrorBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-black animate-pulse"></span>
-            </button>
-            
-            <!-- Pulsante Aggiornamento App (Inizialmente nascosto, si accende alla notifica di update) -->
-            <button id="appUpdateBtn" class="hidden text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Aggiorna App">
-                <i class="fa-solid fa-arrows-rotate text-base"></i>
-                <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-[var(--accent)] rounded-full border border-black animate-ping"></span>
-                <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-[var(--accent)] rounded-full border border-black"></span>
-            </button>
+            <div id="menuButtonsGroup" class="flex items-center gap-2">
+                <!-- Pulsante Impostazioni (Menu con tre linette) -->
+                <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Impostazioni">
+                    <i class="fa-solid fa-equals text-base"></i>
+                    <span id="apiErrorBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-black animate-pulse"></span>
+                </button>
+                
+                <!-- Pulsante Aggiornamento App (Inizialmente nascosto, si accende alla notifica di update) -->
+                <button id="appUpdateBtn" class="hidden text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Aggiorna App">
+                    <i class="fa-solid fa-arrows-rotate text-base"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-[var(--accent)] rounded-full border border-black animate-ping"></span>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-[var(--accent)] rounded-full border border-black"></span>
+                </button>
+            </div>
         </div>
 
         <div id="headerTitle" class="absolute left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300">
@@ -648,15 +668,6 @@
                 <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
             </h3>
             
-            <div class="mb-4">
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
-                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
-                </div>
-                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
-                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-            </div>
-
             <div class="mb-4 relative">
                 <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
                 <div class="custom-select-wrapper">
@@ -683,6 +694,15 @@
                     </button>
                 </div>
                 <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
+            </div>
+
+            <div class="mb-4 border-t border-white/5 pt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
+                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
+                </div>
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
+                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
             </div>
 
             <!-- INTERRUTTORE MODALITÀ AMOLED -->
@@ -1952,10 +1972,7 @@
                 toggleDownloadButtons(false);
                 document.getElementById('trackList').innerHTML = '';
                 document.getElementById('trackCount').classList.add('hidden');
-                if (resultsStatusText) {
-                    resultsStatusText.classList.remove('hidden');
-                    resultsStatusText.innerText = "Ricerca in corso...";
-                }
+                if (resultsStatusText) resultsStatusText.classList.add('hidden');
             } else isFetchingMore = true;
 
             try {
@@ -2012,7 +2029,8 @@
             const slider = document.getElementById('viewsSlider');
             if (!slider || slider.classList.contains('showing-results')) return;
             slider.classList.add('showing-results');
-            document.getElementById('backToHomeBtn')?.classList.remove('hidden');
+            document.getElementById('backToHomeBtn')?.classList.add('visible');
+            document.getElementById('menuButtonsGroup')?.classList.add('shift-right');
             window.history.pushState({ page: 'results' }, 'Results');
         }
 
@@ -2020,7 +2038,8 @@
             const slider = document.getElementById('viewsSlider');
             if (!slider) return;
             slider.classList.remove('showing-results');
-            document.getElementById('backToHomeBtn')?.classList.add('hidden');
+            document.getElementById('backToHomeBtn')?.classList.remove('visible');
+            document.getElementById('menuButtonsGroup')?.classList.remove('shift-right');
         }
 
         function escapeHtml(text) {
@@ -2059,7 +2078,10 @@
                 const track = appState.tracks[index];
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
-                trackRow.className = `flex items-center p-2.5 rounded-2xl cursor-pointer transition-all border hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border-white/10' : 'border-transparent'}`;
+                trackRow.className = `track-row-enter flex items-center p-2.5 rounded-2xl cursor-pointer transition-all border hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border-white/10' : 'border-transparent'}`;
+                // Scaglionato dall'alto verso il basso: ogni riga appare poco dopo la precedente,
+                // così il caricamento (immagini, dati) resta mascherato dall'animazione stessa.
+                trackRow.style.animationDelay = `${Math.min(index - fromIndex, 20) * 45}ms`;
 
                 trackRow.innerHTML = `
                     <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
