@@ -114,6 +114,16 @@
         #menuButtonsGroup.shift-right {
             transform: translateX(48px);
         }
+        /* headerLeftGroup deve riservare davvero lo spazio dello spostamento del
+           menuButtonsGroup (che è solo un transform visivo, non incide sul layout flex),
+           altrimenti la search-container che segue parte troppo presto e viene
+           sovrapposta dall'icona spostata. */
+        #headerLeftGroup {
+            transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #headerLeftGroup.shift-right {
+            width: 88px; /* 40px pulsante impostazioni + 48px di spostamento */
+        }
 
         .ambient-bg {
             position: absolute;
@@ -2046,6 +2056,7 @@
             slider.classList.add('showing-results');
             document.getElementById('backToHomeBtn')?.classList.add('visible');
             document.getElementById('menuButtonsGroup')?.classList.add('shift-right');
+            document.getElementById('headerLeftGroup')?.classList.add('shift-right');
             window.history.pushState({ page: 'results' }, 'Results');
         }
 
@@ -2055,6 +2066,7 @@
             slider.classList.remove('showing-results');
             document.getElementById('backToHomeBtn')?.classList.remove('visible');
             document.getElementById('menuButtonsGroup')?.classList.remove('shift-right');
+            document.getElementById('headerLeftGroup')?.classList.remove('shift-right');
         }
 
         function escapeHtml(text) {
