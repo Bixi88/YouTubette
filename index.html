@@ -2104,9 +2104,6 @@
 
             if (resultsStatusText) resultsStatusText.classList.add('hidden');
 
-            document.getElementById('trackCount').classList.remove('hidden');
-            document.getElementById('trackCount').innerText = `${appState.tracks.length} brani`;
-
             for (let index = fromIndex; index < appState.tracks.length; index++) {
                 const track = appState.tracks[index];
                 const trackRow = document.createElement('div');
