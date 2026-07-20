@@ -424,6 +424,16 @@
         #apiModal.active .settings-sheet {
             transform: translateY(0);
         }
+        /* Apertura del menu impostazioni tramite swipe orizzontale (sinistra -> destra)
+           sulla Home: la sheet entra da sinistra invece che dal basso, coerente con
+           la direzione del dito durante il gesto. */
+        #apiModal.swipe-open .settings-sheet {
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #apiModal.swipe-open.active .settings-sheet {
+            transform: translateX(0);
+        }
         @media (min-width: 768px) {
             #apiModal {
                 align-items: center;
@@ -439,6 +449,15 @@
             }
             #apiModal.active .settings-sheet {
                 transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            #apiModal.swipe-open .settings-sheet {
+                transform: translateX(-40px);
+                opacity: 0;
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            }
+            #apiModal.swipe-open.active .settings-sheet {
+                transform: translateX(0);
                 opacity: 1;
             }
         }
@@ -1142,7 +1161,7 @@
 
                 homeView.addEventListener('touchstart', (e) => {
                     const slider = document.getElementById('viewsSlider');
-                    tracking = !!(slider && !slider.classList.contains('showing-results') && appState.tracks.length > 0);
+                    tracking = !!(slider && !slider.classList.contains('showing-results'));
                     if (!tracking) return;
                     startX = e.touches[0].clientX;
                     startY = e.touches[0].clientY;
@@ -1153,8 +1172,18 @@
                     tracking = false;
                     const deltaX = e.changedTouches[0].clientX - startX;
                     const deltaY = e.changedTouches[0].clientY - startY;
-                    if (deltaX < -SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * DIRECTION_RATIO) {
+                    if (Math.abs(deltaX) <= Math.abs(deltaY) * DIRECTION_RATIO) return;
+
+                    if (deltaX < -SWIPE_THRESHOLD && appState.tracks.length > 0) {
+                        // Swipe sinistra: riapre la lista canzoni della playlist attiva
                         showResultsView();
+                    } else if (deltaX > SWIPE_THRESHOLD) {
+                        // Swipe destra: apre il menu impostazioni con animazione da sinistra
+                        const apiModal = document.getElementById('apiModal');
+                        if (apiModal && !apiModal.classList.contains('active')) {
+                            openApiModal(true);
+                            window.history.pushState({ page: 'modal' }, 'Modal');
+                        }
                     }
                 }, { passive: true });
             })();
@@ -1705,11 +1734,14 @@
             localStorage.setItem('youtubette_amoled', isAmoled);
         }
 
-        function openApiModal() {
+        function openApiModal(fromSwipe = false) {
             const modal = document.getElementById('apiModal');
             const input = document.getElementById('modalApiKeyInput');
             if (modal && input) {
                 input.value = appState.apiKey;
+                // 'swipe-open' fa entrare la sheet da sinistra (coerente con lo swipe destra
+                // sulla home); altrimenti resta l'animazione standard dal basso/dal centro.
+                modal.classList.toggle('swipe-open', !!fromSwipe);
                 modal.classList.add('active');
             }
         }
