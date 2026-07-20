@@ -2368,7 +2368,7 @@
                 if (oldRow) {
                     oldRow.classList.remove('bg-white/10', 'border-white/10');
                     oldRow.classList.add('border-transparent');
-                    const oldText = oldRow.querySelector('p.text-xs');
+                    const oldText = oldRow.querySelector('p.text-sm');
                     if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-white'); }
                 }
             }
@@ -2397,7 +2397,7 @@
             if (newRow) {
                 newRow.classList.remove('border-transparent');
                 newRow.classList.add('bg-white/10', 'border-white/10');
-                const newText = newRow.querySelector('p.text-xs');
+                const newText = newRow.querySelector('p.text-sm');
                 if (newText) { newText.classList.remove('text-white'); newText.classList.add('custom-text-accent', 'font-black'); }
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
