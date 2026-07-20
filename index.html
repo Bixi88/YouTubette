@@ -1158,6 +1158,37 @@
                     }
                 }, { passive: true });
             })();
+
+            // --- SWIPE (sinistra -> destra) SULLA VISTA RISULTATI PER TORNARE ALLE PLAYLIST ---
+            // Stesso comportamento del pulsante "indietro": mostra la vista Home e
+            // consuma lo stato di history, senza toccare appState.tracks (la lista
+            // canzoni resta caricata, pronta per essere riaperta con lo swipe opposto).
+            (function setupResultsViewSwipeBack() {
+                const resultsView = document.getElementById('resultsView');
+                if (!resultsView) return;
+                const SWIPE_THRESHOLD = 60;
+                const DIRECTION_RATIO = 1.5;
+                let startX = 0, startY = 0, tracking = false;
+
+                resultsView.addEventListener('touchstart', (e) => {
+                    const slider = document.getElementById('viewsSlider');
+                    tracking = !!(slider && slider.classList.contains('showing-results'));
+                    if (!tracking) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                resultsView.addEventListener('touchend', (e) => {
+                    if (!tracking) return;
+                    tracking = false;
+                    const deltaX = e.changedTouches[0].clientX - startX;
+                    const deltaY = e.changedTouches[0].clientY - startY;
+                    if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * DIRECTION_RATIO) {
+                        showHomeView();
+                        window.history.back();
+                    }
+                }, { passive: true });
+            })();
             document.getElementById('modalCancelBtn').addEventListener('click', () => {
                 closeApiModal();
                 window.history.back();
