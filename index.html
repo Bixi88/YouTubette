@@ -375,7 +375,9 @@
             -webkit-backdrop-filter: none !important;
         }
         body.amoled-active #filterDateOptions,
-        body.amoled-active #filterDurationOptions {
+        body.amoled-active #filterDurationOptions,
+        body.amoled-active #playlistFilterDateOptions,
+        body.amoled-active #playlistFilterDurationOptions {
             background: #000000 !important;
             border-color: #262626 !important;
         }
@@ -417,21 +419,13 @@
             overflow-y: auto;
             border-radius: 28px 28px 0 0;
             padding: 14px 24px calc(22px + env(safe-area-inset-bottom, 0px));
-            transform: translateY(100%);
+            /* Unica animazione del menu impostazioni: entra/esce orizzontalmente da
+               sinistra verso destra e viceversa (niente più swipe/animazione verticale). */
+            transform: translateX(-100%);
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform;
         }
         #apiModal.active .settings-sheet {
-            transform: translateY(0);
-        }
-        /* Apertura del menu impostazioni tramite swipe orizzontale (sinistra -> destra)
-           sulla Home: la sheet entra da sinistra invece che dal basso, coerente con
-           la direzione del dito durante il gesto. */
-        #apiModal.swipe-open .settings-sheet {
-            transform: translateX(-100%);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        #apiModal.swipe-open.active .settings-sheet {
             transform: translateX(0);
         }
         @media (min-width: 768px) {
@@ -443,20 +437,11 @@
                 border-radius: 26px;
                 max-height: 60vh;
                 padding: 24px;
-                transform: translateY(18px) scale(0.96);
-                opacity: 0;
-                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
-            }
-            #apiModal.active .settings-sheet {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-            #apiModal.swipe-open .settings-sheet {
                 transform: translateX(-40px);
                 opacity: 0;
                 transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
             }
-            #apiModal.swipe-open.active .settings-sheet {
+            #apiModal.active .settings-sheet {
                 transform: translateX(0);
                 opacity: 1;
             }
@@ -531,14 +516,14 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Data di Caricamento</label>
                 <div class="filter-select-wrapper relative" id="filterDateWrapper">
                     <div id="filterDateTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
-                        <span id="filterDateValue">Questa settimana</span>
+                        <span id="filterDateValue">Qualsiasi data</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
                     </div>
                     <div id="filterDateOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi data</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi data</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="hour">Ultima ora</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="today">Oggi</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="week">Questa settimana</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="week">Questa settimana</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="month">Questo mese</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="year">Quest'anno</div>
                     </div>
@@ -550,12 +535,12 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Durata Brano</label>
                 <div class="filter-select-wrapper relative" id="filterDurationWrapper">
                     <div id="filterDurationTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
-                        <span id="filterDurationValue">Breve (&lt; 4 min)</span>
+                        <span id="filterDurationValue">Qualsiasi durata</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
                     </div>
                     <div id="filterDurationOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi durata</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="short">Breve (&lt; 4 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi durata</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="short">Breve (&lt; 4 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="medium">Media (4 - 20 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (&gt; 20 min)</div>
                     </div>
@@ -725,6 +710,46 @@
                 </label>
             </div>
 
+            <!-- FILTRO PLAYLIST (si applica solo ai cerchi playlist in home) -->
+            <div class="mb-4 border-t border-white/5 pt-4">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-1 custom-text-muted">Filtro Playlist</label>
+                <span class="text-[9px] custom-text-muted block mb-2">Si applica solo alle playlist in home, non alla ricerca in alto</span>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="relative">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Data</label>
+                        <div class="filter-select-wrapper relative" id="playlistFilterDateWrapper">
+                            <div id="playlistFilterDateTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
+                                <span id="playlistFilterDateValue">Oggi</span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
+                            </div>
+                            <div id="playlistFilterDateOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi data</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="hour">Ultima ora</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="today">Oggi</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="week">Questa settimana</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="month">Questo mese</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="year">Quest'anno</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Durata</label>
+                        <div class="filter-select-wrapper relative" id="playlistFilterDurationWrapper">
+                            <div id="playlistFilterDurationTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
+                                <span id="playlistFilterDurationValue">Breve (&lt; 4 min)</span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
+                            </div>
+                            <div id="playlistFilterDurationOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi durata</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="short">Breve (&lt; 4 min)</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="medium">Media (4 - 20 min)</div>
+                                <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (&gt; 20 min)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- RICERCHE RAPIDE (Scorciatoie in Home) -->
             <div class="mb-4 border-t border-white/5 pt-4">
                 <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Ricerche Rapide</label>
@@ -784,11 +809,21 @@
             tracks: [],
             currentIndex: -1,
             isPlaying: false,
-            filterDate: 'week',
-            filterDuration: 'short',
+            // Filtri della ricerca manuale (barra in alto): parte sempre da "qualsiasi",
+            // sarà l'utente a cambiarli di volta in volta dal pannello filtri.
+            filterDate: 'any',
+            filterDuration: 'any',
+            // Filtri delle playlist (cerchi in home): valori di default fissi (Oggi / Breve),
+            // ma personalizzabili dalle Impostazioni e persistenti tra le sessioni.
+            playlistFilterDate: localStorage.getItem('youtubette_playlist_filter_date') || 'today',
+            playlistFilterDuration: localStorage.getItem('youtubette_playlist_filter_duration') || 'short',
             quickSearches: JSON.parse(localStorage.getItem('youtubette_quick_searches') || '[]')
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
+        // Vero se la ricerca correntemente mostrata/paginata è stata avviata da una playlist
+        // (cerchio in home) e quindi deve continuare a usare i filtri playlist anche per il
+        // caricamento delle pagine successive, invece di quelli della ricerca manuale.
+        let currentSearchIsQuickSearch = false;
         let isScrubbing = false; 
         let scrubPercentage = 0;
         
@@ -984,6 +1019,7 @@
             applyAmoledState(appState.isAmoled);
             setupCustomSelect();
             setupFilterDropdowns();
+            setupPlaylistFilterDropdowns();
             renderQuickSearchHome();
             renderQuickSearchManageList();
 
@@ -1004,6 +1040,18 @@
                 const apiModal = document.getElementById('apiModal');
                 if (apiModal && apiModal.classList.contains('active')) {
                     apiModal.classList.remove('active');
+                    handled = true;
+                }
+                // Barra di ricerca aperta (magari con del testo digitato) ma ancora sulla Home,
+                // cioè la ricerca non è stata eseguita: il back la richiude e cancella il testo,
+                // invece di far uscire dall'app o tornare indietro in altro modo.
+                const isShowingResultsForBack = document.getElementById('viewsSlider')?.classList.contains('showing-results');
+                if (!handled && searchContainer.classList.contains('active') && !isShowingResultsForBack) {
+                    searchInput.value = '';
+                    searchContainer.classList.remove('active');
+                    headerTitle.classList.remove('opacity-0');
+                    searchIcon.className = "fa-solid fa-magnifying-glass text-xs";
+                    filterMenu.classList.add('hidden');
                     handled = true;
                 }
                 // Vista Lista Canzoni: va chiusa (tornando alle playlist) SOLO se il back
@@ -1064,6 +1112,7 @@
                     headerTitle.classList.add('opacity-0');
                     searchIcon.className = "fa-solid fa-arrow-right text-xs";
                     searchInput.focus();
+                    window.history.pushState({ page: 'search' }, 'Search');
                 } else {
                     if (searchInput.value.trim() !== "") {
                         performSearch(false);
@@ -1091,6 +1140,11 @@
                 headerTitle.classList.remove('opacity-0');
                 searchIcon.className = "fa-solid fa-magnifying-glass text-xs";
                 filterMenu.classList.add('hidden');
+                // Se lo stato 'search' pushato all'apertura è ancora in cima allo stack
+                // (cioè non è stato già consumato dal pulsante indietro), lo rimuoviamo qui.
+                if (window.history.state && window.history.state.page === 'search') {
+                    window.history.back();
+                }
             }
 
             // Click sul pulsante Filtri YouTube (interno alla barra)
@@ -1181,7 +1235,7 @@
                         // Swipe destra: apre il menu impostazioni con animazione da sinistra
                         const apiModal = document.getElementById('apiModal');
                         if (apiModal && !apiModal.classList.contains('active')) {
-                            openApiModal(true);
+                            openApiModal();
                             window.history.pushState({ page: 'modal' }, 'Modal');
                         }
                     }
@@ -1244,7 +1298,6 @@
 
             setupSwipeHandlers();
             setupSheetCloseSwipe();
-            setupSettingsSheetSwipe();
             checkAndApplyMarquee();
         });
 
@@ -1364,68 +1417,58 @@
             });
         }
 
-        function setupSettingsSheetSwipe() {
-            const modal = document.getElementById('apiModal');
-            const sheet = modal ? modal.querySelector('.settings-sheet') : null;
-            if (!modal || !sheet) return;
+        // Dropdown filtri delle Playlist (home): valori indipendenti da quelli della ricerca
+        // manuale, salvati subito in localStorage così restano validi anche dopo un riavvio.
+        function setupPlaylistFilterDropdowns() {
+            const dateTrigger = document.getElementById('playlistFilterDateTrigger');
+            const dateOptions = document.getElementById('playlistFilterDateOptions');
+            const dateValue = document.getElementById('playlistFilterDateValue');
 
-            let startY = 0, currentY = 0, isDragging = false, isClosingDrag = false;
+            const durationTrigger = document.getElementById('playlistFilterDurationTrigger');
+            const durationOptions = document.getElementById('playlistFilterDurationOptions');
+            const durationValue = document.getElementById('playlistFilterDurationValue');
+            if (!dateTrigger || !durationTrigger) return;
 
-            const onStart = (y, target) => {
-                // Non c'è più la maniglietta: si può trascinare da qualunque punto della sheet,
-                // ma iniziamo davvero a "chiudere per trascinamento" solo se si parte da in cima
-                // al contenuto (altrimenti si romperebbe lo scroll interno del popup).
-                if (target && target.closest('input, textarea, select, button')) return;
-                isDragging = true;
-                isClosingDrag = sheet.scrollTop <= 0;
-                startY = y;
-                if (isClosingDrag) sheet.style.transition = 'none';
-            };
-            const onMove = (y, e) => {
-                if (!isDragging) return;
-                currentY = y - startY;
-                if (!isClosingDrag) {
-                    // Se si scorre verso il basso ma si era partiti a metà contenuto,
-                    // attiviamo la chiusura solo nel momento in cui si raggiunge la cima.
-                    if (currentY > 0 && sheet.scrollTop <= 0) {
-                        isClosingDrag = true;
-                        sheet.style.transition = 'none';
-                    } else {
-                        return;
-                    }
-                }
-                if (currentY > 0) {
-                    if (e && e.cancelable) e.preventDefault();
-                    window.requestAnimationFrame(() => {
-                        if (isDragging) sheet.style.transform = `translateY(${currentY}px)`;
-                    });
-                }
-            };
-            const onEnd = () => {
-                if (!isDragging) return;
-                isDragging = false;
-                if (isClosingDrag) {
-                    sheet.style.transition = '';
-                    sheet.style.transform = '';
-                    if (currentY > 80) {
-                        closeApiModal();
-                        window.history.back();
-                    }
-                }
-                isClosingDrag = false;
-                currentY = 0;
-            };
-
-            sheet.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY, e.target), { passive: true });
-            sheet.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY, e), { passive: false });
-            sheet.addEventListener('touchend', onEnd, { passive: true });
-
-            sheet.addEventListener('mousedown', (e) => {
-                if (e.target.closest('input, textarea, select, button')) return;
-                onStart(e.clientY, e.target);
+            dateTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                durationOptions.classList.add('hidden');
+                dateOptions.classList.toggle('hidden');
             });
-            window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientY); });
-            window.addEventListener('mouseup', onEnd);
+
+            durationTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dateOptions.classList.add('hidden');
+                durationOptions.classList.toggle('hidden');
+            });
+
+            dateOptions.querySelectorAll('.filter-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dateOptions.querySelectorAll('.filter-option').forEach(el => el.classList.remove('selected', 'font-bold'));
+                    opt.classList.add('selected', 'font-bold');
+                    dateValue.textContent = opt.textContent;
+                    appState.playlistFilterDate = opt.dataset.value;
+                    localStorage.setItem('youtubette_playlist_filter_date', opt.dataset.value);
+                    dateOptions.classList.add('hidden');
+                });
+            });
+
+            durationOptions.querySelectorAll('.filter-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    durationOptions.querySelectorAll('.filter-option').forEach(el => el.classList.remove('selected', 'font-bold'));
+                    opt.classList.add('selected', 'font-bold');
+                    durationValue.textContent = opt.textContent;
+                    appState.playlistFilterDuration = opt.dataset.value;
+                    localStorage.setItem('youtubette_playlist_filter_duration', opt.dataset.value);
+                    durationOptions.classList.add('hidden');
+                });
+            });
+
+            document.addEventListener('click', () => {
+                dateOptions.classList.add('hidden');
+                durationOptions.classList.add('hidden');
+            });
         }
 
         function setupSheetCloseSwipe() {
@@ -1494,6 +1537,14 @@
             // sono gli ultimi micro-movimenti del dito (che a volte, per un attimo, sono più
             // orizzontali che verticali pur essendo parte dello stesso gesto verso l'alto).
             let sheetWasMoved = false;
+            // Direzione del gesto ('horizontal' = cambio brano, 'vertical' = apertura sheet):
+            // viene decisa UNA SOLA VOLTA superata una soglia minima di movimento e poi resta
+            // bloccata per tutto il trascinamento. Senza questo blocco, ridecidendo la direzione
+            // ad ogni singolo evento di movimento, un dito che si sposta quasi in diagonale
+            // farebbe rimbalzare continuamente il gesto tra le due modalità, con lo sheet che
+            // si muove a scatti invece di seguire il dito in modo fluido durante lo swipe in alto.
+            let dragDirection = null;
+            const DIRECTION_LOCK_THRESHOLD = 8; // px minimi di movimento prima di fissare la direzione
             const startMiniDrag = (x, y, target) => {
                 if (target.closest('#miniPlayerControls') || target.closest('#miniProgressBarArea')) return;
                 isDraggingMini = true;
@@ -1501,6 +1552,7 @@
                 miniStartY = y;
                 miniPlayerWasDragged = false;
                 sheetWasMoved = false;
+                dragDirection = null;
                 // Riparte sempre dalla posizione reale della sheet, non da "chiusa" per forza:
                 // così il gesto resta sotto controllo anche subito dopo un'altra animazione.
                 miniDragBasePercent = getSheetCurrentPercentY();
@@ -1522,7 +1574,15 @@
                     miniPlayerWasDragged = true;
                 }
 
-                if (Math.abs(miniCurrentX) > Math.abs(miniCurrentY)) {
+                if (!dragDirection) {
+                    if (Math.abs(miniCurrentX) > DIRECTION_LOCK_THRESHOLD || Math.abs(miniCurrentY) > DIRECTION_LOCK_THRESHOLD) {
+                        dragDirection = Math.abs(miniCurrentX) > Math.abs(miniCurrentY) ? 'horizontal' : 'vertical';
+                    } else {
+                        return; // Movimento troppo piccolo per decidere: aspetta il prossimo evento.
+                    }
+                }
+
+                if (dragDirection === 'horizontal') {
                     const clampedX = Math.max(-MINI_TEXT_MAX_OFFSET, Math.min(MINI_TEXT_MAX_OFFSET, miniCurrentX));
                     const fadeProgress = Math.min(1, Math.abs(miniCurrentX) / MINI_TEXT_FADE_DISTANCE);
                     miniTextContainer.style.transform = `translate3d(${clampedX}px, 0, 0)`;
@@ -1575,6 +1635,7 @@
                 }
 
                 sheetWasMoved = false;
+                dragDirection = null;
 
                 miniTextContainer.style.transform = 'translate3d(0, 0, 0)';
                 miniTextContainer.style.opacity = '1';
@@ -1734,14 +1795,11 @@
             localStorage.setItem('youtubette_amoled', isAmoled);
         }
 
-        function openApiModal(fromSwipe = false) {
+        function openApiModal() {
             const modal = document.getElementById('apiModal');
             const input = document.getElementById('modalApiKeyInput');
             if (modal && input) {
                 input.value = appState.apiKey;
-                // 'swipe-open' fa entrare la sheet da sinistra (coerente con lo swipe destra
-                // sulla home); altrimenti resta l'animazione standard dal basso/dal centro.
-                modal.classList.toggle('swipe-open', !!fromSwipe);
                 modal.classList.add('active');
             }
         }
@@ -1942,7 +2000,7 @@
             container.querySelectorAll('.quickSearchCircle').forEach(circle => {
                 circle.addEventListener('click', () => {
                     searchInput.value = circle.dataset.query;
-                    performSearch(false);
+                    performSearch(false, true);
                 });
             });
         }
@@ -2070,7 +2128,7 @@
             return now.toISOString();
         }
 
-        async function performSearch(isLoadMore = false) {
+        async function performSearch(isLoadMore = false, isQuickSearch = false) {
             const query = searchInput.value.trim();
             const resultsStatusText = document.getElementById('resultsStatusText');
             
@@ -2085,6 +2143,10 @@
             }
 
             if (!isLoadMore) {
+                // Memorizza il contesto della ricerca (playlist o ricerca manuale) così che
+                // anche il caricamento automatico delle pagine successive (isLoadMore) continui
+                // ad usare gli stessi filtri, invece di quelli dell'altro contesto.
+                currentSearchIsQuickSearch = isQuickSearch;
                 showResultsView();
                 appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
                 toggleDownloadButtons(false);
@@ -2094,12 +2156,15 @@
             } else isFetchingMore = true;
 
             try {
+                const activeFilterDate = currentSearchIsQuickSearch ? appState.playlistFilterDate : appState.filterDate;
+                const activeFilterDuration = currentSearchIsQuickSearch ? appState.playlistFilterDuration : appState.filterDuration;
+
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
                 
-                if (appState.filterDuration !== 'any') {
-                    url += `&videoDuration=${appState.filterDuration}`;
+                if (activeFilterDuration !== 'any') {
+                    url += `&videoDuration=${activeFilterDuration}`;
                 }
-                const publishedAfter = getPublishedAfterDate(appState.filterDate);
+                const publishedAfter = getPublishedAfterDate(activeFilterDate);
                 if (publishedAfter) {
                     url += `&publishedAfter=${encodeURIComponent(publishedAfter)}`;
                 }
