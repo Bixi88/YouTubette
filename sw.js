@@ -1,4 +1,9 @@
-// Nome fisso: l'app controlla periodicamente i cambi di questo file byte per byte.
+// Nome fisso: NON serve più cambiarlo ad ogni release. La freschezza dei
+// contenuti è garantita dal 'cache: no-store' nelle fetch di rete qui sotto
+// (bypassano la cache HTTP del browser, non solo la Cache Storage del SW).
+// Questa versione va aggiornata SOLO se un giorno modifichi la logica
+// di questo file (nuove strategie di cache, nuovi asset precaricati, ecc.) —
+// non per i normali aggiornamenti di index.html.
 const CACHE_NAME = 'youtubette-cache';
 
 const ASSETS = [
@@ -55,11 +60,12 @@ self.addEventListener('fetch', (e) => {
   }
 
   // Navigazioni (apertura app / index.html): network-first.
-  // Così l'utente vede sempre l'ultima versione quando è online,
-  // e ha comunque un fallback offline dalla cache.
+  // cache: 'no-store' forza il bypass della cache HTTP del browser, non solo
+  // della Cache Storage del SW: senza questo, la fetch "di rete" può comunque
+  // restituire una risposta vecchia presa dal disco del browser invece che dal server.
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((res) => {
           const resClone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
@@ -71,11 +77,12 @@ self.addEventListener('fetch', (e) => {
   }
 
   // Altri asset statici propri (manifest, ecc.): stale-while-revalidate,
-  // risponde subito dalla cache ma aggiorna in background.
+  // risponde subito dalla cache ma aggiorna in background con richiesta
+  // di rete "vera" (no-store), non da cache HTTP del browser.
   if (url.origin === self.location.origin) {
     e.respondWith(
       caches.match(req).then((cached) => {
-        const networkFetch = fetch(req)
+        const networkFetch = fetch(req, { cache: 'no-store' })
           .then((res) => {
             const resClone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
