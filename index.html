@@ -85,16 +85,27 @@
         #homeView, #resultsView {
             width: 50%;
         }
-        /* --- FADE SFUMATO DELLA LISTA CANZONI (alto: sotto la barra menu/ricerca; basso: sopra il miniplayer) ---
-           La distanza del fade in basso è dinamica: quando il miniplayer è visibile la sfumatura si ferma
-           appena sopra di esso, altrimenti scende fino in fondo allo schermo. */
+        /* --- FADE SFUMATO DELLA LISTA CANZONI (alto: sotto la barra menu/ricerca) --- */
         #resultsView {
-            --list-bottom-fade: 40px;
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - var(--list-bottom-fade)), transparent 100%);
-            mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - var(--list-bottom-fade)), transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 100%);
+            mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 100%);
         }
-        body.mini-player-active #resultsView {
-            --list-bottom-fade: 140px;
+        /* Fade inferiore realizzato con un overlay a gradiente (più affidabile del mask-image su Firefox mobile).
+           Senza miniplayer resta basso e sottile, appena sopra il fondo dello schermo; quando il miniplayer
+           è visibile si allarga per sfumare la lista appena sopra di esso. */
+        #listBottomFade {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 40px;
+            background: linear-gradient(to top, var(--bg-main) 0%, rgba(10, 10, 10, 0) 100%);
+            pointer-events: none;
+            z-index: 15;
+            transition: height 0.3s ease, background-color 0.3s ease;
+        }
+        body.mini-player-active #listBottomFade {
+            height: 140px;
         }
         /* --- FADE-IN A CASCATA DEI BRANI (dall'alto verso il basso) --- */
         @keyframes trackRowIn {
@@ -557,6 +568,7 @@
                     <div id="trackList" class="space-y-1 pb-36 px-6"></div>
                 </div>
             </div>
+            <div id="listBottomFade"></div>
         </section>
 
         <div id="ytPlayerContainer" class="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none"></div>
