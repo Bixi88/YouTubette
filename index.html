@@ -536,14 +536,14 @@
             <div id="viewsSlider" class="flex h-full">
                 <!-- VISTA 1: Playlist (Ricerche Rapide) -->
                 <div id="homeView" class="shrink-0 h-full overflow-y-auto pr-0">
-                    <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-4 gap-y-7 px-2 pt-4 pb-28"></div>
+                    <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-4 gap-y-7 px-2 pt-4 pb-36"></div>
                     <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
                 </div>
                 <!-- VISTA 2: Lista Canzoni (risultati ricerca / playlist aperta) -->
                 <div id="resultsView" class="shrink-0 h-full overflow-y-auto pr-0">
                     <span id="trackCount" class="hidden">0 brani</span>
                     <p id="resultsStatusText" class="hidden text-xs p-8 italic text-center mt-12 custom-text-muted"></p>
-                    <div id="trackList" class="space-y-1 pb-28"></div>
+                    <div id="trackList" class="space-y-1 pb-36"></div>
                 </div>
             </div>
         </section>
@@ -552,36 +552,36 @@
     </main>
 
     <!-- Mini Player -->
-    <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-24 rounded-2xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-3 select-none cursor-pointer" style="touch-action: none;">
+    <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-32 rounded-3xl glass-panel shadow-2xl z-40 flex flex-col justify-between p-4 select-none cursor-pointer" style="touch-action: none;">
         
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-1">
-            <div class="flex items-center flex-1 min-w-0 mr-5 h-12 overflow-hidden" id="miniPlayerDetails">
-                <div class="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
+            <div class="flex items-center flex-1 min-w-0 mr-4 h-16 overflow-hidden" id="miniPlayerDetails">
+                <div class="w-16 h-16 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
                     <img id="miniPlayerImg" src="" class="w-full h-full object-cover" alt="" draggable="false">
                 </div>
                 
-                <div class="ml-2.5 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
+                <div class="ml-3 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
                     <div class="marquee-wrapper w-full font-bold">
                         <div class="marquee-content animate-marquee">
-                            <span id="miniPlayerTitle" class="text-xs font-bold text-[var(--text-main)]"></span>
+                            <span id="miniPlayerTitle" class="text-sm font-bold text-[var(--text-main)]"></span>
                         </div>
                     </div>
-                    <p id="miniPlayerChannel" class="text-[10px] truncate custom-text-muted mt-0.5"></p>
+                    <p id="miniPlayerChannel" class="text-xs truncate custom-text-muted mt-1"></p>
                 </div>
             </div>
 
             <div class="flex items-center space-x-1 shrink-0" id="miniPlayerControls">
-                <button id="miniPlayPauseBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-xs shadow-md bg-white text-black transition-transform">
+                <button id="miniPlayPauseBtn" class="w-14 h-14 rounded-full flex items-center justify-center text-lg shadow-md bg-white text-black transition-transform">
                     <i class="fa-solid fa-play ml-0.5" id="miniPlayIcon"></i>
                 </button>
             </div>
         </div>
 
-        <div class="flex items-center justify-between w-full text-[9px] font-mono custom-text-muted px-1" id="miniProgressBarArea">
+        <div class="flex items-center justify-between w-full text-[10px] font-mono custom-text-muted px-1" id="miniProgressBarArea">
             <span id="miniCurrentTime">0:00</span>
-            <div id="miniProgressBarContainer" class="flex-1 mx-3 h-3 flex items-center relative cursor-pointer">
-                <div class="w-full h-[3px] bg-white/10 rounded-full"></div>
-                <div id="miniProgressBar" class="absolute top-1/2 -translate-y-1/2 left-0 h-[3px] w-0 custom-bg-accent rounded-full transition-all duration-100"></div>
+            <div id="miniProgressBarContainer" class="flex-1 mx-3 h-4 flex items-center relative cursor-pointer">
+                <div class="w-full h-[4px] bg-white/10 rounded-full"></div>
+                <div id="miniProgressBar" class="absolute top-1/2 -translate-y-1/2 left-0 h-[4px] w-0 custom-bg-accent rounded-full transition-all duration-100"></div>
             </div>
             <span id="miniDurationTime">0:00</span>
         </div>
@@ -1869,7 +1869,7 @@
 
             const toast = document.createElement('div');
             toast.id = 'youtubette-toast';
-            toast.className = 'fixed bottom-28 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-[150] transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-white';
+            toast.className = 'fixed bottom-36 left-1/2 transform -translate-x-1/2 border font-medium text-xs py-2.5 px-5 rounded-full shadow-2xl z-[150] transition-all duration-300 opacity-0 translate-y-2 custom-bg-card border-[var(--accent)] text-white';
             toast.innerHTML = `<i class="fa-solid fa-circle-check mr-2 custom-text-accent"></i> ${message}`;
             
             document.body.appendChild(toast);
