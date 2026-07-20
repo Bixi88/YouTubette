@@ -1298,6 +1298,7 @@
 
             setupSwipeHandlers();
             setupSheetCloseSwipe();
+            setupSettingsSheetSwipe();
             checkAndApplyMarquee();
         });
 
@@ -1469,6 +1470,73 @@
                 dateOptions.classList.add('hidden');
                 durationOptions.classList.add('hidden');
             });
+        }
+
+        // Swipe orizzontale sul menu impostazioni: trascinando verso sinistra la sheet segue
+        // il dito in tempo reale (stessa direzione con cui è entrata) e si chiude oltre una
+        // soglia minima, invece di poter essere richiusa solo dal pulsante o dal backdrop.
+        function setupSettingsSheetSwipe() {
+            const modal = document.getElementById('apiModal');
+            const sheet = modal ? modal.querySelector('.settings-sheet') : null;
+            if (!modal || !sheet) return;
+
+            let startX = 0, startY = 0, currentX = 0, isDragging = false, isClosingDrag = false;
+
+            const onStart = (x, y, target) => {
+                if (target && target.closest('input, textarea, select, button')) return;
+                isDragging = true;
+                isClosingDrag = false;
+                startX = x;
+                startY = y;
+                currentX = 0;
+            };
+            const onMove = (x, y, e) => {
+                if (!isDragging) return;
+                const deltaX = x - startX;
+                const deltaY = y - startY;
+                if (!isClosingDrag) {
+                    // Si attiva la chiusura solo quando il gesto è chiaramente orizzontale
+                    // verso sinistra, per non rompere lo scroll verticale interno del popup.
+                    if (deltaX < -10 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+                        isClosingDrag = true;
+                        sheet.style.transition = 'none';
+                    } else {
+                        return;
+                    }
+                }
+                currentX = deltaX;
+                if (currentX < 0) {
+                    if (e && e.cancelable) e.preventDefault();
+                    window.requestAnimationFrame(() => {
+                        if (isDragging) sheet.style.transform = `translateX(${currentX}px)`;
+                    });
+                }
+            };
+            const onEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                if (isClosingDrag) {
+                    sheet.style.transition = '';
+                    sheet.style.transform = '';
+                    if (Math.abs(currentX) > 80) {
+                        closeApiModal();
+                        window.history.back();
+                    }
+                }
+                isClosingDrag = false;
+                currentX = 0;
+            };
+
+            sheet.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX, e.touches[0].clientY, e.target), { passive: true });
+            sheet.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX, e.touches[0].clientY, e), { passive: false });
+            sheet.addEventListener('touchend', onEnd, { passive: true });
+
+            sheet.addEventListener('mousedown', (e) => {
+                if (e.target.closest('input, textarea, select, button')) return;
+                onStart(e.clientX, e.clientY, e.target);
+            });
+            window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientX, e.clientY); });
+            window.addEventListener('mouseup', onEnd);
         }
 
         function setupSheetCloseSwipe() {
