@@ -371,13 +371,13 @@
             user-drag: none;
         }
 
-        /* --- MENU IMPOSTAZIONI: ANIMAZIONE ESCLUSIVAMENTE ORIZZONTALE --- */
+        /* --- MENU IMPOSTAZIONI: METÀ SCHERMO E PILLOLA DI DRAG LATERALE --- */
         #apiModal {
             position: fixed;
             inset: 0;
             z-index: 60;
             display: flex;
-            align-items: stretch;
+            align-items: center;
             justify-content: flex-start;
             background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(6px);
@@ -394,16 +394,34 @@
             transition: opacity 0.3s ease, visibility 0s linear 0s;
         }
         #apiModal .settings-sheet {
+            position: relative;
             width: 85%;
             max-width: 420px;
-            height: 100%;
-            max-height: 100vh;
-            overflow-y: auto;
+            height: 50vh;
             border-radius: 0 28px 28px 0;
-            padding: 20px 24px calc(22px + env(safe-area-inset-bottom, 0px));
+            padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 24px;
             transform: translateX(-100%);
             transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform;
+            display: flex;
+            flex-direction: column;
+        }
+        #apiModal .settings-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        /* Pillola laterale per facilitare lo slide */
+        #apiModal .settings-drag-handle {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.35);
+            border-radius: 9999px;
+            pointer-events: none;
         }
         #apiModal.active .settings-sheet {
             transform: translateX(0);
@@ -641,90 +659,93 @@
 
     <!-- Modal Impostazioni -->
     <div id="apiModal">
-        <div class="settings-sheet glass-panel shadow-2xl relative">
-            <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
-                <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
-            </h3>
-            
-            <div class="mb-4 relative">
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
-                <div class="custom-select-wrapper">
-                    <div id="customSelectTrigger" class="custom-select-trigger w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none custom-bg-input text-white">
-                        <span id="customSelectedValue">Seleziona Tema...</span>
-                        <i class="fa-solid fa-chevron-down text-neutral-400"></i>
+        <div class="settings-sheet glass-panel shadow-2xl">
+            <div class="settings-drag-handle"></div>
+            <div class="settings-content">
+                <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
+                    <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
+                </h3>
+                
+                <div class="mb-4 relative">
+                    <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
+                    <div class="custom-select-wrapper">
+                        <div id="customSelectTrigger" class="custom-select-trigger w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none custom-bg-input text-white">
+                            <span id="customSelectedValue">Seleziona Tema...</span>
+                            <i class="fa-solid fa-chevron-down text-neutral-400"></i>
+                        </div>
+                        <div id="customSelectOptions" class="custom-options w-full rounded-xl custom-bg-input text-white text-xs"></div>
                     </div>
-                    <div id="customSelectOptions" class="custom-options w-full rounded-xl custom-bg-input text-white text-xs"></div>
                 </div>
-            </div>
 
-            <!-- INTERRUTTORE MODALITÀ AMOLED -->
-            <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-white">Modalità AMOLED</label>
-                    <span class="text-[9px] custom-text-muted">Spegni gli sfondi e ottimizza i neri</span>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="amoledToggle" class="sr-only peer">
-                    <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
-                </label>
-            </div>
-
-            <!-- FILTRI PLAYLIST HOME -->
-            <div class="mb-4 border-t border-white/5 pt-4">
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Filtri Playlist (Home)</label>
-                <div class="grid grid-cols-2 gap-3">
+                <!-- INTERRUTTORE MODALITÀ AMOLED -->
+                <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-neutral-400 mb-1">Data</label>
-                        <select id="playlistDateSelect" class="w-full text-xs px-3 py-2.5 rounded-xl custom-bg-input text-white border border-white/10 focus:outline-none">
-                            <option value="any">Qualsiasi data</option>
-                            <option value="hour">Ultima ora</option>
-                            <option value="today">Oggi</option>
-                            <option value="week">Questa settimana</option>
-                            <option value="month">Questo mese</option>
-                            <option value="year">Quest'anno</option>
-                        </select>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-white">Modalità AMOLED</label>
+                        <span class="text-[9px] custom-text-muted">Spegni gli sfondi e ottimizza i neri</span>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-neutral-400 mb-1">Durata</label>
-                        <select id="playlistDurationSelect" class="w-full text-xs px-3 py-2.5 rounded-xl custom-bg-input text-white border border-white/10 focus:outline-none">
-                            <option value="any">Qualsiasi durata</option>
-                            <option value="short">Breve (&lt; 4 min)</option>
-                            <option value="medium">Media (4 - 20 min)</option>
-                            <option value="long">Lunga (&gt; 20 min)</option>
-                        </select>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="amoledToggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                    </label>
+                </div>
+
+                <!-- FILTRI PLAYLIST HOME -->
+                <div class="mb-4 border-t border-white/5 pt-4">
+                    <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Filtri Playlist (Home)</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-neutral-400 mb-1">Data</label>
+                            <select id="playlistDateSelect" class="w-full text-xs px-3 py-2.5 rounded-xl custom-bg-input text-white border border-white/10 focus:outline-none">
+                                <option value="any">Qualsiasi data</option>
+                                <option value="hour">Ultima ora</option>
+                                <option value="today">Oggi</option>
+                                <option value="week">Questa settimana</option>
+                                <option value="month">Questo mese</option>
+                                <option value="year">Quest'anno</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-neutral-400 mb-1">Durata</label>
+                            <select id="playlistDurationSelect" class="w-full text-xs px-3 py-2.5 rounded-xl custom-bg-input text-white border border-white/10 focus:outline-none">
+                                <option value="any">Qualsiasi durata</option>
+                                <option value="short">Breve (&lt; 4 min)</option>
+                                <option value="medium">Media (4 - 20 min)</option>
+                                <option value="long">Lunga (&gt; 20 min)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- RICERCHES RAPIDE (Scorciatoie in Home) -->
-            <div class="mb-4 border-t border-white/5 pt-4">
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Ricerche Rapide</label>
-                <div class="space-y-2">
-                    <input type="text" id="quickSearchQueryInput" placeholder="Cosa cercare (es. lofi hip hop)"
-                        autocomplete="off" autocorrect="off" spellcheck="false"
-                        class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-                    <input type="text" id="quickSearchNameInput" placeholder="Nome da mostrare (es. Lofi)"
-                        autocomplete="off" autocorrect="off" spellcheck="false"
-                        class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-                    <button id="addQuickSearchBtn" class="w-full font-bold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition-all bg-white/10 text-white hover:bg-white/15">
-                        <i class="fa-solid fa-plus mr-1.5"></i> Aggiungi Scorciatoia
-                    </button>
+                <!-- RICERCHES RAPIDE (Scorciatoie in Home) -->
+                <div class="mb-4 border-t border-white/5 pt-4">
+                    <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Ricerche Rapide</label>
+                    <div class="space-y-2">
+                        <input type="text" id="quickSearchQueryInput" placeholder="Cosa cercare (es. lofi hip hop)"
+                            autocomplete="off" autocorrect="off" spellcheck="false"
+                            class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                        <input type="text" id="quickSearchNameInput" placeholder="Nome da mostrare (es. Lofi)"
+                            autocomplete="off" autocorrect="off" spellcheck="false"
+                            class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                        <button id="addQuickSearchBtn" class="w-full font-bold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition-all bg-white/10 text-white hover:bg-white/15">
+                            <i class="fa-solid fa-plus mr-1.5"></i> Aggiungi Scorciatoia
+                        </button>
+                    </div>
+                    <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
                 </div>
-                <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
-            </div>
 
-            <div class="mb-4 border-t border-white/5 pt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
-                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
+                <div class="mb-4 border-t border-white/5 pt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
+                        <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
+                    </div>
+                    <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
+                        class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
                 </div>
-                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
-                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-            </div>
 
-            <div class="flex items-center justify-end space-x-3 mt-6 border-t border-white/5 pt-4">
-                <button id="modalCancelBtn" class="hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
-                <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
+                <div class="flex items-center justify-end space-x-3 mt-6 border-t border-white/5 pt-4">
+                    <button id="modalCancelBtn" class="hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
+                    <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
+                </div>
             </div>
         </div>
     </div>
@@ -943,6 +964,11 @@
             
             window.addEventListener('popstate', (e) => {
                 let handled = false;
+
+                if (searchContainer.classList.contains('active')) {
+                    closeSearch();
+                    handled = true;
+                }
                 if (nowPlayingSheet.classList.contains('expanded')) {
                     nowPlayingSheet.classList.remove('expanded');
                     nowPlayingSheet.style.transform = '';
@@ -1002,11 +1028,15 @@
                     headerTitle.classList.add('opacity-0');
                     searchIcon.className = "fa-solid fa-arrow-right text-xs";
                     searchInput.focus();
+                    window.history.pushState({ page: 'search' }, 'Search');
                 } else {
                     if (searchInput.value.trim() !== "") {
                         performSearch(false);
                     } else {
                         closeSearch();
+                        if (window.history.state && window.history.state.page === 'search') {
+                            window.history.back();
+                        }
                     }
                 }
             });
@@ -1020,7 +1050,12 @@
 
             document.addEventListener('click', (e) => {
                 if (!searchContainer.contains(e.target) && !filterMenu.contains(e.target)) {
-                    closeSearch();
+                    if (searchContainer.classList.contains('active')) {
+                        closeSearch();
+                        if (window.history.state && window.history.state.page === 'search') {
+                            window.history.back();
+                        }
+                    }
                 }
             });
 
@@ -1029,6 +1064,7 @@
                 headerTitle.classList.remove('opacity-0');
                 searchIcon.className = "fa-solid fa-magnifying-glass text-xs";
                 filterMenu.classList.add('hidden');
+                searchInput.value = '';
             }
 
             filterToggleBtn.addEventListener('click', (e) => {
@@ -1078,6 +1114,9 @@
                 window.history.pushState({ page: 'modal' }, 'Modal');
             });
             document.getElementById('backToHomeBtn').addEventListener('click', () => {
+                if (searchContainer.classList.contains('active')) {
+                    closeSearch();
+                }
                 showHomeView();
                 window.history.back();
             });
