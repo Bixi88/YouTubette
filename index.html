@@ -491,6 +491,7 @@
             <span id="trackCount" class="hidden">0 brani</span>
             <div class="relative flex-1 overflow-hidden">
                 <div id="trackList" class="space-y-1 pb-28 h-full overflow-y-auto pr-0">
+                    <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-3 gap-y-5 px-2 pt-4 pb-2"></div>
                     <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
                 </div>
             </div>
@@ -636,6 +637,23 @@
                 </div>
             </div>
 
+            <!-- RICERCHE RAPIDE (Scorciatoie in Home) -->
+            <div class="mb-4 border-t border-white/5 pt-4">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Ricerche Rapide</label>
+                <div class="space-y-2">
+                    <input type="text" id="quickSearchQueryInput" placeholder="Cosa cercare (es. lofi hip hop)"
+                        autocomplete="off" autocorrect="off" spellcheck="false"
+                        class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                    <input type="text" id="quickSearchNameInput" placeholder="Nome da mostrare (es. Lofi)"
+                        autocomplete="off" autocorrect="off" spellcheck="false"
+                        class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                    <button id="addQuickSearchBtn" class="w-full font-bold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition-all bg-white/10 text-white hover:bg-white/15">
+                        <i class="fa-solid fa-plus mr-1.5"></i> Aggiungi Scorciatoia
+                    </button>
+                </div>
+                <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
+            </div>
+
             <!-- INTERRUTTORE MODALITÀ AMOLED -->
             <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
                 <div>
@@ -682,7 +700,8 @@
             currentIndex: -1,
             isPlaying: false,
             filterDate: 'week',
-            filterDuration: 'short'
+            filterDuration: 'short',
+            quickSearches: JSON.parse(localStorage.getItem('youtubette_quick_searches') || '[]')
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
         let isScrubbing = false; 
@@ -880,6 +899,8 @@
             applyAmoledState(appState.isAmoled);
             setupCustomSelect();
             setupFilterDropdowns();
+            renderQuickSearchHome();
+            renderQuickSearchManageList();
 
             document.body.classList.remove('hidden');
             window.history.replaceState({ page: 'main' }, 'Main');
@@ -1028,6 +1049,7 @@
                 window.history.back();
             });
             document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
+            document.getElementById('addQuickSearchBtn').addEventListener('click', addQuickSearchFromModal);
 
             // Click fuori dal popup (sul backdrop) chiude il menu impostazioni
             document.getElementById('apiModal').addEventListener('click', (e) => {
@@ -1570,6 +1592,120 @@
                 closeApiModal();
                 window.history.back();
             }, 800);
+        }
+
+        // --- RICERCHE RAPIDE (scorciatoie a cerchio in home) ---
+        // L'artwork viene recuperato dall'API pubblica di iTunes/Apple Music
+        // (gratuita, senza chiave, CORS-friendly) invece che dall'API di YouTube,
+        // così il salvataggio di una scorciatoia non consuma quota di ricerca YouTube.
+        async function fetchArtworkForQuickSearch(term) {
+            try {
+                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=1&entity=musicTrack`);
+                const data = await res.json();
+                if (data.results && data.results[0] && data.results[0].artworkUrl100) {
+                    return data.results[0].artworkUrl100.replace('100x100bb', '400x400bb');
+                }
+            } catch (err) {
+                console.warn('Impossibile recuperare artwork da iTunes:', err);
+            }
+            return null;
+        }
+
+        function saveQuickSearches() {
+            localStorage.setItem('youtubette_quick_searches', JSON.stringify(appState.quickSearches));
+        }
+
+        async function addQuickSearchFromModal() {
+            const queryInput = document.getElementById('quickSearchQueryInput');
+            const nameInput = document.getElementById('quickSearchNameInput');
+            const query = queryInput.value.trim();
+            const name = nameInput.value.trim();
+            if (!query || !name) return;
+
+            const addBtn = document.getElementById('addQuickSearchBtn');
+            addBtn.disabled = true;
+            addBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Ricerca copertina...';
+
+            const artwork = await fetchArtworkForQuickSearch(name) || await fetchArtworkForQuickSearch(query);
+
+            appState.quickSearches.push({ id: 'qs_' + Date.now(), query, name, artwork });
+            saveQuickSearches();
+            renderQuickSearchManageList();
+            renderQuickSearchHome();
+
+            queryInput.value = '';
+            nameInput.value = '';
+            addBtn.disabled = false;
+            addBtn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i> Aggiungi Scorciatoia';
+        }
+
+        function deleteQuickSearch(id) {
+            appState.quickSearches = appState.quickSearches.filter(qs => qs.id !== id);
+            saveQuickSearches();
+            renderQuickSearchManageList();
+            renderQuickSearchHome();
+        }
+
+        function renderQuickSearchManageList() {
+            const container = document.getElementById('quickSearchManageList');
+            if (!container) return;
+
+            if (appState.quickSearches.length === 0) {
+                container.innerHTML = '<p class="text-[10px] italic text-center custom-text-muted py-2">Nessuna scorciatoia salvata.</p>';
+                return;
+            }
+
+            container.innerHTML = appState.quickSearches.map(qs => `
+                <div class="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                    <div class="flex items-center min-w-0 flex-1 mr-2">
+                        <div class="w-6 h-6 rounded-full overflow-hidden bg-neutral-800 shrink-0 mr-2 flex items-center justify-center">
+                            ${qs.artwork ? `<img src="${qs.artwork}" class="w-full h-full object-cover" alt="">` : '<i class="fa-solid fa-music text-[9px] custom-text-muted"></i>'}
+                        </div>
+                        <span class="text-xs text-white truncate">${escapeHtml(qs.name)}</span>
+                    </div>
+                    <button data-id="${qs.id}" class="quickSearchDeleteBtn text-neutral-400 hover:text-red-500 text-xs p-1.5">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.quickSearchDeleteBtn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteQuickSearch(btn.dataset.id);
+                });
+            });
+        }
+
+        function renderQuickSearchHome() {
+            const container = document.getElementById('quickSearchHome');
+            const placeholderText = document.getElementById('placeholderText');
+            if (!container) return;
+
+            if (appState.quickSearches.length === 0) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                if (placeholderText) placeholderText.classList.remove('hidden');
+                return;
+            }
+
+            if (placeholderText) placeholderText.classList.add('hidden');
+            container.classList.remove('hidden');
+            container.innerHTML = appState.quickSearches.map(qs => `
+                <div class="quickSearchCircle flex flex-col items-center cursor-pointer active:scale-95 transition-transform" data-query="${escapeHtml(qs.query)}">
+                    <div class="w-16 h-16 rounded-full overflow-hidden bg-white/5 border border-white/10 shadow-md flex items-center justify-center mb-1.5">
+                        ${qs.artwork ? `<img src="${qs.artwork}" class="w-full h-full object-cover" alt="">` : '<i class="fa-solid fa-music text-lg custom-text-muted"></i>'}
+                    </div>
+                    <span class="text-[11px] font-semibold text-white text-center leading-tight line-clamp-2">${escapeHtml(qs.name)}</span>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.quickSearchCircle').forEach(circle => {
+                circle.addEventListener('click', () => {
+                    searchInput.value = circle.dataset.query;
+                    performSearch(false);
+                });
+            });
         }
 
         async function redirectToDownload() {
