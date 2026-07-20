@@ -114,11 +114,15 @@
         #menuButtonsGroup.shift-right {
             transform: translateX(48px);
         }
+        /* headerLeftGroup deve riservare davvero lo spazio dello spostamento del
+           menuButtonsGroup (che è solo un transform visivo, non incide sul layout flex),
+           altrimenti la search-container che segue parte troppo presto e viene
+           sovrapposta dall'icona spostata. */
         #headerLeftGroup {
             transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         #headerLeftGroup.shift-right {
-            width: 88px;
+            width: 88px; /* 40px pulsante impostazioni + 48px di spostamento */
         }
 
         .ambient-bg {
@@ -129,11 +133,14 @@
             filter: blur(80px);
             transform: scale(1.2);
             pointer-events: none;
+            /* background-image non è animabile via CSS: il crossfade vero è gestito
+               via JS transitionando l'opacity mentre si cambia l'immagine sotto. */
             transition: opacity 0.35s ease;
             background-position: center;
             background-size: cover;
         }
 
+        /* Mini Player: Vetro satinato dinamico perfettamente integrato con l'estetica dell'app */
         .glass-panel {
             background: var(--bg-card);
             backdrop-filter: blur(30px);
@@ -215,9 +222,10 @@
             opacity: 1;
             pointer-events: auto;
             padding-left: 1rem;
-            padding-right: 4.75rem;
+            padding-right: 4.75rem; /* 76px: spazio esatto per non sovrapporsi alle due icone a destra */
         }
 
+        /* Pulsanti interni alla barra (Filtri + Invio) */
         .search-buttons {
             position: absolute;
             right: 4px;
@@ -226,6 +234,7 @@
             gap: 4px;
         }
 
+        /* Transizione d'apparizione per il pulsante Filtri */
         #filterToggleBtn {
             width: 0px;
             opacity: 0;
@@ -260,6 +269,9 @@
             100% { transform: translate3d(-50%, 0, 0); }
         }
 
+        /* Pulsante Play/Pausa: icona semplice (Font Awesome), nessun hover-scale sul bottone
+           (dimensione fissa identica su Windows e Android). Solo un piccolo "pop" quando lo
+           stato cambia davvero, per dare un minimo di feedback. */
         @keyframes iconPop {
             0%   { transform: scale(0.55); }
             100% { transform: scale(1); }
@@ -272,6 +284,8 @@
         img {
             -webkit-user-drag: none;
             user-drag: none;
+            /* Evita che il testo "alt" venga mostrato per una frazione di secondo
+               mentre l'immagine è ancora in caricamento (es. su connessioni lente) */
             color: transparent;
             font-size: 0;
         }
@@ -291,6 +305,7 @@
         .custom-border-accent { border-color: var(--accent); }
         .custom-text-muted { color: var(--text-muted); }
 
+        /* --- CUSTOM SELECT ESTETICI PER IL MENU IMPOSTAZIONI --- */
         .custom-select-wrapper {
             position: relative;
             user-select: none;
@@ -330,6 +345,7 @@
             font-weight: bold;
         }
 
+        /* --- STILI FILTRI CUSTOM DI RICERCA --- */
         .filter-option {
             transition: background-color 0.2s ease, color 0.2s ease;
         }
@@ -338,6 +354,7 @@
             color: #000000 !important;
         }
 
+        /* --- STILI MODALITÀ AMOLED --- */
         body.amoled-active {
             --bg-main: #000000 !important;
             --bg-card: #000000 !important;
@@ -371,14 +388,14 @@
             user-drag: none;
         }
 
-        /* --- MENU IMPOSTAZIONI: METÀ SCHERMO E PILLOLA DI DRAG LATERALE --- */
+        /* --- MENU IMPOSTAZIONI: overlay + sheet animati in stile Gemini --- */
         #apiModal {
             position: fixed;
             inset: 0;
             z-index: 60;
             display: flex;
-            align-items: center;
-            justify-content: flex-start;
+            align-items: flex-end;
+            justify-content: center;
             background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
@@ -394,41 +411,54 @@
             transition: opacity 0.3s ease, visibility 0s linear 0s;
         }
         #apiModal .settings-sheet {
-            position: relative;
-            width: 85%;
-            max-width: 420px;
-            height: 50vh;
-            border-radius: 0 28px 28px 0;
-            padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 24px;
-            transform: translateX(-100%);
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            will-change: transform;
-            display: flex;
-            flex-direction: column;
-        }
-        #apiModal .settings-content {
-            flex: 1;
+            width: 100%;
+            max-width: 480px;
+            max-height: 50vh;
             overflow-y: auto;
-            padding-right: 8px;
-        }
-        /* Pillola laterale per facilitare lo slide */
-        #apiModal .settings-drag-handle {
-            position: absolute;
-            right: 6px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 4px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 9999px;
-            pointer-events: none;
+            border-radius: 28px 28px 0 0;
+            padding: 14px 24px calc(22px + env(safe-area-inset-bottom, 0px));
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
         }
         #apiModal.active .settings-sheet {
+            transform: translateY(0);
+        }
+        /* Apertura del menu impostazioni tramite swipe orizzontale (sinistra -> destra)
+           sulla Home: la sheet entra da sinistra invece che dal basso, coerente con
+           la direzione del dito durante il gesto. */
+        #apiModal.swipe-open .settings-sheet {
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #apiModal.swipe-open.active .settings-sheet {
             transform: translateX(0);
         }
         @media (min-width: 768px) {
+            #apiModal {
+                align-items: center;
+                padding: 16px;
+            }
             #apiModal .settings-sheet {
-                width: 420px;
+                border-radius: 26px;
+                max-height: 60vh;
+                padding: 24px;
+                transform: translateY(18px) scale(0.96);
+                opacity: 0;
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            }
+            #apiModal.active .settings-sheet {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            #apiModal.swipe-open .settings-sheet {
+                transform: translateX(-40px);
+                opacity: 0;
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            }
+            #apiModal.swipe-open.active .settings-sheet {
+                transform: translateX(0);
+                opacity: 1;
             }
         }
         body.amoled-active #apiModal .settings-sheet {
@@ -445,16 +475,19 @@
 
     <header class="h-16 px-2 flex items-center justify-between shrink-0 z-40 relative">
         <div class="flex items-center z-50 relative h-10" id="headerLeftGroup">
+            <!-- Pulsante Indietro (fade-in, posizione fissa; il gruppo menu scorre a destra per fargli spazio) -->
             <button id="backToHomeBtn" class="absolute left-0 top-0 text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90" title="Torna alle playlist">
                 <i class="fa-solid fa-arrow-left text-base"></i>
             </button>
 
             <div id="menuButtonsGroup" class="flex items-center gap-2">
+                <!-- Pulsante Impostazioni (Menu con tre linette) -->
                 <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Impostazioni">
                     <i class="fa-solid fa-equals text-base"></i>
                     <span id="apiErrorBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-black animate-pulse"></span>
                 </button>
                 
+                <!-- Pulsante Aggiornamento App (Inizialmente nascosto, si accende alla notifica di update) -->
                 <button id="appUpdateBtn" class="hidden text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Aggiorna App">
                     <i class="fa-solid fa-arrows-rotate text-base"></i>
                     <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-[var(--accent)] rounded-full border border-black animate-ping"></span>
@@ -473,10 +506,12 @@
                 class="text-xs py-2 rounded-full focus:outline-none focus:border-[var(--accent)] text-white">
             
             <div class="search-buttons">
+                <!-- Icona filtri YouTube (Sliders) -->
                 <button id="filterToggleBtn" class="text-white h-8 rounded-full flex items-center justify-center hover:bg-white/10" title="Filtri">
                     <i class="fa-solid fa-sliders text-xs"></i>
                 </button>
 
+                <!-- Bottone invio / attivazione ricerca -->
                 <button id="searchTriggerBtn" class="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 text-white active:scale-90 transition-all" title="Cerca">
                     <i class="fa-solid fa-magnifying-glass text-xs" id="searchIcon"></i>
                 </button>
@@ -488,7 +523,7 @@
         </button>
     </header>
 
-    <!-- Pannello Filtri Ricerca Manuale (Default: Qualsiasi data & Qualsiasi durata) -->
+    <!-- Pannello Filtri YouTube (Distanziato di pochissimi pixel - top-[70px]) -->
     <div id="filterMenu" class="hidden absolute top-[70px] left-4 right-4 border rounded-2xl p-4 shadow-2xl z-50 custom-bg-card border-white/10 transition-all duration-300">
         <div class="grid grid-cols-2 gap-4">
             <!-- Colonna Data di Caricamento -->
@@ -496,14 +531,14 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Data di Caricamento</label>
                 <div class="filter-select-wrapper relative" id="filterDateWrapper">
                     <div id="filterDateTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
-                        <span id="filterDateValue">Qualsiasi data</span>
+                        <span id="filterDateValue">Questa settimana</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
                     </div>
                     <div id="filterDateOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi data</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi data</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="hour">Ultima ora</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="today">Oggi</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="week">Questa settimana</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="week">Questa settimana</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="month">Questo mese</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="year">Quest'anno</div>
                     </div>
@@ -515,12 +550,12 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1.5 custom-text-muted">Durata Brano</label>
                 <div class="filter-select-wrapper relative" id="filterDurationWrapper">
                     <div id="filterDurationTrigger" class="flex items-center justify-between text-xs px-3.5 py-3 rounded-xl bg-white/5 border border-white/5 text-white cursor-pointer select-none">
-                        <span id="filterDurationValue">Qualsiasi durata</span>
+                        <span id="filterDurationValue">Breve (&lt; 4 min)</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
                     </div>
                     <div id="filterDurationOptions" class="hidden absolute top-[105%] left-0 right-0 rounded-xl bg-[#121212] border border-white/10 shadow-2xl z-50 overflow-hidden">
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="any">Qualsiasi durata</div>
-                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="short">Breve (&lt; 4 min)</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="any">Qualsiasi durata</div>
+                        <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5 selected font-bold" data-value="short">Breve (&lt; 4 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="medium">Media (4 - 20 min)</div>
                         <div class="filter-option px-4 py-2.5 text-xs text-white cursor-pointer hover:bg-white/5" data-value="long">Lunga (&gt; 20 min)</div>
                     </div>
@@ -552,6 +587,7 @@
 
     <!-- Mini Player -->
     <div id="miniPlayer" class="fixed bottom-4 left-4 right-4 h-28 rounded-3xl glass-panel shadow-2xl z-40 flex flex-col justify-center p-3 select-none cursor-pointer" style="touch-action: none;">
+        
         <div id="miniPlayerContent" class="flex items-center justify-between w-full flex-1 min-w-0 mb-0.5">
             <div class="flex items-center flex-1 min-w-0 mr-4 h-16 overflow-hidden" id="miniPlayerDetails">
                 <div class="w-16 h-16 rounded-full overflow-hidden shadow-md shrink-0 bg-neutral-800 z-10 flex items-center justify-center">
@@ -605,6 +641,7 @@
                 </div>
             </div>
 
+            <!-- Artwork Rotondo -->
             <div class="flex-1 flex items-center justify-center my-auto relative">
                 <div class="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center">
                     <div class="absolute inset-0 rounded-full blur-2xl opacity-20 transition-all duration-500 bg-[var(--accent)]"></div>
@@ -614,6 +651,7 @@
                 </div>
             </div>
 
+            <!-- Area Controlli Inferiore -->
             <div class="w-full max-w-sm mx-auto shrink-0 pointer-events-auto">
                 <div class="w-full text-center mb-5">
                     <div id="swipeTitleContainer" class="w-full py-1 cursor-grab active:cursor-grabbing select-none" style="touch-action: none;">
@@ -659,93 +697,63 @@
 
     <!-- Modal Impostazioni -->
     <div id="apiModal">
-        <div class="settings-sheet glass-panel shadow-2xl">
-            <div class="settings-drag-handle"></div>
-            <div class="settings-content">
-                <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
-                    <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
-                </h3>
-                
-                <div class="mb-4 relative">
-                    <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
-                    <div class="custom-select-wrapper">
-                        <div id="customSelectTrigger" class="custom-select-trigger w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none custom-bg-input text-white">
-                            <span id="customSelectedValue">Seleziona Tema...</span>
-                            <i class="fa-solid fa-chevron-down text-neutral-400"></i>
-                        </div>
-                        <div id="customSelectOptions" class="custom-options w-full rounded-xl custom-bg-input text-white text-xs"></div>
+        <div class="settings-sheet glass-panel shadow-2xl relative">
+            <h3 class="text-base font-bold mb-5 flex items-center text-[var(--text-main)]">
+                <i class="fa-solid fa-equals mr-2.5 custom-text-accent"></i> Impostazioni
+            </h3>
+            
+            <div class="mb-4 relative">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Stile Interfaccia</label>
+                <div class="custom-select-wrapper">
+                    <div id="customSelectTrigger" class="custom-select-trigger w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none custom-bg-input text-white">
+                        <span id="customSelectedValue">Seleziona Tema...</span>
+                        <i class="fa-solid fa-chevron-down text-neutral-400"></i>
                     </div>
+                    <div id="customSelectOptions" class="custom-options w-full rounded-xl custom-bg-input text-white text-xs"></div>
                 </div>
+            </div>
 
-                <!-- INTERRUTTORE MODALITÀ AMOLED -->
-                <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-white">Modalità AMOLED</label>
-                        <span class="text-[9px] custom-text-muted">Spegni gli sfondi e ottimizza i neri</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="amoledToggle" class="sr-only peer">
-                        <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
-                    </label>
+            <!-- INTERRUTTORE MODALITÀ AMOLED -->
+            <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-white">Modalità AMOLED</label>
+                    <span class="text-[9px] custom-text-muted">Spegni gli sfondi e ottimizza i neri</span>
                 </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="amoledToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                </label>
+            </div>
 
-                <!-- FILTRI PLAYLIST HOME -->
-                <div class="mb-4 border-t border-white/5 pt-4">
-                    <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Filtri Playlist (Home)</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[10px] font-bold text-neutral-400 mb-1">Data</label>
-                            <select id="playlistDateSelect" class="w-full text-xs px-3 py-2.5 rounded-xl custom-bg-input text-white border border-white/10 focus:outline-none">
-                                <option value="any">Qualsiasi data</option>
-                                <option value="hour">Ultima ora</option>
-                                <option value="today">Oggi</option>
-                                <option value="week">Questa settimana</option>
-                                <option value="month">Questo mese</option>
-                                <option value="year">Quest'anno</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-neutral-400 mb-1">Durata</label>
-                            <select id="playlistDurationSelect" class="w-full text-xs px-3 py-2.5 rounded-xl custom-bg-input text-white border border-white/10 focus:outline-none">
-                                <option value="any">Qualsiasi durata</option>
-                                <option value="short">Breve (&lt; 4 min)</option>
-                                <option value="medium">Media (4 - 20 min)</option>
-                                <option value="long">Lunga (&gt; 20 min)</option>
-                            </select>
-                        </div>
-                    </div>
+            <!-- RICERCHE RAPIDE (Scorciatoie in Home) -->
+            <div class="mb-4 border-t border-white/5 pt-4">
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Ricerche Rapide</label>
+                <div class="space-y-2">
+                    <input type="text" id="quickSearchQueryInput" placeholder="Cosa cercare (es. lofi hip hop)"
+                        autocomplete="off" autocorrect="off" spellcheck="false"
+                        class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                    <input type="text" id="quickSearchNameInput" placeholder="Nome da mostrare (es. Lofi)"
+                        autocomplete="off" autocorrect="off" spellcheck="false"
+                        class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+                    <button id="addQuickSearchBtn" class="w-full font-bold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition-all bg-white/10 text-white hover:bg-white/15">
+                        <i class="fa-solid fa-plus mr-1.5"></i> Aggiungi Scorciatoia
+                    </button>
                 </div>
+                <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
+            </div>
 
-                <!-- RICERCHES RAPIDE (Scorciatoie in Home) -->
-                <div class="mb-4 border-t border-white/5 pt-4">
-                    <label class="block text-xs font-bold uppercase tracking-wider mb-2 custom-text-muted">Ricerche Rapide</label>
-                    <div class="space-y-2">
-                        <input type="text" id="quickSearchQueryInput" placeholder="Cosa cercare (es. lofi hip hop)"
-                            autocomplete="off" autocorrect="off" spellcheck="false"
-                            class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-                        <input type="text" id="quickSearchNameInput" placeholder="Nome da mostrare (es. Lofi)"
-                            autocomplete="off" autocorrect="off" spellcheck="false"
-                            class="w-full text-xs px-4 py-3 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-                        <button id="addQuickSearchBtn" class="w-full font-bold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition-all bg-white/10 text-white hover:bg-white/15">
-                            <i class="fa-solid fa-plus mr-1.5"></i> Aggiungi Scorciatoia
-                        </button>
-                    </div>
-                    <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
+            <div class="mb-4 border-t border-white/5 pt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
+                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
                 </div>
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
+                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
+            </div>
 
-                <div class="mb-4 border-t border-white/5 pt-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
-                        <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
-                    </div>
-                    <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
-                        class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-                </div>
-
-                <div class="flex items-center justify-end space-x-3 mt-6 border-t border-white/5 pt-4">
-                    <button id="modalCancelBtn" class="hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
-                    <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
-                </div>
+            <div class="flex items-center justify-end space-x-3 mt-6 border-t border-white/5 pt-4">
+                <button id="modalCancelBtn" class="hover:text-white font-semibold text-xs px-4 py-2 rounded-full transition-colors custom-text-muted">Annulla</button>
+                <button id="modalSaveBtn" class="font-bold text-xs px-5 py-2 rounded-xl active:scale-95 transition-all custom-bg-accent text-black">Salva</button>
             </div>
         </div>
     </div>
@@ -776,16 +784,13 @@
             tracks: [],
             currentIndex: -1,
             isPlaying: false,
-            filterDate: 'any',
-            filterDuration: 'any',
-            playlistFilterDate: localStorage.getItem('youtubette_playlist_filter_date') || 'today',
-            playlistFilterDuration: localStorage.getItem('youtubette_playlist_filter_duration') || 'short',
+            filterDate: 'week',
+            filterDuration: 'short',
             quickSearches: JSON.parse(localStorage.getItem('youtubette_quick_searches') || '[]')
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
         let isScrubbing = false; 
         let scrubPercentage = 0;
-        let activeSearchFilters = null;
         
         const nowPlayingSheet = document.getElementById('nowPlayingSheet');
         const miniPlayer = document.getElementById('miniPlayer');
@@ -815,10 +820,20 @@
         const miniProgressBarContainer = document.getElementById('miniProgressBarContainer');
         const miniProgressBar = document.getElementById('miniProgressBar');
 
+        // GESTIONE REGISTRAZIONE ED AGGIORNAMENTO PROTETTO DEL SERVICE WORKER
         let newWorker;
         let refreshing = false;
+        // Vero quando l'ultima interazione sul miniplayer è stata un trascinamento (swipe)
+        // e non un semplice tap/click. Il mouse, a differenza del touch, genera comunque
+        // un evento 'click' dopo un mousedown+mousemove+mouseup sullo stesso elemento:
+        // questo flag serve a impedire che quel click "fantasma" apra la sheet.
         let miniPlayerWasDragged = false;
 
+        // Legge la posizione VERA e attuale della sheet (in % di translateY), qualunque sia lo
+        // stato in cui si trova in quel momento (chiusa, aperta, o a metà di un'altra animazione).
+        // Serve per far sì che ogni nuovo gesto riparta sempre da dove la sheet si trova davvero,
+        // invece di assumere che parta per forza da "chiusa" (0%) o "aperta" (-100%): questo è ciò
+        // che rende la transizione sempre continua e sempre interrompibile in qualsiasi istante.
         function getSheetCurrentPercentY() {
             const style = window.getComputedStyle(nowPlayingSheet);
             const transform = style.transform;
@@ -836,13 +851,15 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then((reg) => {
-                    setInterval(() => reg.update(), 60 * 60 * 1000);
+                    setInterval(() => reg.update(), 60 * 60 * 1000); // Controlla aggiornamenti ogni ora
 
+                    // Se è già presente un SW in attesa
                     if (reg.waiting) {
                         newWorker = reg.waiting;
                         showUpdateBtn();
                     }
 
+                    // Se viene rilevato un aggiornamento in corso
                     reg.addEventListener('updatefound', () => {
                         newWorker = reg.installing;
                         newWorker.addEventListener('statechange', () => {
@@ -855,6 +872,7 @@
                     });
                 }).catch(err => console.log(err));
 
+                // Ricarica quando il nuovo worker prende il controllo
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                     if (!refreshing) {
                         window.location.reload();
@@ -897,6 +915,14 @@
         }
 
         function onPlayerStateChange(event) {
+            const playIcon = document.getElementById('playIcon');
+            const miniPlayIcon = document.getElementById('miniPlayIcon');
+
+            // Aggiorniamo l'icona SOLO sugli stati "definitivi" (play esplicito / pausa esplicita / fine brano).
+            // Stati transitori come BUFFERING (durante uno scrubbing/seek) o CUED/UNSTARTED (durante il
+            // caricamento di un nuovo video) NON toccano l'icona: così, come su Spotify, il pulsante resta
+            // sul simbolo "pausa" mentre ci si muove dentro la canzone, e torna alla freccia "play" solo
+            // quando l'utente mette effettivamente in pausa.
             if (event.data == YT.PlayerState.PLAYING) {
                 appState.isPlaying = true;
                 setPlayIconState(true);
@@ -912,11 +938,13 @@
                 updateMediaSessionState(false);
                 nextTrack();
             }
+            // BUFFERING (3), UNSTARTED (-1), CUED (5): nessuna modifica all'icona.
         }
 
+        // --- GESTIONE COPERTINE: CARICAMENTO A CASCATA ---
         function setAmbientBackground(el, url) {
             if (!el || !url) return;
-            if (el.dataset.currentBg === url) return;
+            if (el.dataset.currentBg === url) return; // stessa immagine, nessun crossfade necessario
             el.dataset.currentBg = url;
 
             const targetOpacity = getComputedStyle(el).opacity;
@@ -964,11 +992,6 @@
             
             window.addEventListener('popstate', (e) => {
                 let handled = false;
-
-                if (searchContainer.classList.contains('active')) {
-                    closeSearch();
-                    handled = true;
-                }
                 if (nowPlayingSheet.classList.contains('expanded')) {
                     nowPlayingSheet.classList.remove('expanded');
                     nowPlayingSheet.style.transform = '';
@@ -980,9 +1003,14 @@
                 }
                 const apiModal = document.getElementById('apiModal');
                 if (apiModal && apiModal.classList.contains('active')) {
-                    closeApiModal();
+                    apiModal.classList.remove('active');
                     handled = true;
                 }
+                // Vista Lista Canzoni: va chiusa (tornando alle playlist) SOLO se il back
+                // stava davvero rimuovendo lo stato 'results' dallo stack, cioè se non è
+                // stato già "consumato" da una chiusura manuale della sheet (swipe) che
+                // aveva già effettuato il proprio history.back() atterrando su 'results'.
+                // In quel caso l'utente deve restare sulla lista canzoni.
                 const viewsSlider = document.getElementById('viewsSlider');
                 const landedPage = e.state && e.state.page;
                 if (!handled && viewsSlider && viewsSlider.classList.contains('showing-results') && landedPage !== 'results') {
@@ -997,6 +1025,7 @@
                 }
             });
 
+            // Trigger forza aggiornamento al click sul pulsante
             document.getElementById('appUpdateBtn')?.addEventListener('click', async (e) => {
                 const btn = e.currentTarget;
                 if (btn.disabled) return;
@@ -1005,6 +1034,9 @@
                 const icon = btn.querySelector('i');
                 if (icon) icon.classList.add('fa-spin');
 
+                // Pulisce SOLO la Cache Storage usata dal service worker (asset statici),
+                // così l'app "si accorge" della nuova versione. NON tocca localStorage,
+                // quindi API key, tema e preferenze salvate restano intatte.
                 try {
                     if (window.caches) {
                         const cacheKeys = await caches.keys();
@@ -1015,12 +1047,16 @@
                 }
 
                 if (newWorker) {
+                    // Attiva subito il nuovo service worker: il listener 'controllerchange'
+                    // ricaricherà automaticamente la pagina.
                     newWorker.postMessage('skipWaiting');
                 } else {
+                    // Fallback: nessun worker in attesa rilevato, forza comunque il reload.
                     window.location.reload();
                 }
             });
 
+            // GESTIONE INTEGRATA BARRA DI RICERCA
             searchTriggerBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!searchContainer.classList.contains('active')) {
@@ -1028,15 +1064,11 @@
                     headerTitle.classList.add('opacity-0');
                     searchIcon.className = "fa-solid fa-arrow-right text-xs";
                     searchInput.focus();
-                    window.history.pushState({ page: 'search' }, 'Search');
                 } else {
                     if (searchInput.value.trim() !== "") {
                         performSearch(false);
                     } else {
                         closeSearch();
-                        if (window.history.state && window.history.state.page === 'search') {
-                            window.history.back();
-                        }
                     }
                 }
             });
@@ -1050,12 +1082,7 @@
 
             document.addEventListener('click', (e) => {
                 if (!searchContainer.contains(e.target) && !filterMenu.contains(e.target)) {
-                    if (searchContainer.classList.contains('active')) {
-                        closeSearch();
-                        if (window.history.state && window.history.state.page === 'search') {
-                            window.history.back();
-                        }
-                    }
+                    closeSearch();
                 }
             });
 
@@ -1064,9 +1091,9 @@
                 headerTitle.classList.remove('opacity-0');
                 searchIcon.className = "fa-solid fa-magnifying-glass text-xs";
                 filterMenu.classList.add('hidden');
-                searchInput.value = '';
             }
 
+            // Click sul pulsante Filtri YouTube (interno alla barra)
             filterToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 filterMenu.classList.toggle('hidden');
@@ -1076,6 +1103,9 @@
                 if (e.target.closest('#miniPlayerControls') || e.target.closest('#miniProgressBarArea')) {
                     return;
                 }
+                // Il mouse (a differenza del touch) genera comunque un evento 'click' dopo un
+                // mousedown+mousemove+mouseup sullo stesso elemento, anche se in mezzo è avvenuto
+                // uno swipe: se era un trascinamento, ignoriamo il click e non apriamo la sheet.
                 if (miniPlayerWasDragged) {
                     miniPlayerWasDragged = false;
                     return;
@@ -1114,18 +1144,19 @@
                 window.history.pushState({ page: 'modal' }, 'Modal');
             });
             document.getElementById('backToHomeBtn').addEventListener('click', () => {
-                if (searchContainer.classList.contains('active')) {
-                    closeSearch();
-                }
                 showHomeView();
                 window.history.back();
             });
 
+            // --- SWIPE (destra -> sinistra) SULLA VISTA PLAYLIST PER RIAPRIRE LA LISTA CANZONI ATTIVA ---
+            // Se una playlist/ricerca è già caricata (appState.tracks non vuoto) e siamo
+            // sulla vista Home, uno swipe orizzontale abbastanza deciso riporta alla vista
+            // Risultati senza dover ricliccare la playlist.
             (function setupHomeViewSwipeBack() {
                 const homeView = document.getElementById('homeView');
                 if (!homeView) return;
-                const SWIPE_THRESHOLD = 60;
-                const DIRECTION_RATIO = 1.5;
+                const SWIPE_THRESHOLD = 60;   // px minimi di spostamento orizzontale
+                const DIRECTION_RATIO = 1.5;  // deve essere chiaramente più orizzontale che verticale
                 let startX = 0, startY = 0, tracking = false;
 
                 homeView.addEventListener('touchstart', (e) => {
@@ -1144,17 +1175,23 @@
                     if (Math.abs(deltaX) <= Math.abs(deltaY) * DIRECTION_RATIO) return;
 
                     if (deltaX < -SWIPE_THRESHOLD && appState.tracks.length > 0) {
+                        // Swipe sinistra: riapre la lista canzoni della playlist attiva
                         showResultsView();
                     } else if (deltaX > SWIPE_THRESHOLD) {
+                        // Swipe destra: apre il menu impostazioni con animazione da sinistra
                         const apiModal = document.getElementById('apiModal');
                         if (apiModal && !apiModal.classList.contains('active')) {
-                            openApiModal();
+                            openApiModal(true);
                             window.history.pushState({ page: 'modal' }, 'Modal');
                         }
                     }
                 }, { passive: true });
             })();
 
+            // --- SWIPE (sinistra -> destra) SULLA VISTA RISULTATI PER TORNARE ALLE PLAYLIST ---
+            // Stesso comportamento del pulsante "indietro": mostra la vista Home e
+            // consuma lo stato di history, senza toccare appState.tracks (la lista
+            // canzoni resta caricata, pronta per essere riaperta con lo swipe opposto).
             (function setupResultsViewSwipeBack() {
                 const resultsView = document.getElementById('resultsView');
                 if (!resultsView) return;
@@ -1181,7 +1218,6 @@
                     }
                 }, { passive: true });
             })();
-
             document.getElementById('modalCancelBtn').addEventListener('click', () => {
                 closeApiModal();
                 window.history.back();
@@ -1189,6 +1225,7 @@
             document.getElementById('modalSaveBtn').addEventListener('click', saveSettingsFromModal);
             document.getElementById('addQuickSearchBtn').addEventListener('click', addQuickSearchFromModal);
 
+            // Click fuori dal popup (sul backdrop) chiude il menu impostazioni
             document.getElementById('apiModal').addEventListener('click', (e) => {
                 if (e.target.id === 'apiModal') {
                     closeApiModal();
@@ -1212,13 +1249,19 @@
         });
 
         function openNowPlayingSheet() {
+            // Riparte sempre dalla posizione reale attuale (utile se arriva subito dopo un
+            // trascinamento interrotto a metà), animando da lì fino a completamente aperta.
             const startPercent = getSheetCurrentPercentY();
             nowPlayingSheet.style.transition = 'none';
             nowPlayingSheet.style.transform = `translate3d(0, ${startPercent}%, 0)`;
+            // Forza il browser a registrare la posizione di partenza prima di animare.
             void nowPlayingSheet.offsetHeight;
             nowPlayingSheet.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
             nowPlayingSheet.classList.add('expanded');
             nowPlayingSheet.style.transform = '';
+            // La History API è gestita in modo indipendente dall'animazione: se lo stato "sheet"
+            // è già in cima allo stack non lo duplichiamo, per evitare che tap ravvicinati
+            // desincronizzino pushState/back e blocchino il gesto successivo.
             if (!window.history.state || window.history.state.page !== 'sheet') {
                 window.history.pushState({ page: 'sheet' }, 'Sheet');
             }
@@ -1321,51 +1364,67 @@
             });
         }
 
-        /* --- GESTIONE SWIPE ORIZZONTALE DEL MENU IMPOSTAZIONI --- */
         function setupSettingsSheetSwipe() {
             const modal = document.getElementById('apiModal');
             const sheet = modal ? modal.querySelector('.settings-sheet') : null;
             if (!modal || !sheet) return;
 
-            let startX = 0, currentX = 0, isDragging = false;
+            let startY = 0, currentY = 0, isDragging = false, isClosingDrag = false;
 
-            const onStart = (x, target) => {
+            const onStart = (y, target) => {
+                // Non c'è più la maniglietta: si può trascinare da qualunque punto della sheet,
+                // ma iniziamo davvero a "chiudere per trascinamento" solo se si parte da in cima
+                // al contenuto (altrimenti si romperebbe lo scroll interno del popup).
                 if (target && target.closest('input, textarea, select, button')) return;
                 isDragging = true;
-                startX = x;
-                sheet.style.transition = 'none';
+                isClosingDrag = sheet.scrollTop <= 0;
+                startY = y;
+                if (isClosingDrag) sheet.style.transition = 'none';
             };
-            const onMove = (x, e) => {
+            const onMove = (y, e) => {
                 if (!isDragging) return;
-                currentX = x - startX;
-                if (currentX < 0) {
+                currentY = y - startY;
+                if (!isClosingDrag) {
+                    // Se si scorre verso il basso ma si era partiti a metà contenuto,
+                    // attiviamo la chiusura solo nel momento in cui si raggiunge la cima.
+                    if (currentY > 0 && sheet.scrollTop <= 0) {
+                        isClosingDrag = true;
+                        sheet.style.transition = 'none';
+                    } else {
+                        return;
+                    }
+                }
+                if (currentY > 0) {
                     if (e && e.cancelable) e.preventDefault();
                     window.requestAnimationFrame(() => {
-                        if (isDragging) sheet.style.transform = `translateX(${currentX}px)`;
+                        if (isDragging) sheet.style.transform = `translateY(${currentY}px)`;
                     });
                 }
             };
             const onEnd = () => {
                 if (!isDragging) return;
                 isDragging = false;
-                sheet.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)';
-                sheet.style.transform = '';
-                if (currentX < -80) {
-                    closeApiModal();
-                    window.history.back();
+                if (isClosingDrag) {
+                    sheet.style.transition = '';
+                    sheet.style.transform = '';
+                    if (currentY > 80) {
+                        closeApiModal();
+                        window.history.back();
+                    }
                 }
-                currentX = 0;
+                isClosingDrag = false;
+                currentY = 0;
             };
 
-            sheet.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX, e.target), { passive: true });
-            sheet.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX, e), { passive: false });
+            sheet.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY, e.target), { passive: true });
+            sheet.addEventListener('touchmove', (e) => onMove(e.touches[0].clientY, e), { passive: false });
             sheet.addEventListener('touchend', onEnd, { passive: true });
 
             sheet.addEventListener('mousedown', (e) => {
                 if (e.target.closest('input, textarea, select, button')) return;
-                onStart(e.clientX, e.target);
+                onStart(e.clientY, e.target);
             });
-            window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientX); });
+            window.addEventListener('mousemove', (e) => { if (isDragging) onMove(e.clientY); });
             window.addEventListener('mouseup', onEnd);
         }
 
@@ -1375,6 +1434,8 @@
             const onStart = (y) => {
                 isDragging = true;
                 startY = y;
+                // Parte sempre da dove la sheet si trova realmente in quel momento, anche se
+                // arriva a metà di un'animazione precedente non ancora terminata.
                 basePercent = getSheetCurrentPercentY();
                 nowPlayingSheet.style.transition = 'none';
             };
@@ -1421,10 +1482,17 @@
             let miniStartX = 0, miniStartY = 0;
             let miniCurrentX = 0, miniCurrentY = 0;
             let isDraggingMini = false;
+            // Distanza di trascinamento (in px) necessaria per rivelare lo sheet a schermo intero:
+            // in questo modo l'apertura segue il dito in modo continuo, come una vera bottom-sheet,
+            // invece di scattare di colpo al rilascio.
             const OPEN_DRAG_DISTANCE = Math.min(window.innerHeight * 0.5, 420);
-            const OPEN_DRAG_THRESHOLD = 0.22;
+            const OPEN_DRAG_THRESHOLD = 0.22; // % di progresso oltre cui, al rilascio, lo sheet si apre del tutto
 
             let miniDragBasePercent = 0;
+            // Vero se durante QUESTO trascinamento la sheet è stata effettivamente spostata almeno
+            // una volta: usato al rilascio per decidere se "atterrarla", indipendentemente da come
+            // sono gli ultimi micro-movimenti del dito (che a volte, per un attimo, sono più
+            // orizzontali che verticali pur essendo parte dello stesso gesto verso l'alto).
             let sheetWasMoved = false;
             const startMiniDrag = (x, y, target) => {
                 if (target.closest('#miniPlayerControls') || target.closest('#miniProgressBarArea')) return;
@@ -1433,13 +1501,17 @@
                 miniStartY = y;
                 miniPlayerWasDragged = false;
                 sheetWasMoved = false;
+                // Riparte sempre dalla posizione reale della sheet, non da "chiusa" per forza:
+                // così il gesto resta sotto controllo anche subito dopo un'altra animazione.
                 miniDragBasePercent = getSheetCurrentPercentY();
                 miniTextContainer.classList.add('dragging-active');
             };
-
-            const MINI_TEXT_MAX_OFFSET = 40;
-            const MINI_TEXT_FADE_DISTANCE = 55;
-            const MINI_DRAG_CLICK_THRESHOLD = 6;
+            // Il testo scorre solo per un breve tratto (mai fino a sovrapporre thumbnail o pulsante play)
+            // e la dissolvenza si completa esattamente quando raggiunge quel limite: niente più
+            // testo che sparisce troppo presto a sinistra o resta visibile fin troppo vicino al pulsante a destra.
+            const MINI_TEXT_MAX_OFFSET = 40; // px massimi di scorrimento del testo
+            const MINI_TEXT_FADE_DISTANCE = 55; // px di trascinamento dito dopo i quali il testo è invisibile
+            const MINI_DRAG_CLICK_THRESHOLD = 6; // px oltre i quali è un vero trascinamento, non un tap
 
             const moveMiniDrag = (x, y) => {
                 if (!isDraggingMini) return;
@@ -1456,6 +1528,10 @@
                     miniTextContainer.style.transform = `translate3d(${clampedX}px, 0, 0)`;
                     miniTextContainer.style.opacity = Math.max(0, 1 - fadeProgress);
                 } else if (miniCurrentY < 0) {
+                    // Trascinamento verso l'alto: lo sheet segue il dito in tempo reale,
+                    // esattamente come già succede in chiusura, invece di apparire di scatto.
+                    // Parte sempre dalla posizione reale attuale (miniDragBasePercent), non da 0
+                    // per forza, così resta continuo anche se si ritocca subito dopo un rilascio.
                     sheetWasMoved = true;
                     const dragPercent = (Math.abs(miniCurrentY) / OPEN_DRAG_DISTANCE) * 100;
                     const nextPercent = Math.max(-100, miniDragBasePercent - dragPercent);
@@ -1464,6 +1540,10 @@
                 }
             };
             const settleSheetDrag = (shouldOpen) => {
+                // Eseguito in modo sincrono (niente requestAnimationFrame): se lo facessimo in modo
+                // asincrono, un nuovo tocco arrivato subito dopo potrebbe "vincere" la corsa e poi
+                // essere comunque sovrascritto da questo frame in ritardo, facendo scattare la sheet
+                // di colpo e dando l'impressione di dover aspettare la fine dell'animazione.
                 nowPlayingSheet.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
                 if (shouldOpen) {
                     nowPlayingSheet.classList.add('expanded');
@@ -1481,6 +1561,10 @@
                 miniTextContainer.classList.remove('dragging-active');
 
                 if (sheetWasMoved) {
+                    // Decide in base alla posizione REALE raggiunta (non al rapporto tra l'ultimo
+                    // micro-movimento orizzontale/verticale del dito, che può ingannare vicino al
+                    // rilascio): così la sheet viene sempre "atterrata" da dove si trova davvero,
+                    // aperta o richiusa, e non resta mai abbandonata a metà.
                     const finalPercent = getSheetCurrentPercentY();
                     settleSheetDrag(finalPercent <= -100 * OPEN_DRAG_THRESHOLD);
                 }
@@ -1627,6 +1711,7 @@
             root.style.setProperty('--text-muted', theme.textMuted);
             root.style.setProperty('--is-light', theme.isLight);
 
+            // Aggiorna tutti i meta tag theme-color disponibili per costringere Firefox a ricolorare la barra
             document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
                 meta.setAttribute('content', theme.bgMain);
             });
@@ -1649,15 +1734,14 @@
             localStorage.setItem('youtubette_amoled', isAmoled);
         }
 
-        function openApiModal() {
+        function openApiModal(fromSwipe = false) {
             const modal = document.getElementById('apiModal');
             const input = document.getElementById('modalApiKeyInput');
             if (modal && input) {
                 input.value = appState.apiKey;
-                const dateSelect = document.getElementById('playlistDateSelect');
-                const durationSelect = document.getElementById('playlistDurationSelect');
-                if (dateSelect) dateSelect.value = appState.playlistFilterDate || 'today';
-                if (durationSelect) durationSelect.value = appState.playlistFilterDuration || 'short';
+                // 'swipe-open' fa entrare la sheet da sinistra (coerente con lo swipe destra
+                // sulla home); altrimenti resta l'animazione standard dal basso/dal centro.
+                modal.classList.toggle('swipe-open', !!fromSwipe);
                 modal.classList.add('active');
             }
         }
@@ -1672,18 +1756,6 @@
             appState.apiKey = key;
             localStorage.setItem('youtubette_api_key', key);
             localStorage.setItem('youtubette_theme', appState.currentTheme);
-            
-            const dateSelect = document.getElementById('playlistDateSelect');
-            const durationSelect = document.getElementById('playlistDurationSelect');
-            if (dateSelect) {
-                appState.playlistFilterDate = dateSelect.value;
-                localStorage.setItem('youtubette_playlist_filter_date', dateSelect.value);
-            }
-            if (durationSelect) {
-                appState.playlistFilterDuration = durationSelect.value;
-                localStorage.setItem('youtubette_playlist_filter_duration', durationSelect.value);
-            }
-
             applyTheme(appState.currentTheme);
             applyAmoledState(appState.isAmoled);
 
@@ -1700,6 +1772,10 @@
             }, 800);
         }
 
+        // --- RICERCHE RAPIDE (scorciatoie a cerchio in home) ---
+        // L'artwork viene recuperato dall'API pubblica di iTunes/Apple Music
+        // (gratuita, senza chiave, CORS-friendly) invece che dall'API di YouTube,
+        // così il salvataggio di una scorciatoia non consuma quota di ricerca YouTube.
         async function fetchArtworkForQuickSearch(term) {
             try {
                 const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=1&entity=musicTrack`);
@@ -1713,6 +1789,9 @@
             return null;
         }
 
+        // Recupera una rosa di copertine per lo stesso termine di ricerca e ne
+        // sceglie una a caso, escludendo (quando possibile) quella già in uso,
+        // così il pulsante "Cambia immagine" restituisce davvero qualcosa di diverso.
         async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
             try {
                 const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=15&entity=musicTrack`);
@@ -1863,10 +1942,7 @@
             container.querySelectorAll('.quickSearchCircle').forEach(circle => {
                 circle.addEventListener('click', () => {
                     searchInput.value = circle.dataset.query;
-                    performSearch(false, {
-                        date: appState.playlistFilterDate || 'today',
-                        duration: appState.playlistFilterDuration || 'short'
-                    });
+                    performSearch(false);
                 });
             });
         }
@@ -1935,6 +2011,7 @@
             }
         }
 
+        // Animazione Swipe per il cambio brano sulla scheda principale
         function animateOutAndChange(direction) {
             if (appState.tracks.length === 0) {
                 swipeTitle.style.transform = 'translate3d(0, 0, 0)';
@@ -1971,7 +2048,7 @@
         }
 
         function getPublishedAfterDate(filterValue) {
-            if (!filterValue || filterValue === 'any') return null;
+            if (filterValue === 'any') return null;
             const now = new Date();
             switch (filterValue) {
                 case 'hour':
@@ -1993,7 +2070,7 @@
             return now.toISOString();
         }
 
-        async function performSearch(isLoadMore = false, customFilters = null) {
+        async function performSearch(isLoadMore = false) {
             const query = searchInput.value.trim();
             const resultsStatusText = document.getElementById('resultsStatusText');
             
@@ -2008,7 +2085,6 @@
             }
 
             if (!isLoadMore) {
-                activeSearchFilters = customFilters;
                 showResultsView();
                 appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
                 toggleDownloadButtons(false);
@@ -2017,16 +2093,13 @@
                 if (resultsStatusText) resultsStatusText.classList.add('hidden');
             } else isFetchingMore = true;
 
-            const effectiveDuration = activeSearchFilters ? activeSearchFilters.duration : appState.filterDuration;
-            const effectiveDate = activeSearchFilters ? activeSearchFilters.date : appState.filterDate;
-
             try {
                 let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
                 
-                if (effectiveDuration && effectiveDuration !== 'any') {
-                    url += `&videoDuration=${effectiveDuration}`;
+                if (appState.filterDuration !== 'any') {
+                    url += `&videoDuration=${appState.filterDuration}`;
                 }
-                const publishedAfter = getPublishedAfterDate(effectiveDate);
+                const publishedAfter = getPublishedAfterDate(appState.filterDate);
                 if (publishedAfter) {
                     url += `&publishedAfter=${encodeURIComponent(publishedAfter)}`;
                 }
@@ -2069,6 +2142,7 @@
             } finally { if (isLoadMore) isFetchingMore = false; }
         }
 
+        // --- NAVIGAZIONE ANIMATA TRA VISTA PLAYLIST E VISTA LISTA CANZONI ---
         function showResultsView() {
             const slider = document.getElementById('viewsSlider');
             if (!slider || slider.classList.contains('showing-results')) return;
@@ -2098,6 +2172,11 @@
             const resultsStatusText = document.getElementById('resultsStatusText');
             if (!trackListDiv) return;
 
+            // Rebuild completo solo per una nuova ricerca (fromIndex 0).
+            // Quando si aggiungono altri risultati (caricamento pagina successiva)
+            // vengono aggiunte SOLO le righe nuove, senza toccare quelle già
+            // renderizzate: prima invece si azzerava e ricreava tutta la lista,
+            // causando il "flash" di tutti i tile (immagini comprese).
             if (fromIndex === 0) {
                 trackListDiv.innerHTML = '';
             }
@@ -2117,150 +2196,194 @@
                 const trackRow = document.createElement('div');
                 trackRow.id = `track-row-${index}`;
                 trackRow.className = `track-row-enter flex items-center p-2.5 rounded-2xl cursor-pointer transition-all border hover:bg-white/5 active:bg-white/10 ${appState.currentIndex === index ? 'bg-white/10 border-white/10' : 'border-transparent'}`;
+                // Scaglionato dall'alto verso il basso: ogni riga appare poco dopo la precedente,
+                // così il caricamento (immagini, dati) resta mascherato dall'animazione stessa.
                 trackRow.style.animationDelay = `${Math.min(index - fromIndex, 20) * 45}ms`;
 
                 trackRow.innerHTML = `
-                    <div class="w-12 h-12 rounded-xl overflow-hidden bg-neutral-800 shrink-0 mr-3.5 relative flex items-center justify-center shadow-sm">
-                        <img src="${track.thumbnail}" class="track-thumb-img w-full h-full object-cover" alt="" onload="this.classList.add('loaded')">
-                        ${appState.currentIndex === index ? `<div class="absolute inset-0 bg-black/40 flex items-center justify-center"><i class="fa-solid fa-volume-high text-xs text-[var(--accent)]"></i></div>` : ''}
+                    <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
+                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover track-thumb-img" alt="" onload="this.classList.add('loaded')">
                     </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-bold truncate ${appState.currentIndex === index ? 'text-[var(--accent)]' : 'text-white'}">${escapeHtml(track.title)}</p>
-                        <p class="text-[10px] truncate custom-text-muted mt-0.5">${escapeHtml(track.channel)}</p>
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-sm font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${escapeHtml(track.title)}</p>
+                        <p class="text-xs truncate mt-1 custom-text-muted font-medium">${escapeHtml(track.channel)}</p>
                     </div>
                 `;
-
-                trackRow.addEventListener('click', () => playTrack(index));
+                trackRow.addEventListener('click', () => {
+                    loadTrack(index);
+                });
                 trackListDiv.appendChild(trackRow);
+
+                setTimeout(() => {
+                    const img = document.getElementById(`track-img-${index}`);
+                    displayArtwork(img, track.id);
+                }, 0);
             }
         }
 
-        function playTrack(index) {
+        function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
+            
+            // CARICAMENTO SUCESSIVO PREVENTIVO ED ESCLUSIVO:
+            // Scatta solo all'inizio dell'ultimo brano della lista (brani 25, 50, etc. - index === appState.tracks.length - 1)
+            if (index === appState.tracks.length - 1 && nextSearchPageToken && !isFetchingMore) {
+                performSearch(true);
+            }
+
+            if (appState.currentIndex !== -1) {
+                const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
+                if (oldRow) {
+                    oldRow.classList.remove('bg-white/10', 'border-white/10');
+                    oldRow.classList.add('border-transparent');
+                    const oldText = oldRow.querySelector('p.text-xs');
+                    if (oldText) { oldText.classList.remove('custom-text-accent', 'font-black'); oldText.classList.add('text-white'); }
+                }
+            }
+
             appState.currentIndex = index;
             const track = appState.tracks[index];
 
-            if (player && player.loadVideoById) {
-                player.loadVideoById(track.id);
+            const titleEl = document.getElementById('playerTrackTitle');
+            const channelEl = document.getElementById('playerTrackChannel');
+            if (titleEl) titleEl.innerText = track.title;
+            if (channelEl) channelEl.innerText = track.channel;
+            
+            if (globalAmbientBg) setAmbientBackground(globalAmbientBg, track.thumbnail);
+            if (sheetAmbientBg) setAmbientBackground(sheetAmbientBg, track.thumbnail);
+            
+            displayArtwork(document.getElementById('sheetArtworkImg'), track.id);
+            displayArtwork(document.getElementById('miniPlayerImg'), track.id);
+
+            if (miniPlayer) {
+                miniPlayer.classList.add('visible');
             }
-
-            renderTracklist();
-            updatePlayerUI(track);
-            miniPlayer.classList.add('visible');
-            toggleDownloadButtons(true);
-        }
-
-        function updatePlayerUI(track) {
-            document.getElementById('playerTrackTitle').innerText = track.title;
-            document.getElementById('playerTrackChannel').innerText = track.channel;
             document.getElementById('miniPlayerTitle').innerText = track.title;
             document.getElementById('miniPlayerChannel').innerText = track.channel;
 
-            const sheetArtwork = document.getElementById('sheetArtworkImg');
-            const miniArtwork = document.getElementById('miniPlayerImg');
+            const newRow = document.getElementById(`track-row-${index}`);
+            if (newRow) {
+                newRow.classList.remove('border-transparent');
+                newRow.classList.add('bg-white/10', 'border-white/10');
+                const newText = newRow.querySelector('p.text-xs');
+                if (newText) { newText.classList.remove('text-white'); newText.classList.add('custom-text-accent', 'font-black'); }
+                newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
 
-            displayArtwork(sheetArtwork, track.id);
-            displayArtwork(miniArtwork, track.id);
-
-            const bgUrl = `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`;
-            setAmbientBackground(globalAmbientBg, bgUrl);
-            setAmbientBackground(sheetAmbientBg, bgUrl);
-
-            setupMediaSession(track);
+            if (player?.loadVideoById) player.loadVideoById(track.id);
             checkAndApplyMarquee();
+            updateMediaSessionMetadata(track);
+            toggleDownloadButtons(true);
         }
 
-        function setPlayIconState(isPlaying) {
-            const playIcon = document.getElementById('playIcon');
-            const miniPlayIcon = document.getElementById('miniPlayIcon');
-
-            if (isPlaying) {
-                if (playIcon) playIcon.className = "fa-solid fa-pause icon-pop";
-                if (miniPlayIcon) miniPlayIcon.className = "fa-solid fa-pause icon-pop";
-            } else {
-                if (playIcon) playIcon.className = "fa-solid fa-play ml-1 icon-pop";
-                if (miniPlayIcon) miniPlayIcon.className = "fa-solid fa-play ml-0.5 icon-pop";
-            }
-        }
-
-        function togglePlay() {
-            if (!player || appState.currentIndex === -1) return;
-            const state = player.getPlayerState();
-            if (state === YT.PlayerState.PLAYING) {
-                player.pauseVideo();
-            } else {
-                player.playVideo();
-            }
-        }
-
-        function prevTrack() {
-            if (appState.tracks.length === 0) return;
-            let newIndex = appState.currentIndex - 1;
-            if (newIndex < 0) newIndex = appState.tracks.length - 1;
-            playTrack(newIndex);
-        }
-
-        function nextTrack() {
-            if (appState.tracks.length === 0) return;
-            let newIndex = appState.currentIndex + 1;
-            if (newIndex >= appState.tracks.length) newIndex = 0;
-            playTrack(newIndex);
-        }
-
-        function startProgressLoop() {
-            setInterval(() => {
-                if (!player || !player.getCurrentTime || isScrubbing) return;
-                const current = player.getCurrentTime() || 0;
-                const duration = player.getDuration() || 0;
-
-                if (duration > 0) {
-                    const pct = (current / duration) * 100;
-                    progressBar.style.width = `${pct}%`;
-                    miniProgressBar.style.width = `${pct}%`;
-                    document.getElementById('currentTime').innerText = formatTime(current);
-                    document.getElementById('miniCurrentTime').innerText = formatTime(current);
-                }
-            }, 300);
-        }
-
-        function updateDuration() {
-            if (!player || !player.getDuration) return;
-            const duration = player.getDuration() || 0;
-            document.getElementById('durationTime').innerText = formatTime(duration);
-            document.getElementById('miniDurationTime').innerText = formatTime(duration);
-        }
-
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        }
-
-        function setupMediaSession(track) {
+        function updateMediaSessionMetadata(track) {
             if ('mediaSession' in navigator) {
+                // Più risoluzioni = artwork più nitido nei controlli di sistema (notifica, lock screen,
+                // pannello rapido Android): è lì che Android disegna quello che sembra un "widget", perché
+                // un vero home-screen widget non è realizzabile da una webapp/PWA, richiede codice nativo.
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title,
-                    artist: track.channel,
+                    title: track.title, artist: track.channel, album: 'YouTubette',
                     artwork: [
-                        { src: `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }
+                        { src: `https://img.youtube.com/vi/${track.id}/mqdefault.jpg`, sizes: '320x180', type: 'image/jpeg' },
+                        { src: `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' },
+                        { src: `https://img.youtube.com/vi/${track.id}/sddefault.jpg`, sizes: '640x480', type: 'image/jpeg' }
                     ]
                 });
             }
         }
 
+        function updateMediaSessionState(isPlaying) {
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+        }
+
         function setupMediaSessionHandlers() {
             if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('play', () => player?.playVideo());
-                navigator.mediaSession.setActionHandler('pause', () => player?.pauseVideo());
-                navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
-                navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+                navigator.mediaSession.setActionHandler('play', togglePlay);
+                navigator.mediaSession.setActionHandler('pause', togglePlay);
+                navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+                navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
             }
         }
 
-        function updateMediaSessionState(isPlaying) {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+        let lastKnownPlayingState = null; // evita di ri-animare l'icona quando YouTube ri-emette
+                                           // "PLAYING" dopo un semplice buffering da scrubbing/seek
+
+        function setPlayIconState(isPlaying) {
+            if (lastKnownPlayingState === isPlaying) return; // stato invariato: nessuna animazione
+            lastKnownPlayingState = isPlaying;
+
+            const targets = [
+                { el: document.getElementById('playIcon'), playCls: 'fa-solid fa-play ml-1', pauseCls: 'fa-solid fa-pause' },
+                { el: document.getElementById('miniPlayIcon'), playCls: 'fa-solid fa-play ml-0.5', pauseCls: 'fa-solid fa-pause' }
+            ];
+            targets.forEach(({ el, playCls, pauseCls }) => {
+                if (!el) return;
+                el.classList.remove('icon-pop');
+                void el.offsetWidth; // forza il reflow: fa ripartire l'animazione ad ogni cambio stato reale
+                el.className = `${isPlaying ? pauseCls : playCls} icon-pop`;
+            });
+        }
+
+        function togglePlay() {
+            if (!player || appState.currentIndex === -1) return;
+            if (appState.isPlaying) player.pauseVideo(); else player.playVideo();
+        }
+
+        function nextTrack() {
+            if (appState.tracks.length === 0) return;
+            let nextIdx = appState.currentIndex + 1;
+            if (nextIdx >= appState.tracks.length) {
+                if (nextSearchPageToken) {
+                    performSearch(true).then(() => { if (appState.tracks[nextIdx]) loadTrack(nextIdx); });
+                } else loadTrack(0);
+            } else {
+                loadTrack(nextIdx);
             }
+        }
+
+        function prevTrack() {
+            if (appState.tracks.length === 0) return;
+            let prevIdx = appState.currentIndex - 1;
+            if (prevIdx < 0) prevIdx = appState.tracks.length - 1;
+            loadTrack(prevIdx);
+        }
+
+        function startProgressLoop() {
+            setInterval(() => {
+                if (player?.getCurrentTime && appState.isPlaying) {
+                    const currentTime = player.getCurrentTime(), duration = player.getDuration();
+                    
+                    if (duration > 0 && !isScrubbing) {
+                        const progressPercent = (currentTime / duration) * 100;
+                        progressBar.style.width = `${progressPercent}%`;
+                        miniProgressBar.style.width = `${progressPercent}%`;
+                        document.getElementById('currentTime').innerText = formatTime(currentTime);
+                        document.getElementById('miniCurrentTime').innerText = formatTime(currentTime);
+                    }
+
+                    if (duration > 0) {
+                        const formattedDuration = formatTime(duration);
+                        if (document.getElementById('durationTime').innerText !== formattedDuration) {
+                            document.getElementById('durationTime').innerText = formattedDuration;
+                            document.getElementById('miniDurationTime').innerText = formattedDuration;
+                        }
+                    }
+                }
+            }, 500);
+        }
+
+        function updateDuration() {
+            if (player?.getDuration) {
+                const totalDuration = player.getDuration();
+                if (totalDuration > 0) {
+                    document.getElementById('durationTime').innerText = formatTime(totalDuration);
+                    document.getElementById('miniDurationTime').innerText = formatTime(totalDuration);
+                }
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
         function showVisualApiError() {
