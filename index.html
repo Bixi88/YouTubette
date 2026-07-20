@@ -85,6 +85,11 @@
         #homeView, #resultsView {
             width: 50%;
         }
+        /* --- FADE SFUMATO DELLA LISTA CANZONI (alto: sotto la barra menu/ricerca; basso: sopra il miniplayer) --- */
+        #resultsView {
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 150px), transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 150px), transparent 100%);
+        }
         /* --- FADE-IN A CASCATA DEI BRANI (dall'alto verso il basso) --- */
         @keyframes trackRowIn {
             from { opacity: 0; transform: translateY(-14px); }
@@ -543,7 +548,7 @@
                 <div id="resultsView" class="shrink-0 h-full overflow-y-auto pr-0">
                     <span id="trackCount" class="hidden">0 brani</span>
                     <p id="resultsStatusText" class="hidden text-xs p-8 italic text-center mt-12 custom-text-muted"></p>
-                    <div id="trackList" class="space-y-1 pb-36"></div>
+                    <div id="trackList" class="space-y-1 pb-36 px-6"></div>
                 </div>
             </div>
         </section>
@@ -696,15 +701,6 @@
                 <div id="quickSearchManageList" class="space-y-1.5 mt-3 max-h-40 overflow-y-auto pr-0.5"></div>
             </div>
 
-            <div class="mb-4 border-t border-white/5 pt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
-                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
-                </div>
-                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
-                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
-            </div>
-
             <!-- INTERRUTTORE MODALITÀ AMOLED -->
             <div class="mb-4 flex items-center justify-between border-t border-white/5 pt-4">
                 <div>
@@ -715,6 +711,15 @@
                     <input type="checkbox" id="amoledToggle" class="sr-only peer">
                     <div class="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
                 </label>
+            </div>
+
+            <div class="mb-4 border-t border-white/5 pt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider custom-text-muted">YouTube API Key</label>
+                    <span id="modalApiBadgeError" class="hidden text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full animate-pulse">Chiave Non Valida</span>
+                </div>
+                <input type="text" id="modalApiKeyInput" placeholder="Incolla qui la tua chiave API..." 
+                    class="w-full text-xs px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[var(--text-main)] custom-bg-input text-white">
             </div>
 
             <div class="flex items-center justify-end space-x-3 mt-6 border-t border-white/5 pt-4">
@@ -1612,6 +1617,7 @@
             });
             
             appState.currentTheme = themeKey;
+            localStorage.setItem('youtubette_theme', themeKey);
             
             const selectedText = document.getElementById('customSelectedValue');
             if (selectedText) selectedText.textContent = theme.name;
