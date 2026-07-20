@@ -72,6 +72,26 @@
             background: transparent;
         }
 
+        /* --- SLIDER TRA VISTA PLAYLIST E VISTA LISTA CANZONI --- */
+        #viewsSlider {
+            width: 200%;
+            transform: translateX(0%);
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+        #viewsSlider.showing-results {
+            transform: translateX(-50%);
+        }
+        #homeView, #resultsView {
+            width: 50%;
+        }
+        #backToHomeBtn {
+            transition: opacity 0.25s ease, transform 0.25s ease, width 0.25s ease, margin 0.25s ease;
+        }
+        #backToHomeBtn.hidden {
+            display: none;
+        }
+
         .ambient-bg {
             position: absolute;
             inset: 0;
@@ -403,6 +423,11 @@
 
     <header class="h-16 px-2 flex items-center justify-between shrink-0 z-40 relative">
         <div class="flex items-center gap-2 z-50">
+            <!-- Pulsante Indietro (visibile solo nella vista Lista Canzoni) -->
+            <button id="backToHomeBtn" class="hidden text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all" title="Torna alle playlist">
+                <i class="fa-solid fa-arrow-left text-base"></i>
+            </button>
+
             <!-- Pulsante Impostazioni (Menu con tre linette) -->
             <button id="apiConfigBtn" class="text-white w-10 h-10 rounded-full flex items-center justify-center bg-white/5 active:scale-90 transition-all relative" title="Impostazioni">
                 <i class="fa-solid fa-equals text-base"></i>
@@ -487,12 +512,18 @@
 
     <!-- Sezione Principale -->
     <main class="flex-1 flex flex-col overflow-hidden z-10 relative">
-        <section class="flex-1 p-3 flex flex-col rounded-3xl overflow-hidden h-full custom-bg-card border border-white/5">
-            <span id="trackCount" class="hidden">0 brani</span>
-            <div class="relative flex-1 overflow-hidden">
-                <div id="trackList" class="space-y-1 pb-28 h-full overflow-y-auto pr-0">
-                    <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-3 gap-y-5 px-2 pt-4 pb-2"></div>
+        <section class="flex-1 flex flex-col overflow-hidden h-full relative">
+            <div id="viewsSlider" class="flex h-full">
+                <!-- VISTA 1: Playlist (Ricerche Rapide) -->
+                <div id="homeView" class="shrink-0 h-full overflow-y-auto pr-0">
+                    <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-4 gap-y-7 px-2 pt-4 pb-28"></div>
                     <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
+                </div>
+                <!-- VISTA 2: Lista Canzoni (risultati ricerca / playlist aperta) -->
+                <div id="resultsView" class="shrink-0 h-full overflow-y-auto pr-0">
+                    <span id="trackCount" class="hidden">0 brani</span>
+                    <p id="resultsStatusText" class="hidden text-xs p-8 italic text-center mt-12 custom-text-muted"></p>
+                    <div id="trackList" class="space-y-1 pb-28"></div>
                 </div>
             </div>
         </section>
@@ -921,6 +952,11 @@
                     apiModal.classList.remove('active');
                     handled = true;
                 }
+                const viewsSlider = document.getElementById('viewsSlider');
+                if (viewsSlider && viewsSlider.classList.contains('showing-results')) {
+                    showHomeView();
+                    handled = true;
+                }
                 if (handled && (!window.history.state || window.history.state.page !== 'main')) {
                     window.history.pushState({ page: 'main' }, 'Main');
                 }
@@ -1043,6 +1079,10 @@
             document.getElementById('apiConfigBtn').addEventListener('click', () => {
                 openApiModal();
                 window.history.pushState({ page: 'modal' }, 'Modal');
+            });
+            document.getElementById('backToHomeBtn').addEventListener('click', () => {
+                showHomeView();
+                window.history.back();
             });
             document.getElementById('modalCancelBtn').addEventListener('click', () => {
                 closeApiModal();
@@ -1611,6 +1651,55 @@
             return null;
         }
 
+        // Recupera una rosa di copertine per lo stesso termine di ricerca e ne
+        // sceglie una a caso, escludendo (quando possibile) quella già in uso,
+        // così il pulsante "Cambia immagine" restituisce davvero qualcosa di diverso.
+        async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
+            try {
+                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=15&entity=musicTrack`);
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                    let candidates = data.results
+                        .filter(r => r.artworkUrl100)
+                        .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
+                    candidates = [...new Set(candidates)];
+                    if (excludeUrl && candidates.length > 1) {
+                        candidates = candidates.filter(c => c !== excludeUrl);
+                    }
+                    if (candidates.length > 0) {
+                        return candidates[Math.floor(Math.random() * candidates.length)];
+                    }
+                }
+            } catch (err) {
+                console.warn('Impossibile recuperare artwork casuale da iTunes:', err);
+            }
+            return null;
+        }
+
+        async function refreshQuickSearchArtwork(id) {
+            const qs = appState.quickSearches.find(q => q.id === id);
+            if (!qs) return;
+
+            const btn = document.querySelector(`.quickSearchRefreshBtn[data-id="${id}"]`);
+            const icon = btn ? btn.querySelector('i') : null;
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('fa-spin');
+
+            const newArtwork = await fetchRandomArtworkForQuickSearch(qs.name, qs.artwork)
+                || await fetchRandomArtworkForQuickSearch(qs.query, qs.artwork);
+
+            if (newArtwork) {
+                qs.artwork = newArtwork;
+                saveQuickSearches();
+                renderQuickSearchManageList();
+                renderQuickSearchHome();
+            } else {
+                showToast("Nessuna nuova immagine trovata.");
+                if (icon) icon.classList.remove('fa-spin');
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function saveQuickSearches() {
             localStorage.setItem('youtubette_quick_searches', JSON.stringify(appState.quickSearches));
         }
@@ -1663,11 +1752,23 @@
                         </div>
                         <span class="text-xs text-white truncate">${escapeHtml(qs.name)}</span>
                     </div>
-                    <button data-id="${qs.id}" class="quickSearchDeleteBtn text-neutral-400 hover:text-red-500 text-xs p-1.5">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button data-id="${qs.id}" class="quickSearchRefreshBtn text-neutral-400 hover:text-[var(--accent)] text-xs p-1.5" title="Cambia immagine">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                        <button data-id="${qs.id}" class="quickSearchDeleteBtn text-neutral-400 hover:text-red-500 text-xs p-1.5">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             `).join('');
+
+            container.querySelectorAll('.quickSearchRefreshBtn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    refreshQuickSearchArtwork(btn.dataset.id);
+                });
+            });
 
             container.querySelectorAll('.quickSearchDeleteBtn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -1693,10 +1794,10 @@
             container.classList.remove('hidden');
             container.innerHTML = appState.quickSearches.map(qs => `
                 <div class="quickSearchCircle flex flex-col items-center cursor-pointer active:scale-95 transition-transform" data-query="${escapeHtml(qs.query)}">
-                    <div class="w-16 h-16 rounded-full overflow-hidden bg-white/5 border border-white/10 shadow-md flex items-center justify-center mb-1.5">
-                        ${qs.artwork ? `<img src="${qs.artwork}" class="w-full h-full object-cover" alt="">` : '<i class="fa-solid fa-music text-lg custom-text-muted"></i>'}
+                    <div class="w-24 h-24 rounded-full overflow-hidden bg-white/5 border border-white/10 shadow-md flex items-center justify-center mb-2">
+                        ${qs.artwork ? `<img src="${qs.artwork}" class="w-full h-full object-cover" alt="">` : '<i class="fa-solid fa-music text-2xl custom-text-muted"></i>'}
                     </div>
-                    <span class="text-[11px] font-semibold text-white text-center leading-tight line-clamp-2">${escapeHtml(qs.name)}</span>
+                    <span class="text-xs font-semibold text-white text-center leading-tight line-clamp-2">${escapeHtml(qs.name)}</span>
                 </div>
             `).join('');
 
@@ -1833,21 +1934,28 @@
 
         async function performSearch(isLoadMore = false) {
             const query = searchInput.value.trim();
-            const placeholderText = document.getElementById('placeholderText');
+            const resultsStatusText = document.getElementById('resultsStatusText');
             
             if (!query || (isLoadMore && isFetchingMore)) return;
 
             if (!appState.apiKey) { 
                 showVisualApiError();
+                const placeholderText = document.getElementById('placeholderText');
                 if (placeholderText) placeholderText.innerHTML = `<span class="text-red-500 font-bold block mb-1">Chiave API Mancante!</span> Clicca sull'icona delle impostazioni in alto a sinistra per configurarla.`;
                 openApiModal(); 
                 return; 
             }
 
             if (!isLoadMore) {
-                if (placeholderText) placeholderText.innerText = "Ricerca in corso...";
+                showResultsView();
                 appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
                 toggleDownloadButtons(false);
+                document.getElementById('trackList').innerHTML = '';
+                document.getElementById('trackCount').classList.add('hidden');
+                if (resultsStatusText) {
+                    resultsStatusText.classList.remove('hidden');
+                    resultsStatusText.innerText = "Ricerca in corso...";
+                }
             } else isFetchingMore = true;
 
             try {
@@ -1886,8 +1994,9 @@
                 renderTracklist(isLoadMore ? previousCount : 0);
             } catch (error) {
                 showVisualApiError();
-                if (placeholderText && !isLoadMore) {
-                    placeholderText.innerHTML = `
+                if (resultsStatusText && !isLoadMore) {
+                    resultsStatusText.classList.remove('hidden');
+                    resultsStatusText.innerHTML = `
                         <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-center max-w-xs mx-auto">
                             <i class="fa-solid fa-triangle-exclamation text-red-500 text-lg mb-2"></i>
                             <p class="text-xs font-bold text-red-400">Errore API di YouTube</p>
@@ -1898,6 +2007,22 @@
             } finally { if (isLoadMore) isFetchingMore = false; }
         }
 
+        // --- NAVIGAZIONE ANIMATA TRA VISTA PLAYLIST E VISTA LISTA CANZONI ---
+        function showResultsView() {
+            const slider = document.getElementById('viewsSlider');
+            if (!slider || slider.classList.contains('showing-results')) return;
+            slider.classList.add('showing-results');
+            document.getElementById('backToHomeBtn')?.classList.remove('hidden');
+            window.history.pushState({ page: 'results' }, 'Results');
+        }
+
+        function showHomeView() {
+            const slider = document.getElementById('viewsSlider');
+            if (!slider) return;
+            slider.classList.remove('showing-results');
+            document.getElementById('backToHomeBtn')?.classList.add('hidden');
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1905,6 +2030,7 @@
 
         function renderTracklist(fromIndex = 0) {
             const trackListDiv = document.getElementById('trackList');
+            const resultsStatusText = document.getElementById('resultsStatusText');
             if (!trackListDiv) return;
 
             // Rebuild completo solo per una nuova ricerca (fromIndex 0).
@@ -1917,10 +2043,16 @@
             }
 
             if (appState.tracks.length === 0) {
-                trackListDiv.innerHTML = '<p class="text-xs p-2 italic text-center custom-text-muted">Nessun risultato.</p>';
+                if (resultsStatusText) {
+                    resultsStatusText.classList.remove('hidden');
+                    resultsStatusText.innerText = 'Nessun risultato.';
+                }
                 return;
             }
 
+            if (resultsStatusText) resultsStatusText.classList.add('hidden');
+
+            document.getElementById('trackCount').classList.remove('hidden');
             document.getElementById('trackCount').innerText = `${appState.tracks.length} brani`;
 
             for (let index = fromIndex; index < appState.tracks.length; index++) {
