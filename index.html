@@ -1128,6 +1128,36 @@
                 showHomeView();
                 window.history.back();
             });
+
+            // --- SWIPE (destra -> sinistra) SULLA VISTA PLAYLIST PER RIAPRIRE LA LISTA CANZONI ATTIVA ---
+            // Se una playlist/ricerca è già caricata (appState.tracks non vuoto) e siamo
+            // sulla vista Home, uno swipe orizzontale abbastanza deciso riporta alla vista
+            // Risultati senza dover ricliccare la playlist.
+            (function setupHomeViewSwipeBack() {
+                const homeView = document.getElementById('homeView');
+                if (!homeView) return;
+                const SWIPE_THRESHOLD = 60;   // px minimi di spostamento orizzontale
+                const DIRECTION_RATIO = 1.5;  // deve essere chiaramente più orizzontale che verticale
+                let startX = 0, startY = 0, tracking = false;
+
+                homeView.addEventListener('touchstart', (e) => {
+                    const slider = document.getElementById('viewsSlider');
+                    tracking = !!(slider && !slider.classList.contains('showing-results') && appState.tracks.length > 0);
+                    if (!tracking) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                homeView.addEventListener('touchend', (e) => {
+                    if (!tracking) return;
+                    tracking = false;
+                    const deltaX = e.changedTouches[0].clientX - startX;
+                    const deltaY = e.changedTouches[0].clientY - startY;
+                    if (deltaX < -SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * DIRECTION_RATIO) {
+                        showResultsView();
+                    }
+                }, { passive: true });
+            })();
             document.getElementById('modalCancelBtn').addEventListener('click', () => {
                 closeApiModal();
                 window.history.back();
