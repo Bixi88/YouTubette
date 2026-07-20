@@ -972,13 +972,22 @@
                     apiModal.classList.remove('active');
                     handled = true;
                 }
+                // Vista Lista Canzoni: va chiusa (tornando alle playlist) SOLO se il back
+                // stava davvero rimuovendo lo stato 'results' dallo stack, cioè se non è
+                // stato già "consumato" da una chiusura manuale della sheet (swipe) che
+                // aveva già effettuato il proprio history.back() atterrando su 'results'.
+                // In quel caso l'utente deve restare sulla lista canzoni.
                 const viewsSlider = document.getElementById('viewsSlider');
-                if (viewsSlider && viewsSlider.classList.contains('showing-results')) {
+                const landedPage = e.state && e.state.page;
+                if (!handled && viewsSlider && viewsSlider.classList.contains('showing-results') && landedPage !== 'results') {
                     showHomeView();
                     handled = true;
                 }
-                if (handled && (!window.history.state || window.history.state.page !== 'main')) {
-                    window.history.pushState({ page: 'main' }, 'Main');
+                if (handled) {
+                    const nowPage = (viewsSlider && viewsSlider.classList.contains('showing-results')) ? 'results' : 'main';
+                    if (!window.history.state || window.history.state.page !== nowPage) {
+                        window.history.pushState({ page: nowPage }, nowPage === 'results' ? 'Results' : 'Main');
+                    }
                 }
             });
 
