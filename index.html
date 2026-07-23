@@ -361,8 +361,7 @@
             --bg-input: #000000 !important;
         }
         body.amoled-active .ambient-bg,
-        body.amoled-active #sheetAmbientBg,
-        body.amoled-active #globalAmbientBg {
+        body.amoled-active .ambient-hideable {
             display: none !important;
             background-image: none !important;
         }
@@ -456,7 +455,7 @@
 </head>
 <body class="font-sans flex flex-col justify-between hidden p-4 box-border h-full custom-bg-main relative">
 
-    <div id="globalAmbientBg" class="ambient-bg"></div>
+    <div id="globalAmbientBg" class="ambient-bg ambient-hideable"></div>
 
     <header class="h-16 px-2 flex items-center justify-between shrink-0 z-40 relative">
         <div class="flex items-center z-50 relative h-10" id="headerLeftGroup">
@@ -580,8 +579,8 @@
                 </div>
                 
                 <div class="ml-3 min-w-0 flex-1 h-full flex flex-col justify-center overflow-hidden" id="miniTextContainer">
-                    <div class="marquee-wrapper w-full font-bold">
-                        <div class="marquee-content animate-marquee">
+                    <div class="marquee-wrapper w-full font-bold" id="miniMarqueeWrapper">
+                        <div class="marquee-content" id="miniMarqueeContent">
                             <span id="miniPlayerTitle" class="text-sm font-bold text-[var(--text-main)]"></span>
                         </div>
                     </div>
@@ -608,7 +607,7 @@
 
     <!-- Now Playing Sheet -->
     <div id="nowPlayingSheet" class="flex flex-col select-none">
-        <div id="sheetAmbientBg" class="absolute inset-0 z-0 opacity-60 transition-all duration-1000 bg-cover bg-center scale-105 blur-md"></div>
+        <div id="sheetAmbientBg" class="ambient-hideable absolute inset-0 z-0 opacity-60 transition-all duration-1000 bg-cover bg-center scale-105 blur-md"></div>
         <div class="absolute inset-0 z-1 bg-gradient-to-b from-black/25 via-black/50 to-[var(--bg-main)]"></div>
 
         <div id="sheetSwipeCloseArea" class="absolute inset-x-0 top-0 z-10 cursor-grab active:cursor-grabbing" style="touch-action: none; bottom: 310px;"></div>
@@ -976,22 +975,41 @@
             // BUFFERING (3), UNSTARTED (-1), CUED (5): nessuna modifica all'icona.
         }
 
-        // --- GESTIONE COPERTINE: CARICAMENTO A CASCATA ---
+        // --- GESTIONE COPERTINE: CROSSFADE DIRETTO TRA DUE LAYER SOVRAPPOSTI ---
+        // Invece di portare l'unico layer a opacità 0 (che mostra il nero sottostante) e poi
+        // farlo tornare su con la nuova immagine, teniamo due layer identici impilati e li
+        // dissolviamo l'uno nell'altro simultaneamente: non c'è mai un istante "vuoto".
         function setAmbientBackground(el, url) {
             if (!el || !url) return;
             if (el.dataset.currentBg === url) return; // stessa immagine, nessun crossfade necessario
             el.dataset.currentBg = url;
 
-            const targetOpacity = getComputedStyle(el).opacity;
-            el.style.transition = 'opacity 0.35s ease';
-            el.style.opacity = '0';
+            if (!el._marqueeBgState) {
+                const targetOpacity = getComputedStyle(el).opacity;
+                const twin = el.cloneNode(false);
+                twin.removeAttribute('id');
+                twin.style.opacity = '0';
+                twin.style.transition = 'opacity 0.6s ease';
+                el.style.transition = 'opacity 0.6s ease';
+                el.after(twin);
+                el._marqueeBgState = { targetOpacity, layers: [el, twin], activeIndex: 0 };
+            }
 
-            setTimeout(() => {
-                el.style.backgroundImage = `url(${url})`;
-                requestAnimationFrame(() => {
-                    el.style.opacity = targetOpacity;
-                });
-            }, 350);
+            const state = el._marqueeBgState;
+            const nextIndex = state.activeIndex === 0 ? 1 : 0;
+            const incoming = state.layers[nextIndex];
+            const outgoing = state.layers[state.activeIndex];
+
+            incoming.style.backgroundImage = `url(${url})`;
+            incoming.style.backgroundPosition = 'center';
+            incoming.style.backgroundSize = 'cover';
+
+            requestAnimationFrame(() => {
+                incoming.style.opacity = state.targetOpacity;
+                outgoing.style.opacity = '0';
+            });
+
+            state.activeIndex = nextIndex;
         }
 
         function displayArtwork(imgElement, videoId) {
@@ -2158,6 +2176,24 @@
             }, 200);
         }
 
+        function checkAndApplyMiniMarquee(titleText) {
+            const miniContent = document.getElementById('miniMarqueeContent');
+            const miniWrapper = document.getElementById('miniMarqueeWrapper');
+            if (!miniContent || !miniWrapper) return;
+
+            miniContent.classList.remove('animate-marquee');
+            const cleanText = `<span id="miniPlayerTitle" class="text-sm font-bold text-[var(--text-main)]">${escapeHtml(titleText)}</span>`;
+
+            miniContent.innerHTML = cleanText;
+            if (miniContent.scrollWidth > miniWrapper.clientWidth) {
+                // Stessa tecnica del titolo grande: il gap ripetuto dopo ogni copia rende il loop
+                // perfettamente ciclico, senza scatti quando l'animazione ricomincia.
+                const gap = "<span class='inline-block w-16'></span>";
+                miniContent.innerHTML = cleanText + gap + cleanText + gap;
+                miniContent.classList.add('animate-marquee');
+            }
+        }
+
         function checkAndApplyMarquee() {
             const titleEl = document.getElementById('playerTrackTitle');
             const titleText = titleEl ? titleEl.innerText : 'YouTubette';
@@ -2168,7 +2204,11 @@
             
             marqueeContent.innerHTML = cleanText;
             if (wrapper && marqueeContent.scrollWidth > wrapper.clientWidth) {
-                marqueeContent.innerHTML += "<span class='inline-block w-16'></span>" + cleanText;
+                // Per un loop davvero infinito (senza scatto a fine ciclo) il gap va ripetuto
+                // dopo OGNI copia del testo, non solo in mezzo: così il blocco [testo+gap] si ripete
+                // identico e la traslazione di -50% riporta esattamente al punto di partenza.
+                const gap = "<span class='inline-block w-16'></span>";
+                marqueeContent.innerHTML = cleanText + gap + cleanText + gap;
                 marqueeContent.classList.add('animate-marquee');
             }
         }
@@ -2390,8 +2430,8 @@
             if (miniPlayer) {
                 miniPlayer.classList.add('visible');
             }
-            document.getElementById('miniPlayerTitle').innerText = track.title;
             document.getElementById('miniPlayerChannel').innerText = track.channel;
+            checkAndApplyMiniMarquee(track.title);
 
             const newRow = document.getElementById(`track-row-${index}`);
             if (newRow) {
