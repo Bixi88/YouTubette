@@ -59,19 +59,24 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Navigazioni (apertura app / index.html): network-first.
-  // cache: 'no-store' forza il bypass della cache HTTP del browser, non solo
-  // della Cache Storage del SW: senza questo, la fetch "di rete" può comunque
-  // restituire una risposta vecchia presa dal disco del browser invece che dal server.
+  // Navigazioni (apertura app / index.html): stale-while-revalidate.
+  // Risponde SUBITO con la copia già in cache (se c'è), così l'app si apre
+  // senza aspettare la rete e senza il flash grigio durante l'attesa; nel
+  // frattempo scarica in background la versione più recente per la prossima
+  // apertura. Chi vuole la versione nuova subito usa il pulsante di
+  // aggiornamento manuale (che svuota la cache e forza il reload).
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req, { cache: 'no-store' })
-        .then((res) => {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
-          return res;
-        })
-        .catch(() => caches.match(req).then((res) => res || caches.match('./index.html')))
+      caches.match(req).then((cached) => {
+        const networkFetch = fetch(req, { cache: 'no-store' })
+          .then((res) => {
+            const resClone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+            return res;
+          })
+          .catch(() => cached || caches.match('./index.html'));
+        return cached || networkFetch;
+      })
     );
     return;
   }
