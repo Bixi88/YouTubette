@@ -1958,12 +1958,20 @@
         // Recupera una rosa di copertine per lo stesso termine di ricerca e ne
         // sceglie una a caso, escludendo (quando possibile) quella già in uso,
         // così il pulsante "Cambia immagine" restituisce davvero qualcosa di diverso.
+        // Per termini generici (es. un genere come "R&B") una sola ricerca di tracce
+        // può restituire pochi risultati distinti: interroghiamo in parallelo anche
+        // gli album, così la scelta finale ha più varietà da cui pescare.
         async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
             try {
-                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=15&entity=musicTrack`);
-                const data = await res.json();
-                if (data.results && data.results.length > 0) {
-                    let candidates = data.results
+                const [trackRes, albumRes] = await Promise.all([
+                    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=25&entity=musicTrack`),
+                    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=25&entity=album`)
+                ]);
+                const [trackData, albumData] = await Promise.all([trackRes.json(), albumRes.json()]);
+                const allResults = [...(trackData.results || []), ...(albumData.results || [])];
+
+                if (allResults.length > 0) {
+                    let candidates = allResults
                         .filter(r => r.artworkUrl100)
                         .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
                     candidates = [...new Set(candidates)];
