@@ -559,7 +559,6 @@
                 </div>
                 <!-- VISTA 2: Lista Canzoni (risultati ricerca / playlist aperta) -->
                 <div id="resultsView" class="shrink-0 h-full overflow-y-auto pr-0">
-                    <span id="trackCount" class="hidden">0 brani</span>
                     <p id="resultsStatusText" class="hidden text-xs p-8 italic text-center mt-12 custom-text-muted"></p>
                     <div id="trackList" class="space-y-1 pb-36 px-6"></div>
                 </div>
@@ -2274,7 +2273,6 @@
                 appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
                 toggleDownloadButtons(false);
                 document.getElementById('trackList').innerHTML = '';
-                document.getElementById('trackCount').classList.add('hidden');
                 if (resultsStatusText) resultsStatusText.classList.add('hidden');
             } else isFetchingMore = true;
 
@@ -2416,7 +2414,6 @@
                 showResultsView();
                 appState.tracks = []; appState.currentIndex = -1;
                 document.getElementById('trackList').innerHTML = '';
-                document.getElementById('trackCount').classList.add('hidden');
                 if (resultsStatusText) {
                     resultsStatusText.classList.remove('hidden');
                     resultsStatusText.innerText = 'Link playlist Spotify non valido.';
@@ -2430,7 +2427,6 @@
             appState.tracks = []; appState.currentIndex = -1;
             toggleDownloadButtons(false);
             document.getElementById('trackList').innerHTML = '';
-            document.getElementById('trackCount').classList.add('hidden');
             if (resultsStatusText) {
                 resultsStatusText.classList.remove('hidden');
                 resultsStatusText.innerText = 'Importazione playlist Spotify in corso...';
@@ -2452,12 +2448,10 @@
                     channel: t.artist,
                     thumbnail: null,
                     artworkFetched: false,
-                    resolved: false
+                    resolved: false,
+                    spotifyImport: true
                 }));
                 appState.currentIndex = -1;
-
-                const trackCountEl = document.getElementById('trackCount');
-                if (trackCountEl) { trackCountEl.classList.remove('hidden'); trackCountEl.innerText = `${appState.tracks.length} brani`; }
 
                 if (resultsStatusText) resultsStatusText.classList.add('hidden');
                 renderTracklist(0);
@@ -2515,14 +2509,20 @@
 
                 const item = data.items[0];
                 track.id = item.id.videoId;
-                track.thumbnail = item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url;
+                // Se il brano ha già una copertina iTunes, la manteniamo: sostituirla con
+                // la miniatura YouTube proprio nel momento in cui parte la riproduzione
+                // creava un fastidioso "salto" visivo. La miniatura YouTube resta solo
+                // come ripiego per i brani senza copertina iTunes trovata.
+                if (!track.thumbnail) {
+                    track.thumbnail = item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url;
+                }
                 track.resolved = true;
 
                 document.getElementById('apiErrorBadge')?.classList.add('hidden');
                 document.getElementById('modalApiBadgeError')?.classList.add('hidden');
 
                 const img = document.getElementById(`track-img-${index}`);
-                if (img) displayArtwork(img, track.id);
+                if (img && !track.spotifyImport) displayArtwork(img, track.id);
                 const badge = img?.parentElement?.querySelector('.fa-spotify');
                 if (badge) badge.remove();
 
@@ -2660,13 +2660,15 @@
 
             const sheetImg = document.getElementById('sheetArtworkImg');
             const miniImg = document.getElementById('miniPlayerImg');
-            if (track.id) {
+            if (track.spotifyImport) {
+                // Copertina iTunes fissa: non va mai sostituita dalla miniatura YouTube,
+                // altrimenti l'immagine "salta" proprio quando parte la canzone.
+                const src = track.thumbnail || (track.id ? `https://img.youtube.com/vi/${track.id}/mqdefault.jpg` : '');
+                if (sheetImg) sheetImg.src = src;
+                if (miniImg) miniImg.src = src;
+            } else if (track.id) {
                 displayArtwork(sheetImg, track.id);
                 displayArtwork(miniImg, track.id);
-            } else {
-                // In attesa della risoluzione: mostra la copertina già nota (es. iTunes) se c'è.
-                if (sheetImg) sheetImg.src = track.thumbnail || '';
-                if (miniImg) miniImg.src = track.thumbnail || '';
             }
 
             if (miniPlayer) {
@@ -2701,8 +2703,16 @@
                 if (appState.currentIndex !== index) return;
                 if (!resolved) return; // nessun video trovato/errore: non riproduce nulla
 
-                displayArtwork(sheetImg, track.id);
-                displayArtwork(miniImg, track.id);
+                if (track.spotifyImport) {
+                    // Solo se non esisteva già una copertina iTunes: qui track.thumbnail
+                    // è già stato eventualmente valorizzato come ripiego da resolveYoutubeIdForTrack.
+                    const src = track.thumbnail || `https://img.youtube.com/vi/${track.id}/mqdefault.jpg`;
+                    if (sheetImg) sheetImg.src = src;
+                    if (miniImg) miniImg.src = src;
+                } else {
+                    displayArtwork(sheetImg, track.id);
+                    displayArtwork(miniImg, track.id);
+                }
             }
 
             if (player?.loadVideoById) player.loadVideoById(track.id);
@@ -2714,13 +2724,18 @@
                 // Più risoluzioni = artwork più nitido nei controlli di sistema (notifica, lock screen,
                 // pannello rapido Android): è lì che Android disegna quello che sembra un "widget", perché
                 // un vero home-screen widget non è realizzabile da una webapp/PWA, richiede codice nativo.
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title, artist: track.channel, album: 'YouTubette',
-                    artwork: [
+                // Per i brani da Spotify con copertina iTunes, la usiamo anche qui: stessa
+                // immagine ovunque, niente cambio a sorpresa nel lock screen.
+                const artwork = (track.spotifyImport && track.thumbnail)
+                    ? [{ src: track.thumbnail, sizes: '400x400', type: 'image/jpeg' }]
+                    : [
                         { src: `https://img.youtube.com/vi/${track.id}/mqdefault.jpg`, sizes: '320x180', type: 'image/jpeg' },
                         { src: `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' },
                         { src: `https://img.youtube.com/vi/${track.id}/sddefault.jpg`, sizes: '640x480', type: 'image/jpeg' }
-                    ]
+                    ];
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title, artist: track.channel, album: 'YouTubette',
+                    artwork: artwork
                 });
             }
         }
