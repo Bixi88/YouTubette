@@ -2625,14 +2625,7 @@
         async function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
 
-            const trackToResolve = appState.tracks[index];
-            if (!trackToResolve.id) {
-                const row = document.getElementById(`track-row-${index}`);
-                if (row) row.classList.add('opacity-50', 'pointer-events-none');
-                const resolved = await resolveYoutubeIdForTrack(trackToResolve, index);
-                if (row) row.classList.remove('opacity-50', 'pointer-events-none');
-                if (!resolved) return; // niente video trovato/errore: non riproduce nulla
-            }
+            const track = appState.tracks[index];
 
             // CARICAMENTO SUCESSIVO PREVENTIVO ED ESCLUSIVO (solo per liste da ricerca YouTube,
             // le playlist importate da Spotify non hanno paginazione YouTube):
@@ -2641,7 +2634,11 @@
                 performSearch(true);
             }
 
-            if (appState.currentIndex !== -1) {
+            // Aggiorna SUBITO titolo, copertina ed evidenziazione riga usando i dati già
+            // disponibili (anche per un brano Spotify non ancora risolto su YouTube), così lo
+            // swipe/cambio brano è istantaneo e non mostra più il titolo del brano precedente
+            // in attesa che finisca la ricerca YouTube.
+            if (appState.currentIndex !== -1 && appState.currentIndex !== index) {
                 const oldRow = document.getElementById(`track-row-${appState.currentIndex}`);
                 if (oldRow) {
                     oldRow.classList.remove('bg-white/10', 'border-white/10');
@@ -2652,18 +2649,25 @@
             }
 
             appState.currentIndex = index;
-            const track = appState.tracks[index];
 
             const titleEl = document.getElementById('playerTrackTitle');
             const channelEl = document.getElementById('playerTrackChannel');
             if (titleEl) titleEl.innerText = track.title;
             if (channelEl) channelEl.innerText = track.channel;
-            
+
             if (globalAmbientBg) setAmbientBackground(globalAmbientBg, track.thumbnail);
             if (sheetAmbientBg) setAmbientBackground(sheetAmbientBg, track.thumbnail);
-            
-            displayArtwork(document.getElementById('sheetArtworkImg'), track.id);
-            displayArtwork(document.getElementById('miniPlayerImg'), track.id);
+
+            const sheetImg = document.getElementById('sheetArtworkImg');
+            const miniImg = document.getElementById('miniPlayerImg');
+            if (track.id) {
+                displayArtwork(sheetImg, track.id);
+                displayArtwork(miniImg, track.id);
+            } else {
+                // In attesa della risoluzione: mostra la copertina già nota (es. iTunes) se c'è.
+                if (sheetImg) sheetImg.src = track.thumbnail || '';
+                if (miniImg) miniImg.src = track.thumbnail || '';
+            }
 
             if (miniPlayer) {
                 miniPlayer.classList.add('visible');
@@ -2680,10 +2684,29 @@
                 newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
-            if (player?.loadVideoById) player.loadVideoById(track.id);
             checkAndApplyMarquee();
-            updateMediaSessionMetadata(track);
             toggleDownloadButtons(true);
+
+            // Solo ORA, se manca ancora l'id YouTube (brano da playlist Spotify mai ascoltato
+            // prima), lo risolviamo: l'interfaccia sopra è già aggiornata, quindi questa attesa
+            // non blocca più l'animazione di cambio brano, riguarda solo l'avvio dell'audio.
+            if (!track.id) {
+                const row = document.getElementById(`track-row-${index}`);
+                if (row) row.classList.add('opacity-50', 'pointer-events-none');
+                const resolved = await resolveYoutubeIdForTrack(track, index);
+                if (row) row.classList.remove('opacity-50', 'pointer-events-none');
+
+                // Se nel frattempo l'utente è già passato a un altro brano, non riprodurre
+                // questo (arriverebbe "in ritardo" sopra quello attuale).
+                if (appState.currentIndex !== index) return;
+                if (!resolved) return; // nessun video trovato/errore: non riproduce nulla
+
+                displayArtwork(sheetImg, track.id);
+                displayArtwork(miniImg, track.id);
+            }
+
+            if (player?.loadVideoById) player.loadVideoById(track.id);
+            updateMediaSessionMetadata(track);
         }
 
         function updateMediaSessionMetadata(track) {
