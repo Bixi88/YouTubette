@@ -1958,15 +1958,16 @@
         // Recupera una rosa di copertine per lo stesso termine di ricerca e ne
         // sceglie una a caso, escludendo (quando possibile) quella già in uso,
         // così il pulsante "Cambia immagine" restituisce davvero qualcosa di diverso.
-        // Per termini generici (es. un genere come "R&B") una sola ricerca di tracce
-        // può restituire pochi risultati distinti: interroghiamo in parallelo anche
-        // gli album, così la scelta finale ha più varietà da cui pescare. Le due
-        // chiamate gestiscono l'errore CIASCUNA per conto proprio: se una delle due
-        // fallisce (rete, quota iTunes, ecc.) l'altra continua comunque a fornire
-        // candidati validi, invece di far fallire tutto il recupero.
+        // NOTA: le due entity (musicTrack e album) vengono interrogate in SEQUENZA,
+        // e quella per gli album solo se la prima non basta da sola. Interrogarle in
+        // parallelo ad ogni tentativo raddoppiava (fino a quadruplicare, contando anche
+        // il fallback su qs.query in refreshQuickSearchArtwork) le richieste verso l'API
+        // pubblica di iTunes, che ha un rate-limit basso e non documentato: bastavano
+        // pochi refresh ravvicinati per sforarlo, e la risposta di errore veniva letta
+        // (a torto) come "nessuna immagine trovata" invece che come limite di quota.
         async function fetchItunesResults(term, entity) {
             try {
-                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=25&entity=${entity}`);
+                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=15&entity=${entity}`);
                 const data = await res.json();
                 return data.results || [];
             } catch (err) {
@@ -1976,23 +1977,27 @@
         }
 
         async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
-            const [trackResults, albumResults] = await Promise.all([
-                fetchItunesResults(term, 'musicTrack'),
-                fetchItunesResults(term, 'album')
-            ]);
-            const allResults = [...trackResults, ...albumResults];
+            let candidates = [...new Set(
+                (await fetchItunesResults(term, 'musicTrack'))
+                    .filter(r => r.artworkUrl100)
+                    .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'))
+            )];
 
-            if (allResults.length > 0) {
-                let candidates = allResults
+            // Query aggiuntiva sugli album solo se i brani non bastano a dare varietà:
+            // per termini generici (es. un genere come "R&B") una sola ricerca di tracce
+            // può restituire pochi risultati distinti.
+            if (candidates.length < 5) {
+                const albumCandidates = (await fetchItunesResults(term, 'album'))
                     .filter(r => r.artworkUrl100)
                     .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
-                candidates = [...new Set(candidates)];
-                if (excludeUrl && candidates.length > 1) {
-                    candidates = candidates.filter(c => c !== excludeUrl);
-                }
-                if (candidates.length > 0) {
-                    return candidates[Math.floor(Math.random() * candidates.length)];
-                }
+                candidates = [...new Set([...candidates, ...albumCandidates])];
+            }
+
+            if (excludeUrl && candidates.length > 1) {
+                candidates = candidates.filter(c => c !== excludeUrl);
+            }
+            if (candidates.length > 0) {
+                return candidates[Math.floor(Math.random() * candidates.length)];
             }
             return null;
         }
