@@ -554,6 +554,24 @@
             <div id="viewsSlider" class="flex h-full">
                 <!-- VISTA 1: Playlist (Ricerche Rapide) -->
                 <div id="homeView" class="shrink-0 h-full overflow-y-auto pr-0">
+                    <!-- IMPORT PLAYLIST SPOTIFY: incolla il link, i brani vengono letti dalla
+                         pagina embed pubblica di Spotify (nessuna API/chiave Spotify o YouTube
+                         coinvolta in questa fase). I video YouTube vengono cercati SOLO quando
+                         l'utente tocca davvero un brano per riprodurlo, uno alla volta, così da
+                         non consumare quota della Data API di YouTube per il semplice import. -->
+                    <div class="px-4 pt-4">
+                        <div class="flex items-center gap-2 rounded-2xl p-2 custom-bg-card border border-white/5">
+                            <i class="fa-brands fa-spotify text-[var(--accent)] text-lg ml-1 shrink-0"></i>
+                            <input type="text" id="spotifyPlaylistInput" placeholder="Incolla link playlist Spotify..."
+                                autocomplete="off" autocorrect="off" spellcheck="false"
+                                class="flex-1 bg-transparent text-xs text-white focus:outline-none min-w-0">
+                            <button id="spotifyImportBtn" onclick="importSpotifyPlaylist()"
+                                class="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 text-white active:scale-90 transition-all shrink-0" title="Importa playlist">
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </button>
+                        </div>
+                        <p id="spotifyImportStatus" class="hidden text-[10px] mt-1.5 px-2 custom-text-muted"></p>
+                    </div>
                     <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-4 gap-y-7 px-2 pt-4 pb-36"></div>
                     <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
                 </div>
@@ -819,6 +837,10 @@
             quickSearches: JSON.parse(localStorage.getItem('youtubette_quick_searches') || '[]')
         };
         let deferredPrompt, nextSearchPageToken = '', isFetchingMore = false;
+        // 'youtube' = lista da ricerca/ricerca rapida (con paginazione YouTube),
+        // 'spotify' = lista importata da una playlist Spotify (brani senza id YouTube
+        // finché non vengono riprodotti la prima volta).
+        let currentListSource = 'youtube';
         // Vero se la ricerca correntemente mostrata/paginata è stata avviata da una playlist
         // (cerchio in home) e quindi deve continuare a usare i filtri playlist anche per il
         // caricamento delle pagine successive, invece di quelli della ricerca manuale.
@@ -2255,6 +2277,7 @@
                 // anche il caricamento automatico delle pagine successive (isLoadMore) continui
                 // ad usare gli stessi filtri, invece di quelli dell'altro contesto.
                 currentSearchIsQuickSearch = isQuickSearch;
+                currentListSource = 'youtube';
                 showResultsView();
                 appState.tracks = []; appState.currentIndex = -1; nextSearchPageToken = '';
                 toggleDownloadButtons(false);
@@ -2315,6 +2338,184 @@
             } finally { if (isLoadMore) isFetchingMore = false; }
         }
 
+        // --- IMPORT PLAYLIST SPOTIFY ---
+        // Niente API/chiave Spotify: leggiamo la pagina embed pubblica (open.spotify.com/embed/playlist/...),
+        // la stessa che genera i player incorporabili su siti terzi, che espone titolo/artista/durata dei
+        // brani già nell'HTML iniziale. Essendo una pagina non pensata per fetch da altri domini, serve un
+        // proxy CORS pubblico e gratuito per leggerla dal browser: ne proviamo due in sequenza.
+        // NB: è scraping non ufficiale di una pagina non documentata da Spotify, quindi potrebbe smettere
+        // di funzionare se Spotify ne cambia la struttura, e mostra al più i primi ~100 brani della playlist.
+
+        function extractSpotifyPlaylistId(url) {
+            const match = url.match(/playlist[\/:]([a-zA-Z0-9]{15,25})/);
+            return match ? match[1] : null;
+        }
+
+        async function fetchSpotifyEmbedText(playlistId) {
+            const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
+
+            // 1° tentativo: r.jina.ai, un "reader" pubblico gratuito che restituisce il
+            // contenuto testuale/markdown già ripulito della pagina (nessuna chiave, CORS ok).
+            try {
+                const res = await fetch(`https://r.jina.ai/${embedUrl}`);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && text.length > 200) return { type: 'text', data: text };
+                }
+            } catch (err) { console.warn('r.jina.ai non disponibile:', err); }
+
+            // 2° tentativo: proxy CORS generico che restituisce l'HTML grezzo della pagina.
+            try {
+                const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(embedUrl)}`);
+                if (res.ok) {
+                    const html = await res.text();
+                    if (html && html.length > 200) return { type: 'html', data: html };
+                }
+            } catch (err) { console.warn('allorigins.win non disponibile:', err); }
+
+            throw new Error('Impossibile raggiungere Spotify: nessun proxy disponibile in questo momento.');
+        }
+
+        function parseSpotifyTracksFromText(text) {
+            // Pattern osservato sulla pagina embed pubblica: titolo del brano come intestazione
+            // di livello 3, artista subito sotto come intestazione di livello 4, poi la durata mm:ss.
+            const tracks = [];
+            const re = /###\s+([^\n#][^\n]*)\n+####\s+([^\n#][^\n]*)\n+\s*(\d{1,3}:\d{2})/g;
+            let m;
+            while ((m = re.exec(text)) !== null) {
+                tracks.push({ title: m[1].trim(), artist: m[2].trim(), duration: m[3].trim() });
+            }
+            return tracks;
+        }
+
+        function parseSpotifyTracksFromHtml(html) {
+            // Fallback più fragile ma indipendente dal reader esterno: analizza l'HTML grezzo
+            // cercando le coppie di intestazioni h3 (titolo) / h4 (artista) presenti nella riga.
+            try {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const tracks = [];
+                doc.querySelectorAll('h3').forEach(h3 => {
+                    const container = h3.closest('li') || h3.parentElement;
+                    const h4 = container ? container.querySelector('h4') : null;
+                    if (h4) tracks.push({ title: h3.textContent.trim(), artist: h4.textContent.trim(), duration: '' });
+                });
+                return tracks;
+            } catch (err) {
+                console.warn('Parsing HTML playlist fallito:', err);
+                return [];
+            }
+        }
+
+        function extractSpotifyPlaylistCover(text) {
+            const match = text.match(/!\[[^\]]*\]\((https:\/\/[^\)\s]+)\)/);
+            return match ? match[1] : null;
+        }
+
+        async function importSpotifyPlaylist() {
+            const input = document.getElementById('spotifyPlaylistInput');
+            const statusEl = document.getElementById('spotifyImportStatus');
+            const btn = document.getElementById('spotifyImportBtn');
+            if (!input) return;
+
+            const url = input.value.trim();
+            const playlistId = extractSpotifyPlaylistId(url);
+
+            if (!playlistId) {
+                if (statusEl) { statusEl.classList.remove('hidden'); statusEl.textContent = 'Link playlist Spotify non valido.'; }
+                return;
+            }
+
+            const originalBtnHtml = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i>'; }
+            if (statusEl) { statusEl.classList.remove('hidden'); statusEl.textContent = 'Importazione playlist in corso...'; }
+
+            try {
+                const fetched = await fetchSpotifyEmbedText(playlistId);
+                let rawTracks = fetched.type === 'text'
+                    ? parseSpotifyTracksFromText(fetched.data)
+                    : parseSpotifyTracksFromHtml(fetched.data);
+
+                if (rawTracks.length === 0) {
+                    throw new Error('Nessun brano trovato: la playlist potrebbe essere privata, vuota o non più raggiungibile.');
+                }
+
+                const cover = fetched.type === 'text' ? extractSpotifyPlaylistCover(fetched.data) : null;
+
+                appState.tracks = rawTracks.map(t => ({
+                    id: null,
+                    title: t.title,
+                    channel: t.artist,
+                    thumbnail: cover,
+                    resolved: false
+                }));
+                appState.currentIndex = -1;
+                currentListSource = 'spotify';
+                nextSearchPageToken = '';
+                toggleDownloadButtons(false);
+
+                const trackCountEl = document.getElementById('trackCount');
+                if (trackCountEl) { trackCountEl.classList.remove('hidden'); trackCountEl.innerText = `${appState.tracks.length} brani`; }
+
+                showResultsView();
+                renderTracklist(0);
+
+                if (statusEl) statusEl.classList.add('hidden');
+                input.value = '';
+            } catch (err) {
+                console.warn('Import playlist Spotify fallito:', err);
+                if (statusEl) {
+                    statusEl.classList.remove('hidden');
+                    statusEl.textContent = 'Import non riuscito. Riprova tra poco o controlla il link.';
+                }
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalBtnHtml || '<i class="fa-solid fa-arrow-right text-xs"></i>'; }
+            }
+        }
+
+        // Risolve UN SOLO brano Spotify sul video YouTube corrispondente, e solo quando
+        // l'utente lo tocca davvero per riprodurlo: così una playlist da 100 brani costa
+        // al massimo 1 chiamata di ricerca per ogni brano effettivamente ascoltato, non 100
+        // chiamate subito all'import.
+        async function resolveYoutubeIdForTrack(track, index) {
+            if (!appState.apiKey) {
+                showVisualApiError();
+                const placeholderText = document.getElementById('placeholderText');
+                if (placeholderText) placeholderText.innerHTML = `<span class="text-red-500 font-bold block mb-1">Chiave API Mancante!</span> Clicca sull'icona delle impostazioni in alto a sinistra per configurarla.`;
+                openApiModal();
+                return false;
+            }
+
+            const query = `${track.title} ${track.channel}`;
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(query)}&type=video&videoEmbeddable=true&key=${appState.apiKey}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
+                if (!data.items || data.items.length === 0) throw new Error('Nessun video YouTube trovato per questo brano.');
+
+                const item = data.items[0];
+                track.id = item.id.videoId;
+                track.thumbnail = item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url;
+                track.resolved = true;
+
+                document.getElementById('apiErrorBadge')?.classList.add('hidden');
+                document.getElementById('modalApiBadgeError')?.classList.add('hidden');
+
+                const img = document.getElementById(`track-img-${index}`);
+                if (img) displayArtwork(img, track.id);
+                const badge = img?.parentElement?.querySelector('.fa-spotify');
+                if (badge) badge.remove();
+
+                return true;
+            } catch (err) {
+                console.warn('Risoluzione YouTube fallita per', track.title, err);
+                showVisualApiError();
+                showToast(`Impossibile trovare "${track.title}" su YouTube.`);
+                return false;
+            }
+        }
+
         // --- NAVIGAZIONE ANIMATA TRA VISTA PLAYLIST E VISTA LISTA CANZONI ---
         function showResultsView() {
             const slider = document.getElementById('viewsSlider');
@@ -2373,9 +2574,11 @@
                 // così il caricamento (immagini, dati) resta mascherato dall'animazione stessa.
                 trackRow.style.animationDelay = `${Math.min(index - fromIndex, 20) * 45}ms`;
 
+                const placeholderSrc = track.thumbnail || '';
                 trackRow.innerHTML = `
-                    <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800">
-                        <img id="track-img-${index}" src="https://img.youtube.com/vi/${track.id}/mqdefault.jpg" class="w-full h-full object-cover track-thumb-img" alt="" onload="this.classList.add('loaded')">
+                    <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800 relative">
+                        <img id="track-img-${index}" src="${track.id ? `https://img.youtube.com/vi/${track.id}/mqdefault.jpg` : placeholderSrc}" class="w-full h-full object-cover track-thumb-img" alt="" onload="this.classList.add('loaded')">
+                        ${!track.id ? '<i class="fa-brands fa-spotify absolute bottom-0.5 right-0.5 text-[10px] text-[var(--accent)] drop-shadow"></i>' : ''}
                     </div>
                     <div class="flex-1 overflow-hidden">
                         <p class="text-sm font-bold truncate ${appState.currentIndex === index ? 'custom-text-accent font-black' : 'text-white'}">${escapeHtml(track.title)}</p>
@@ -2387,19 +2590,31 @@
                 });
                 trackListDiv.appendChild(trackRow);
 
-                setTimeout(() => {
-                    const img = document.getElementById(`track-img-${index}`);
-                    displayArtwork(img, track.id);
-                }, 0);
+                if (track.id) {
+                    setTimeout(() => {
+                        const img = document.getElementById(`track-img-${index}`);
+                        displayArtwork(img, track.id);
+                    }, 0);
+                }
             }
         }
 
-        function loadTrack(index) {
+        async function loadTrack(index) {
             if (index < 0 || index >= appState.tracks.length) return;
-            
-            // CARICAMENTO SUCESSIVO PREVENTIVO ED ESCLUSIVO:
+
+            const trackToResolve = appState.tracks[index];
+            if (!trackToResolve.id) {
+                const row = document.getElementById(`track-row-${index}`);
+                if (row) row.classList.add('opacity-50', 'pointer-events-none');
+                const resolved = await resolveYoutubeIdForTrack(trackToResolve, index);
+                if (row) row.classList.remove('opacity-50', 'pointer-events-none');
+                if (!resolved) return; // niente video trovato/errore: non riproduce nulla
+            }
+
+            // CARICAMENTO SUCESSIVO PREVENTIVO ED ESCLUSIVO (solo per liste da ricerca YouTube,
+            // le playlist importate da Spotify non hanno paginazione YouTube):
             // Scatta solo all'inizio dell'ultimo brano della lista (brani 25, 50, etc. - index === appState.tracks.length - 1)
-            if (index === appState.tracks.length - 1 && nextSearchPageToken && !isFetchingMore) {
+            if (currentListSource === 'youtube' && index === appState.tracks.length - 1 && nextSearchPageToken && !isFetchingMore) {
                 performSearch(true);
             }
 
