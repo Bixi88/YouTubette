@@ -1939,10 +1939,76 @@
         }
 
         // --- RICERCHE RAPIDE (scorciatoie a cerchio in home) ---
-        // L'artwork viene recuperato dall'API pubblica di iTunes/Apple Music
-        // (gratuita, senza chiave, CORS-friendly) invece che dall'API di YouTube,
-        // così il salvataggio di una scorciatoia non consuma quota di ricerca YouTube.
+        // L'artwork viene recuperato da Deezer (gratuito, senza chiave) come fonte
+        // primaria, con iTunes come ripiego. Deezer NON manda header CORS sulle risposte
+        // JSON normali, quindi lo interroghiamo in modalità JSONP (un tag <script>, non una
+        // fetch): è così che si aggira il blocco CORS, e non risente della quota/rate-limit
+        // di iTunes che stava causando "Nessuna nuova immagine trovata" in continuazione.
+        function jsonpRequest(url, timeoutMs = 8000) {
+            return new Promise((resolve, reject) => {
+                const callbackName = 'jsonp_cb_' + Math.random().toString(36).slice(2);
+                const script = document.createElement('script');
+                let settled = false;
+
+                const cleanup = () => {
+                    delete window[callbackName];
+                    script.remove();
+                };
+
+                window[callbackName] = (data) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    resolve(data);
+                };
+
+                script.onerror = () => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    reject(new Error('Errore caricamento script JSONP'));
+                };
+
+                setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    reject(new Error('Timeout JSONP'));
+                }, timeoutMs);
+
+                const separator = url.includes('?') ? '&' : '?';
+                script.src = `${url}${separator}output=jsonp&callback=${callbackName}`;
+                document.body.appendChild(script);
+            });
+        }
+
+        // type: 'track' o 'album'. Restituisce l'array grezzo di risultati Deezer.
+        async function fetchDeezerResults(term, type) {
+            try {
+                const endpoint = type === 'album'
+                    ? 'https://api.deezer.com/search/album'
+                    : 'https://api.deezer.com/search/track';
+                const data = await jsonpRequest(`${endpoint}?q=${encodeURIComponent(term)}&limit=15`);
+                return (data && data.data) || [];
+            } catch (err) {
+                console.warn(`Impossibile recuperare risultati Deezer (${type}):`, err);
+                return [];
+            }
+        }
+
+        // Le tracce hanno la copertina annidata in item.album, gli album ce l'hanno diretta.
+        function extractDeezerArtwork(item, type) {
+            if (type === 'album') return item.cover_big || item.cover_medium || null;
+            return (item.album && (item.album.cover_big || item.album.cover_medium)) || null;
+        }
+
         async function fetchArtworkForQuickSearch(term) {
+            const deezerTracks = await fetchDeezerResults(term, 'track');
+            if (deezerTracks.length > 0) {
+                const art = extractDeezerArtwork(deezerTracks[0], 'track');
+                if (art) return art;
+            }
+            // Ripiego su iTunes se Deezer non ha dato nulla
             try {
                 const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=1&entity=musicTrack`);
                 const data = await res.json();
@@ -1958,13 +2024,10 @@
         // Recupera una rosa di copertine per lo stesso termine di ricerca e ne
         // sceglie una a caso, escludendo (quando possibile) quella già in uso,
         // così il pulsante "Cambia immagine" restituisce davvero qualcosa di diverso.
-        // NOTA: le due entity (musicTrack e album) vengono interrogate in SEQUENZA,
-        // e quella per gli album solo se la prima non basta da sola. Interrogarle in
-        // parallelo ad ogni tentativo raddoppiava (fino a quadruplicare, contando anche
-        // il fallback su qs.query in refreshQuickSearchArtwork) le richieste verso l'API
-        // pubblica di iTunes, che ha un rate-limit basso e non documentato: bastavano
-        // pochi refresh ravvicinati per sforarlo, e la risposta di errore veniva letta
-        // (a torto) come "nessuna immagine trovata" invece che come limite di quota.
+        // NOTA: le due entity (track e album, sia su Deezer che su iTunes) vengono
+        // interrogate in SEQUENZA, e quella per gli album solo se la prima non basta
+        // da sola: interrogarle in parallelo ad ogni tentativo moltiplicava le richieste
+        // verso le API, rischiando di sforarne la quota inutilmente.
         async function fetchItunesResults(term, entity) {
             try {
                 const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=15&entity=${entity}`);
@@ -1978,19 +2041,35 @@
 
         async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
             let candidates = [...new Set(
-                (await fetchItunesResults(term, 'musicTrack'))
-                    .filter(r => r.artworkUrl100)
-                    .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'))
+                (await fetchDeezerResults(term, 'track'))
+                    .map(r => extractDeezerArtwork(r, 'track'))
+                    .filter(Boolean)
             )];
 
             // Query aggiuntiva sugli album solo se i brani non bastano a dare varietà:
             // per termini generici (es. un genere come "R&B") una sola ricerca di tracce
             // può restituire pochi risultati distinti.
             if (candidates.length < 5) {
-                const albumCandidates = (await fetchItunesResults(term, 'album'))
-                    .filter(r => r.artworkUrl100)
-                    .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
+                const albumCandidates = (await fetchDeezerResults(term, 'album'))
+                    .map(r => extractDeezerArtwork(r, 'album'))
+                    .filter(Boolean);
                 candidates = [...new Set([...candidates, ...albumCandidates])];
+            }
+
+            // Se Deezer non ha dato proprio nulla (rete/blocco diverso da iTunes),
+            // ripieghiamo sull'API di iTunes come seconda fonte.
+            if (candidates.length === 0) {
+                candidates = [...new Set(
+                    (await fetchItunesResults(term, 'musicTrack'))
+                        .filter(r => r.artworkUrl100)
+                        .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'))
+                )];
+                if (candidates.length < 5) {
+                    const albumCandidates = (await fetchItunesResults(term, 'album'))
+                        .filter(r => r.artworkUrl100)
+                        .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
+                    candidates = [...new Set([...candidates, ...albumCandidates])];
+                }
             }
 
             if (excludeUrl && candidates.length > 1) {
