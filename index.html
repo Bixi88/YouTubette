@@ -554,26 +554,8 @@
             <div id="viewsSlider" class="flex h-full">
                 <!-- VISTA 1: Playlist (Ricerche Rapide) -->
                 <div id="homeView" class="shrink-0 h-full overflow-y-auto pr-0">
-                    <!-- IMPORT PLAYLIST SPOTIFY: incolla il link, i brani vengono letti dalla
-                         pagina embed pubblica di Spotify (nessuna API/chiave Spotify o YouTube
-                         coinvolta in questa fase). I video YouTube vengono cercati SOLO quando
-                         l'utente tocca davvero un brano per riprodurlo, uno alla volta, così da
-                         non consumare quota della Data API di YouTube per il semplice import. -->
-                    <div class="px-4 pt-4">
-                        <div class="flex items-center gap-2 rounded-2xl p-2 custom-bg-card border border-white/5">
-                            <i class="fa-brands fa-spotify text-[var(--accent)] text-lg ml-1 shrink-0"></i>
-                            <input type="text" id="spotifyPlaylistInput" placeholder="Incolla link playlist Spotify..."
-                                autocomplete="off" autocorrect="off" spellcheck="false"
-                                class="flex-1 bg-transparent text-xs text-white focus:outline-none min-w-0">
-                            <button id="spotifyImportBtn" onclick="importSpotifyPlaylist()"
-                                class="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 text-white active:scale-90 transition-all shrink-0" title="Importa playlist">
-                                <i class="fa-solid fa-arrow-right text-xs"></i>
-                            </button>
-                        </div>
-                        <p id="spotifyImportStatus" class="hidden text-[10px] mt-1.5 px-2 custom-text-muted"></p>
-                    </div>
                     <div id="quickSearchHome" class="hidden grid grid-cols-3 gap-x-4 gap-y-7 px-2 pt-4 pb-36"></div>
-                    <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani.</p>
+                    <p id="placeholderText" class="text-xs p-8 italic text-center mt-12 custom-text-muted">Usa la lente in alto a destra per cercare brani, oppure incolla il link di una playlist Spotify.</p>
                 </div>
                 <!-- VISTA 2: Lista Canzoni (risultati ricerca / playlist aperta) -->
                 <div id="resultsView" class="shrink-0 h-full overflow-y-auto pr-0">
@@ -1154,17 +1136,13 @@
                     searchInput.focus();
                     window.history.pushState({ page: 'search' }, 'Search');
                 } else {
-                    if (searchInput.value.trim() !== "") {
-                        performSearch(false);
-                    } else {
-                        closeSearch();
-                    }
+                    handleSearchSubmit();
                 }
             });
 
             searchInput.addEventListener('keypress', (e) => { 
                 if (e.key === 'Enter') {
-                    performSearch(false);
+                    handleSearchSubmit();
                     searchInput.blur();
                 } 
             });
@@ -1184,6 +1162,20 @@
                 // (cioè non è stato già consumato dal pulsante indietro), lo rimuoviamo qui.
                 if (window.history.state && window.history.state.page === 'search') {
                     window.history.back();
+                }
+            }
+
+            // La stessa barra di ricerca serve sia per cercare su YouTube (testo libero)
+            // sia per importare una playlist Spotify (se viene incollato un link/URI playlist).
+            function handleSearchSubmit() {
+                const value = searchInput.value.trim();
+                if (!value) { closeSearch(); return; }
+                if (isSpotifyPlaylistLink(value)) {
+                    importSpotifyPlaylist(value);
+                    searchInput.value = '';
+                    closeSearch();
+                } else {
+                    performSearch(false);
                 }
             }
 
@@ -2351,6 +2343,11 @@
             return match ? match[1] : null;
         }
 
+        function isSpotifyPlaylistLink(text) {
+            return /spotify\.com\/(?:[a-z-]+\/)?playlist\/[a-zA-Z0-9]{15,25}/i.test(text)
+                || /^spotify:playlist:[a-zA-Z0-9]{15,25}$/i.test(text);
+        }
+
         async function fetchSpotifyEmbedText(playlistId) {
             const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
 
@@ -2411,23 +2408,33 @@
             return match ? match[1] : null;
         }
 
-        async function importSpotifyPlaylist() {
-            const input = document.getElementById('spotifyPlaylistInput');
-            const statusEl = document.getElementById('spotifyImportStatus');
-            const btn = document.getElementById('spotifyImportBtn');
-            if (!input) return;
-
-            const url = input.value.trim();
+        async function importSpotifyPlaylist(url) {
+            const resultsStatusText = document.getElementById('resultsStatusText');
             const playlistId = extractSpotifyPlaylistId(url);
 
             if (!playlistId) {
-                if (statusEl) { statusEl.classList.remove('hidden'); statusEl.textContent = 'Link playlist Spotify non valido.'; }
+                showResultsView();
+                appState.tracks = []; appState.currentIndex = -1;
+                document.getElementById('trackList').innerHTML = '';
+                document.getElementById('trackCount').classList.add('hidden');
+                if (resultsStatusText) {
+                    resultsStatusText.classList.remove('hidden');
+                    resultsStatusText.innerText = 'Link playlist Spotify non valido.';
+                }
                 return;
             }
 
-            const originalBtnHtml = btn ? btn.innerHTML : '';
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i>'; }
-            if (statusEl) { statusEl.classList.remove('hidden'); statusEl.textContent = 'Importazione playlist in corso...'; }
+            currentListSource = 'spotify';
+            nextSearchPageToken = '';
+            showResultsView();
+            appState.tracks = []; appState.currentIndex = -1;
+            toggleDownloadButtons(false);
+            document.getElementById('trackList').innerHTML = '';
+            document.getElementById('trackCount').classList.add('hidden');
+            if (resultsStatusText) {
+                resultsStatusText.classList.remove('hidden');
+                resultsStatusText.innerText = 'Importazione playlist Spotify in corso...';
+            }
 
             try {
                 const fetched = await fetchSpotifyEmbedText(playlistId);
@@ -2439,36 +2446,48 @@
                     throw new Error('Nessun brano trovato: la playlist potrebbe essere privata, vuota o non più raggiungibile.');
                 }
 
-                const cover = fetched.type === 'text' ? extractSpotifyPlaylistCover(fetched.data) : null;
-
                 appState.tracks = rawTracks.map(t => ({
                     id: null,
                     title: t.title,
                     channel: t.artist,
-                    thumbnail: cover,
+                    thumbnail: null,
+                    artworkFetched: false,
                     resolved: false
                 }));
                 appState.currentIndex = -1;
-                currentListSource = 'spotify';
-                nextSearchPageToken = '';
-                toggleDownloadButtons(false);
 
                 const trackCountEl = document.getElementById('trackCount');
                 if (trackCountEl) { trackCountEl.classList.remove('hidden'); trackCountEl.innerText = `${appState.tracks.length} brani`; }
 
-                showResultsView();
+                if (resultsStatusText) resultsStatusText.classList.add('hidden');
                 renderTracklist(0);
-
-                if (statusEl) statusEl.classList.add('hidden');
-                input.value = '';
             } catch (err) {
                 console.warn('Import playlist Spotify fallito:', err);
-                if (statusEl) {
-                    statusEl.classList.remove('hidden');
-                    statusEl.textContent = 'Import non riuscito. Riprova tra poco o controlla il link.';
+                if (resultsStatusText) {
+                    resultsStatusText.classList.remove('hidden');
+                    resultsStatusText.innerHTML = `
+                        <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-center max-w-xs mx-auto">
+                            <i class="fa-brands fa-spotify text-red-500 text-lg mb-2"></i>
+                            <p class="text-xs font-bold text-red-400">Import Spotify non riuscito</p>
+                            <p class="text-[10px] mt-1 custom-text-muted">${escapeHtml(err.message || 'Riprova tra poco.')}</p>
+                        </div>
+                    `;
                 }
-            } finally {
-                if (btn) { btn.disabled = false; btn.innerHTML = originalBtnHtml || '<i class="fa-solid fa-arrow-right text-xs"></i>'; }
+            }
+        }
+
+        // Copertina per un singolo brano importato da Spotify, tramite l'API pubblica di
+        // iTunes (stessa già usata per le ricerche rapide): nessuna chiave, nessuna quota
+        // YouTube coinvolta. Se il brano viene poi risolto su YouTube (playTrack), la sua
+        // miniatura verrà sostituita da quella del video.
+        async function fetchTrackArtworkFromItunes(track, index) {
+            if (track.id || track.artworkFetched) return;
+            track.artworkFetched = true;
+            const artwork = await fetchArtworkForQuickSearch(`${track.title} ${track.channel}`);
+            if (artwork && !track.id) {
+                track.thumbnail = artwork;
+                const img = document.getElementById(`track-img-${index}`);
+                if (img) img.src = artwork;
             }
         }
 
@@ -2574,10 +2593,9 @@
                 // così il caricamento (immagini, dati) resta mascherato dall'animazione stessa.
                 trackRow.style.animationDelay = `${Math.min(index - fromIndex, 20) * 45}ms`;
 
-                const placeholderSrc = track.thumbnail || '';
                 trackRow.innerHTML = `
                     <div class="w-14 h-14 rounded-full overflow-hidden mr-3 shadow-md shrink-0 flex items-center justify-center bg-neutral-800 relative">
-                        <img id="track-img-${index}" src="${track.id ? `https://img.youtube.com/vi/${track.id}/mqdefault.jpg` : placeholderSrc}" class="w-full h-full object-cover track-thumb-img" alt="" onload="this.classList.add('loaded')">
+                        <img id="track-img-${index}" src="${track.id ? `https://img.youtube.com/vi/${track.id}/mqdefault.jpg` : (track.thumbnail || '')}" class="w-full h-full object-cover track-thumb-img" alt="" onload="this.classList.add('loaded')">
                         ${!track.id ? '<i class="fa-brands fa-spotify absolute bottom-0.5 right-0.5 text-[10px] text-[var(--accent)] drop-shadow"></i>' : ''}
                     </div>
                     <div class="flex-1 overflow-hidden">
@@ -2595,6 +2613,11 @@
                         const img = document.getElementById(`track-img-${index}`);
                         displayArtwork(img, track.id);
                     }, 0);
+                } else if (!track.artworkFetched) {
+                    // Copertina per il singolo brano tramite iTunes (gratis, senza chiave, CORS-friendly):
+                    // scaglionata per non sparare decine di richieste tutte insieme all'import.
+                    const delay = Math.min(index - fromIndex, 40) * 90;
+                    setTimeout(() => fetchTrackArtworkFromItunes(track, index), delay);
                 }
             }
         }
