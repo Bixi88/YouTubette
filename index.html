@@ -2522,7 +2522,16 @@
                 document.getElementById('modalApiBadgeError')?.classList.add('hidden');
 
                 const img = document.getElementById(`track-img-${index}`);
-                if (img && !track.spotifyImport) displayArtwork(img, track.id);
+                if (img) {
+                    if (track.spotifyImport) {
+                        // Copertina fissa (iTunes se trovata, altrimenti il ripiego YouTube
+                        // appena assegnato sopra): niente displayArtwork qui, altrimenti
+                        // verrebbe sovrascritta di nuovo con la miniatura del video.
+                        if (track.thumbnail) img.src = track.thumbnail;
+                    } else {
+                        displayArtwork(img, track.id);
+                    }
+                }
                 const badge = img?.parentElement?.querySelector('.fa-spotify');
                 if (badge) badge.remove();
 
