@@ -1960,30 +1960,39 @@
         // così il pulsante "Cambia immagine" restituisce davvero qualcosa di diverso.
         // Per termini generici (es. un genere come "R&B") una sola ricerca di tracce
         // può restituire pochi risultati distinti: interroghiamo in parallelo anche
-        // gli album, così la scelta finale ha più varietà da cui pescare.
-        async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
+        // gli album, così la scelta finale ha più varietà da cui pescare. Le due
+        // chiamate gestiscono l'errore CIASCUNA per conto proprio: se una delle due
+        // fallisce (rete, quota iTunes, ecc.) l'altra continua comunque a fornire
+        // candidati validi, invece di far fallire tutto il recupero.
+        async function fetchItunesResults(term, entity) {
             try {
-                const [trackRes, albumRes] = await Promise.all([
-                    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=25&entity=musicTrack`),
-                    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=25&entity=album`)
-                ]);
-                const [trackData, albumData] = await Promise.all([trackRes.json(), albumRes.json()]);
-                const allResults = [...(trackData.results || []), ...(albumData.results || [])];
-
-                if (allResults.length > 0) {
-                    let candidates = allResults
-                        .filter(r => r.artworkUrl100)
-                        .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
-                    candidates = [...new Set(candidates)];
-                    if (excludeUrl && candidates.length > 1) {
-                        candidates = candidates.filter(c => c !== excludeUrl);
-                    }
-                    if (candidates.length > 0) {
-                        return candidates[Math.floor(Math.random() * candidates.length)];
-                    }
-                }
+                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=25&entity=${entity}`);
+                const data = await res.json();
+                return data.results || [];
             } catch (err) {
-                console.warn('Impossibile recuperare artwork casuale da iTunes:', err);
+                console.warn(`Impossibile recuperare risultati iTunes (${entity}):`, err);
+                return [];
+            }
+        }
+
+        async function fetchRandomArtworkForQuickSearch(term, excludeUrl) {
+            const [trackResults, albumResults] = await Promise.all([
+                fetchItunesResults(term, 'musicTrack'),
+                fetchItunesResults(term, 'album')
+            ]);
+            const allResults = [...trackResults, ...albumResults];
+
+            if (allResults.length > 0) {
+                let candidates = allResults
+                    .filter(r => r.artworkUrl100)
+                    .map(r => r.artworkUrl100.replace('100x100bb', '400x400bb'));
+                candidates = [...new Set(candidates)];
+                if (excludeUrl && candidates.length > 1) {
+                    candidates = candidates.filter(c => c !== excludeUrl);
+                }
+                if (candidates.length > 0) {
+                    return candidates[Math.floor(Math.random() * candidates.length)];
+                }
             }
             return null;
         }
