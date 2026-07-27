@@ -2769,6 +2769,16 @@
 
             appState.currentIndex = index;
 
+            // Azzeriamo SUBITO barra di avanzamento e tempi: altrimenti resterebbero visibili
+            // quelli della canzone uscente per l'istante in cui il player YouTube sta ancora
+            // caricando il nuovo video (loadVideoById è asincrono).
+            progressBar.style.width = '0%';
+            miniProgressBar.style.width = '0%';
+            document.getElementById('currentTime').innerText = '0:00';
+            document.getElementById('miniCurrentTime').innerText = '0:00';
+            document.getElementById('durationTime').innerText = '0:00';
+            document.getElementById('miniDurationTime').innerText = '0:00';
+
             const titleEl = document.getElementById('playerTrackTitle');
             const channelEl = document.getElementById('playerTrackChannel');
             if (titleEl) titleEl.innerText = track.title;
@@ -2918,6 +2928,14 @@
         function startProgressLoop() {
             setInterval(() => {
                 if (player?.getCurrentTime && appState.isPlaying) {
+                    // Durante il cambio brano il player può rispondere per un istante ancora
+                    // con i dati del video precedente: confrontando l'id effettivamente
+                    // caricato con quello della traccia corrente evitiamo di mostrare quel
+                    // minutaggio "residuo" della canzone uscente.
+                    const currentTrack = appState.tracks[appState.currentIndex];
+                    const activeVideoId = player.getVideoData ? player.getVideoData().video_id : null;
+                    if (!currentTrack || !currentTrack.id || activeVideoId !== currentTrack.id) return;
+
                     const currentTime = player.getCurrentTime(), duration = player.getDuration();
                     
                     if (duration > 0 && !isScrubbing) {
